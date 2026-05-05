@@ -3,4 +3,6 @@ export const ROLES = Object.freeze({
     CAJERO: "cajero",
     COCINA: "cocina",
     DESPACHO:"despacho",
+    OPERADOR: "operador"
+    
 });
