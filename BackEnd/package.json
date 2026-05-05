@@ -6,7 +6,7 @@
   "main": "index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "dev": "nodemon src/Config/index.js",
+    "dev": "nodemon src/config/index.js",
     "seed": "node src/seed.js"
   },
   "keywords": [],
