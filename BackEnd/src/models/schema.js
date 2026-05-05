@@ -1,14 +1,21 @@
-import { mysqlTable, varchar, text, datetime, boolean, int, bigint, uniqueIndex, date, mysqlEnum, timestamp, decimal  } from "drizzle-orm/mysql-core";
+import { mysqlTable, varchar, text, datetime, boolean, int, bigint, longtext, uniqueIndex, date, mysqlEnum, timestamp, decimal } from "drizzle-orm/mysql-core";
 export const users = mysqlTable("users", {
     id: varchar("id", { length: 36 }).primaryKey(),
     name: varchar("name", { length: 80 }).notNull(),
     email: varchar("email", { length: 100 }).notNull().unique(),
     emailVerified: boolean("email_verified").notNull().default(false),
     image: varchar("image", { length: 255 }),
-    role: varchar("role", { length: 20 }).notNull().default("operador"),
+    role: varchar("role", { length: 20 }).notNull().default("assistant"),
     banned: boolean("banned").notNull().default(false),
     banReason: varchar("ban_reason", { length: 255 }),
     banExpires: datetime("ban_expires"),
+    dui: varchar("dui", { length: 10 }).unique(), // Formato 00000000-0
+    phone: varchar("phone", { length: 20 }),
+    address: text("address"), // Opcional (sin .notNull())
+    hiringDate: date("hiring_date"),
+    isNurse: boolean("is_nurse").default(false),
+    jvpm: varchar("jvpm", { length: 20 }).unique(),
+    jvpe: varchar("jvpe", { length: 20 }).unique(),
     createdAt: datetime("created_at").notNull(),
     updatedAt: datetime("updated_at").notNull(),
 });
