@@ -22,20 +22,6 @@ export const auth = betterAuth({
             rateLimit: schema.rateLimit,
         }
     }),
-    user: {
-        additionalFields: {
-            dui: { type: "string" },
-            phone: { type: "string" },
-            address: { type: "string", required: false }, 
-            isNurse: { type: "boolean" },
-            jvpm: { type: "string", required: false },
-            jvpe: { type: "string", required: false }, 
-            hiringDate: { type: "date" },
-        }
-    },
-    advanced: {
-        cookieDomain: ".marioalabi.com", 
-    },
     plugins: [
         admin({
             defaultRole: ROLES.OPERADOR,

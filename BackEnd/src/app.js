@@ -3,6 +3,7 @@ import cors from "cors";
 import express from "express";
 import { auth } from "./config/auth.js";
 import { errorHandler } from "./middleware/errorHandler.js";
+import tenantRoutes from "./router/tenantRoutes.js";
 
 const app = express();
 
@@ -20,11 +21,13 @@ app.use(cors({
 
 app.all("/api/auth/*splat", toNodeHandler(auth));
 
+app.use(express.json());
+app.use("/api/tenant", tenantRoutes);
 
 app.get("/status", (req, res) => {
     res.json({
         status: "ok",
-        message: "Clinic server active",
+        message: "TechFlavor server active",
         timestamp: new Date().toISOString()
     });
 });

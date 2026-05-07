@@ -1,122 +1,167 @@
-import { useState } from 'react'
-import reactLogo from './assets/react.svg'
-import viteLogo from './assets/vite.svg'
-import heroImg from './assets/hero.png'
-import './App.css'
+import { useEffect, useState } from "react";
+import "./App.css";
+import { ProtectedRoute } from "./components/ProtectedRoute";
+import { getSession } from "./lib/auth";
+import { ROLE_HOME_PATHS, ROLES } from "./lib/constants/roles";
+import { MenuManagement } from "./views/admin/MenuManagement";
+import { UserManagement } from "./views/admin/UserManagement";
+import { CashierCatalog } from "./views/cashier/CashierCatalog";
+import Login from "./views/shared/Login.jsx";
+import { RoleDashboard } from "./views/shared/RoleDashboard";
+
+const ROUTES = {
+  "/admin": {
+    roles: [ROLES.ADMIN],
+    title: "Panel administrador",
+    description: "Gestion de usuarios, configuracion general y control del restaurante.",
+  },
+  "/admin/users": {
+    roles: [ROLES.ADMIN],
+    title: "Usuarios",
+    description: "Creacion de empleados y asignacion de roles por restaurante.",
+  },
+  "/admin/menu": {
+    roles: [ROLES.ADMIN],
+    title: "Menu",
+    description: "Categorias, productos y combos disponibles para caja.",
+  },
+  "/cajero": {
+    roles: [ROLES.CAJERO, ROLES.ADMIN],
+    title: "Panel caja",
+    description: "Cobros, cuentas abiertas, cierres de turno y pagos.",
+  },
+  "/cocina": {
+    roles: [ROLES.COCINA, ROLES.ADMIN],
+    title: "KDS cocina",
+    description: "Pedidos entrantes, preparacion y estados de cocina.",
+  },
+  "/despacho": {
+    roles: [ROLES.DESPACHO, ROLES.ADMIN],
+    title: "Panel despacho",
+    description: "Ordenes listas, entregas y seguimiento de salida.",
+  },
+  "/operador": {
+    roles: [ROLES.OPERADOR, ROLES.ADMIN],
+    title: "Panel operador",
+    description: "Operacion diaria del restaurante y atencion de pedidos.",
+  },
+  "/gerente": {
+    roles: [ROLES.GERENTE, ROLES.ADMIN],
+    title: "Panel gerente",
+    description: "Supervision operativa, equipo y reportes del restaurante.",
+  },
+  "/gerente/menu": {
+    roles: [ROLES.GERENTE, ROLES.ADMIN],
+    title: "Menu",
+    description: "Categorias, productos y combos disponibles para caja.",
+  },
+};
 
 function App() {
-  const [count, setCount] = useState(0)
+  const [session, setSession] = useState(null);
+  const [path, setPath] = useState(window.location.pathname);
+  const [isLoading, setIsLoading] = useState(true);
+
+  const navigate = (nextPath) => {
+    window.history.pushState({}, "", nextPath);
+    setPath(nextPath);
+  };
+
+  const loadSession = async () => {
+    try {
+      const currentSession = await getSession();
+      setSession(currentSession);
+      return currentSession;
+    } catch (error) {
+      console.error("No se pudo cargar la sesion:", error);
+      setSession(null);
+      return null;
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleLogin = async () => {
+    const currentSession = await loadSession();
+    const nextPath = ROLE_HOME_PATHS[currentSession?.user?.role] || "/operador";
+    navigate(nextPath);
+  };
+
+  const handleLogout = () => {
+    setSession(null);
+    navigate("/login");
+  };
+
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    loadSession();
+  }, []);
+
+  useEffect(() => {
+    const handlePopState = () => setPath(window.location.pathname);
+    window.addEventListener("popstate", handlePopState);
+    return () => window.removeEventListener("popstate", handlePopState);
+  }, []);
+
+  useEffect(() => {
+    if (isLoading || !session?.user) return;
+    if (path !== "/" && path !== "/login") return;
+
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    navigate(ROLE_HOME_PATHS[session.user.role] || "/operador");
+  }, [isLoading, path, session]);
+
+  if (isLoading) {
+    return (
+      <main className="tf-empty-page">
+        <section className="tf-empty-card">
+          <p className="tf-kicker">TechFlavor</p>
+          <h1>Cargando sesion...</h1>
+        </section>
+      </main>
+    );
+  }
+
+  if (path === "/" || path === "/login") {
+    if (session?.user) {
+      return null;
+    }
+
+    return <Login onLogin={handleLogin} />;
+  }
+
+  const route = ROUTES[path];
+
+  if (!route) {
+    return (
+      <main className="tf-empty-page">
+        <section className="tf-empty-card">
+          <p className="tf-kicker">Ruta no encontrada</p>
+          <h1>Esta pantalla todavia no existe</h1>
+          <button type="button" onClick={() => navigate(session?.user ? ROLE_HOME_PATHS[session.user.role] : "/login")}>
+            Volver
+          </button>
+        </section>
+      </main>
+    );
+  }
 
   return (
-    <>
-      <section id="center">
-        <div className="hero">
-          <img src={heroImg} className="base" width="170" height="179" alt="" />
-          <img src={reactLogo} className="framework" alt="React logo" />
-          <img src={viteLogo} className="vite" alt="Vite logo" />
-        </div>
-        <div>
-          <h1>Get started</h1>
-          <p>
-            Edit <code>src/App.jsx</code> and save to test <code>HMR</code>
-          </p>
-        </div>
-        <button
-          type="button"
-          className="counter"
-          onClick={() => setCount((count) => count + 1)}
-        >
-          Count is {count}
-        </button>
-      </section>
-
-      <div className="ticks"></div>
-
-      <section id="next-steps">
-        <div id="docs">
-          <svg className="icon" role="presentation" aria-hidden="true">
-            <use href="/icons.svg#documentation-icon"></use>
-          </svg>
-          <h2>Documentation</h2>
-          <p>Your questions, answered</p>
-          <ul>
-            <li>
-              <a href="https://vite.dev/" target="_blank">
-                <img className="logo" src={viteLogo} alt="" />
-                Explore Vite
-              </a>
-            </li>
-            <li>
-              <a href="https://react.dev/" target="_blank">
-                <img className="button-icon" src={reactLogo} alt="" />
-                Learn more
-              </a>
-            </li>
-          </ul>
-        </div>
-        <div id="social">
-          <svg className="icon" role="presentation" aria-hidden="true">
-            <use href="/icons.svg#social-icon"></use>
-          </svg>
-          <h2>Connect with us</h2>
-          <p>Join the Vite community</p>
-          <ul>
-            <li>
-              <a href="https://github.com/vitejs/vite" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#github-icon"></use>
-                </svg>
-                GitHub
-              </a>
-            </li>
-            <li>
-              <a href="https://chat.vite.dev/" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#discord-icon"></use>
-                </svg>
-                Discord
-              </a>
-            </li>
-            <li>
-              <a href="https://x.com/vite_js" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#x-icon"></use>
-                </svg>
-                X.com
-              </a>
-            </li>
-            <li>
-              <a href="https://bsky.app/profile/vite.dev" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#bluesky-icon"></use>
-                </svg>
-                Bluesky
-              </a>
-            </li>
-          </ul>
-        </div>
-      </section>
-
-      <div className="ticks"></div>
-      <section id="spacer"></section>
-    </>
-  )
+    <ProtectedRoute allowedRoles={route.roles} session={session} onLogin={handleLogin}>
+      <RoleDashboard
+        title={route.title}
+        description={route.description}
+        session={session}
+        onLogout={handleLogout}
+        currentPath={path}
+        onNavigate={navigate}
+      >
+        {path === "/admin/users" ? <UserManagement /> : null}
+        {path === "/admin/menu" || path === "/gerente/menu" ? <MenuManagement /> : null}
+        {path === "/cajero" ? <CashierCatalog /> : null}
+      </RoleDashboard>
+    </ProtectedRoute>
+  );
 }
 
-export default App
+export default App;

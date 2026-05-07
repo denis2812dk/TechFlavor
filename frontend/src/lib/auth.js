@@ -1,0 +1,146 @@
+const API_URL = import.meta.env.VITE_API_URL || "http://localhost:3000";
+
+const parseJson = async (response) => {
+  return response.json().catch(() => ({}));
+};
+
+export const getErrorMessage = (error) => {
+  if (error?.message) return error.message;
+  if (error?.error?.message) return error.error.message;
+  if (typeof error === "string") return error;
+  return "Ocurrio un error inesperado.";
+};
+
+export const signInWithEmail = async ({ email, password }) => {
+  const response = await fetch(`${API_URL}/api/auth/sign-in/email`, {
+    method: "POST",
+    credentials: "include",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      email,
+      password,
+    }),
+  });
+
+  const data = await parseJson(response);
+
+  if (!response.ok) {
+    throw new Error(getErrorMessage(data));
+  }
+
+  return data;
+};
+
+export const getSession = async () => {
+  const response = await fetch(`${API_URL}/api/auth/get-session`, {
+    credentials: "include",
+  });
+
+  if (!response.ok) return null;
+  return parseJson(response);
+};
+
+export const signOut = async () => {
+  await fetch(`${API_URL}/api/auth/sign-out`, {
+    method: "POST",
+    credentials: "include",
+  });
+};
+
+export const createTenantUser = async (payload) => {
+  const response = await fetch(`${API_URL}/api/tenant/users`, {
+    method: "POST",
+    credentials: "include",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(payload),
+  });
+
+  const data = await parseJson(response);
+
+  if (!response.ok) {
+    throw new Error(getErrorMessage(data));
+  }
+
+  return data;
+};
+
+export const getMenuCatalog = async ({ includeInactive = false } = {}) => {
+  const params = new URLSearchParams();
+  if (includeInactive) params.set("includeInactive", "true");
+
+  const response = await fetch(`${API_URL}/api/tenant/menu?${params.toString()}`, {
+    credentials: "include",
+  });
+
+  const data = await parseJson(response);
+
+  if (!response.ok) {
+    throw new Error(getErrorMessage(data));
+  }
+
+  return data;
+};
+
+export const createMenuCategory = async (payload) => {
+  const response = await fetch(`${API_URL}/api/tenant/menu/categories`, {
+    method: "POST",
+    credentials: "include",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+  const data = await parseJson(response);
+  if (!response.ok) throw new Error(getErrorMessage(data));
+  return data;
+};
+
+export const createMenuProduct = async (payload) => {
+  const response = await fetch(`${API_URL}/api/tenant/menu/products`, {
+    method: "POST",
+    credentials: "include",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+  const data = await parseJson(response);
+  if (!response.ok) throw new Error(getErrorMessage(data));
+  return data;
+};
+
+export const updateMenuProduct = async (productId, payload) => {
+  const response = await fetch(`${API_URL}/api/tenant/menu/products/${productId}`, {
+    method: "PATCH",
+    credentials: "include",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+  const data = await parseJson(response);
+  if (!response.ok) throw new Error(getErrorMessage(data));
+  return data;
+};
+
+export const createMenuCombo = async (payload) => {
+  const response = await fetch(`${API_URL}/api/tenant/menu/combos`, {
+    method: "POST",
+    credentials: "include",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+  const data = await parseJson(response);
+  if (!response.ok) throw new Error(getErrorMessage(data));
+  return data;
+};
+
+export const updateMenuCombo = async (comboId, payload) => {
+  const response = await fetch(`${API_URL}/api/tenant/menu/combos/${comboId}`, {
+    method: "PATCH",
+    credentials: "include",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+  const data = await parseJson(response);
+  if (!response.ok) throw new Error(getErrorMessage(data));
+  return data;
+};
