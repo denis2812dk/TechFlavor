@@ -1,27 +1,8 @@
 import { useEffect, useState } from "react";
 import { getErrorMessage, signInWithEmail } from "../../lib/auth";
 
-const TWEAK_DEFAULTS = {
-  accentColor: "oklch(0.62 0.17 28)",
-  surfaceTone: "oklch(0.99 0.01 85)",
-  compactMode: false,
-  brandName: "TechFlavor",
-};
-
-const T = {
-  bg: "oklch(0.97 0.01 85)",
-  surface: TWEAK_DEFAULTS.surfaceTone,
-  text: "oklch(0.24 0.02 260)",
-  muted: "oklch(0.52 0.03 250)",
-  border: "oklch(0.87 0.02 255)",
-  ring: "oklch(0.72 0.08 30 / 0.45)",
-  accent: TWEAK_DEFAULTS.accentColor,
-  accentSoft: "oklch(0.95 0.03 28)",
-  danger: "oklch(0.58 0.20 25)",
-  radius: "16px",
-  easeOut: "cubic-bezier(.22,.61,.36,1)",
-  shadow: "0 10px 30px oklch(0.20 0.02 260 / 0.08)",
-};
+const brandColor = "#2D1810";
+const mutedColor = "#6B5D56";
 
 export default function Login({ onLogin }) {
   const [email, setEmail] = useState("");
@@ -31,8 +12,6 @@ export default function Login({ onLogin }) {
   const [error, setError] = useState("");
   const [showReset, setShowReset] = useState(false);
   const [toast, setToast] = useState("");
-
-  const spacing = TWEAK_DEFAULTS.compactMode ? "18px" : "24px";
 
   useEffect(() => {
     if (!toast) return undefined;
@@ -79,153 +58,350 @@ export default function Login({ onLogin }) {
   };
 
   return (
-    <div
-      style={{
-        minHeight: "100vh",
-        background: `radial-gradient(circle at 10% 10%, ${T.accentSoft}, transparent 45%), ${T.bg}`,
-        display: "grid",
-        placeItems: "center",
-        padding: "24px",
-      }}
-    >
+    <main className="login-shell">
       <style>{`
         * { box-sizing: border-box; }
-        body { margin: 0; font-family: 'DM Sans', system-ui, sans-serif; background: ${T.bg}; color: ${T.text}; }
-        .login-card { background: ${T.surface}; border: 1px solid ${T.border}; border-radius: ${T.radius}; box-shadow: ${T.shadow}; width: min(440px, 100%); padding: ${spacing}; }
-        .login-interactive { transition: transform 120ms ${T.easeOut}, background-color 120ms, box-shadow 160ms; }
-        .login-interactive:hover { transform: translateY(-2px); }
-        .login-interactive:active { transform: scale(0.96); }
-        .login-field { width: 100%; border: 1px solid ${T.border}; border-radius: 12px; padding: 12px 14px; font-size: 15px; color: ${T.text}; background: white; }
-        .login-field:focus { outline: none; box-shadow: 0 0 0 2px ${T.ring}; border-color: ${T.accent}; }
-        .login-btn { width: 100%; border: none; border-radius: 12px; padding: 12px 16px; font-weight: 700; font-size: 15px; color: white; background: ${T.accent}; cursor: pointer; }
-        .login-btn:disabled { cursor: wait; opacity: 0.72; }
-        .login-link { color: ${T.accent}; text-decoration: none; font-weight: 600; }
-        .login-link:hover { text-decoration: underline; }
-        .login-badge { font-size: 11px; letter-spacing: .08em; text-transform: uppercase; border: 1px solid ${T.border}; border-radius: 999px; padding: 4px 8px; color: ${T.muted}; }
-        .login-toast { position: fixed; bottom: 20px; right: 20px; background: ${T.text}; color: white; padding: 10px 14px; border-radius: 12px; font-size: 14px; box-shadow: ${T.shadow}; animation: fadeUp .2s ${T.easeOut}; }
-        @keyframes fadeUp { from { opacity: 0; transform: translateY(8px);} to { opacity: 1; transform: translateY(0);} }
+        body {
+          margin: 0;
+          font-family: Inter, 'Plus Jakarta Sans', system-ui, sans-serif;
+          background: #F7F3F1;
+          color: ${brandColor};
+        }
+        .login-shell {
+          min-height: 100vh;
+          display: grid;
+          grid-template-columns: minmax(360px, 0.95fr) minmax(420px, 1.05fr);
+          background: #F7F3F1;
+        }
+        .login-brand-panel {
+          position: relative;
+          display: grid;
+          place-items: center;
+          min-height: 100vh;
+          border-right: 1px solid rgba(45, 24, 16, 0.06);
+          padding: 32px;
+          overflow: hidden;
+        }
+        .login-brand-panel::after {
+          content: "";
+          position: absolute;
+          inset: auto -120px -160px auto;
+          width: 420px;
+          height: 420px;
+          border-radius: 999px;
+          background: rgba(232, 155, 143, 0.18);
+          filter: blur(2px);
+        }
+        .login-brand-copy {
+          position: relative;
+          z-index: 1;
+          max-width: 520px;
+          text-align: center;
+        }
+        .login-kicker {
+          margin: 0 0 14px;
+          color: ${mutedColor};
+          font-size: 12px;
+          font-weight: 820;
+          letter-spacing: 0.08em;
+          text-transform: uppercase;
+        }
+        .login-brand-copy h1 {
+          margin: 0;
+          color: ${brandColor};
+          font-size: clamp(42px, 5vw, 72px);
+          line-height: 0.96;
+          letter-spacing: 0;
+          font-weight: 880;
+        }
+        .login-brand-copy p {
+          max-width: 460px;
+          margin: 22px auto 0;
+          color: ${mutedColor};
+          font-size: 16px;
+          line-height: 1.7;
+        }
+        .login-secure-badge {
+          display: inline-flex;
+          align-items: center;
+          min-height: 30px;
+          border: 1px solid rgba(45, 24, 16, 0.07);
+          border-radius: 999px;
+          padding: 0 11px;
+          background: rgba(255,255,255,0.48);
+          color: ${mutedColor};
+          font-size: 12px;
+          font-weight: 760;
+        }
+        .login-form-panel {
+          display: grid;
+          place-items: center;
+          min-height: 100vh;
+          padding: 32px;
+        }
+        .login-card {
+          width: min(440px, 100%);
+          display: grid;
+          gap: 22px;
+          border: 1px solid rgba(45, 24, 16, 0.065);
+          border-radius: 22px;
+          background: rgba(253, 252, 251, 0.76);
+          box-shadow: 0 24px 60px rgba(45, 24, 16, 0.08);
+          padding: 28px;
+          backdrop-filter: blur(18px);
+        }
+        .login-card-head {
+          display: flex;
+          align-items: flex-start;
+          justify-content: space-between;
+          gap: 18px;
+        }
+        .login-card h2 {
+          margin: 0;
+          color: ${brandColor};
+          font-size: 34px;
+          line-height: 1.1;
+          font-weight: 860;
+        }
+        .login-card-head p {
+          margin: 9px 0 0;
+          color: ${mutedColor};
+          font-size: 14px;
+          line-height: 1.6;
+        }
+        .login-form {
+          display: grid;
+          gap: 14px;
+        }
+        .login-form label {
+          display: grid;
+          gap: 8px;
+        }
+        .login-form label span {
+          color: ${mutedColor};
+          font-size: 12px;
+          font-weight: 780;
+        }
+        .login-field-wrap {
+          position: relative;
+        }
+        .login-field {
+          width: 100%;
+          height: 48px;
+          border: 1px solid rgba(45, 24, 16, 0.08);
+          border-radius: 12px;
+          padding: 0 14px;
+          background: rgba(255,255,255,0.72);
+          color: ${brandColor};
+          outline: none;
+          font-size: 14px;
+          transition: border-color 140ms ease, box-shadow 140ms ease, background-color 140ms ease;
+        }
+        .login-field:focus {
+          border-color: rgba(232, 155, 143, 0.72);
+          background: white;
+          box-shadow: 0 0 0 4px rgba(232, 155, 143, 0.14);
+        }
+        .login-field:disabled {
+          opacity: 0.72;
+          cursor: wait;
+        }
+        .login-password-toggle {
+          position: absolute;
+          top: 7px;
+          right: 7px;
+          height: 34px;
+          border: 0;
+          border-radius: 9px;
+          padding: 0 10px;
+          background: transparent;
+          color: ${mutedColor};
+          cursor: pointer;
+          font-weight: 760;
+        }
+        .login-row {
+          display: flex;
+          justify-content: flex-end;
+          margin-top: -2px;
+        }
+        .login-link {
+          border: 0;
+          background: transparent;
+          color: ${brandColor};
+          cursor: pointer;
+          font-size: 13px;
+          font-weight: 780;
+        }
+        .login-submit {
+          height: 48px;
+          border: 0;
+          border-radius: 12px;
+          background: ${brandColor};
+          color: white;
+          cursor: pointer;
+          font-size: 14px;
+          font-weight: 840;
+          box-shadow: 0 14px 28px rgba(45, 24, 16, 0.16);
+          transition: transform 140ms ease, box-shadow 140ms ease;
+        }
+        .login-submit:hover:not(:disabled) {
+          transform: translateY(-1px);
+          box-shadow: 0 18px 34px rgba(45, 24, 16, 0.18);
+        }
+        .login-submit:disabled {
+          opacity: 0.7;
+          cursor: wait;
+        }
+        .login-error {
+          margin: 0;
+          border: 1px solid rgba(185, 28, 28, 0.18);
+          border-radius: 12px;
+          padding: 11px 12px;
+          background: rgba(254, 242, 242, 0.78);
+          color: #991b1b;
+          font-size: 13px;
+          font-weight: 700;
+        }
+        .login-reset-panel {
+          display: grid;
+          gap: 10px;
+          border: 1px solid rgba(45, 24, 16, 0.07);
+          border-radius: 14px;
+          background: rgba(255,255,255,0.52);
+          padding: 14px;
+        }
+        .login-reset-panel strong {
+          color: ${brandColor};
+          font-size: 14px;
+        }
+        .login-reset-panel p {
+          margin: 0;
+          color: ${mutedColor};
+          font-size: 13px;
+          line-height: 1.55;
+        }
+        .login-reset-panel button {
+          justify-self: start;
+          height: 36px;
+          border: 1px solid rgba(45, 24, 16, 0.08);
+          border-radius: 10px;
+          padding: 0 12px;
+          background: rgba(255,255,255,0.7);
+          color: ${brandColor};
+          cursor: pointer;
+          font-weight: 780;
+        }
+        .login-toast {
+          position: fixed;
+          right: 22px;
+          bottom: 22px;
+          border-radius: 12px;
+          padding: 11px 14px;
+          background: ${brandColor};
+          color: white;
+          box-shadow: 0 14px 30px rgba(45, 24, 16, 0.18);
+          font-size: 13px;
+          font-weight: 760;
+        }
+        @media (max-width: 900px) {
+          .login-shell { grid-template-columns: 1fr; }
+          .login-brand-panel {
+            min-height: auto;
+            gap: 56px;
+            border-right: 0;
+            border-bottom: 1px solid rgba(45, 24, 16, 0.06);
+          }
+          .login-form-panel { min-height: auto; place-items: start; }
+        }
+        @media (max-width: 560px) {
+          .login-brand-panel, .login-form-panel { padding: 22px; }
+          .login-card h2 { font-size: 28px; }
+          .login-card-head { flex-direction: column; }
+        }
       `}</style>
 
-      <main className="login-card" aria-live="polite">
-        <header style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "18px" }}>
-          <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-            <svg width="34" height="34" viewBox="0 0 34 34" aria-hidden="true">
-              <rect x="1" y="1" width="32" height="32" rx="9" fill={T.accentSoft} stroke={T.border} />
-              <path d="M10 21h14M12 16h10M15 11h4" stroke={T.accent} strokeWidth="2" strokeLinecap="round" />
-            </svg>
+      <section className="login-brand-panel" aria-label="Panel de acceso">
+        <div className="login-brand-copy">
+          <p className="login-kicker">SaaS multi-restaurante</p>
+          <h1>Operaciones claras desde el primer turno.</h1>
+          <p>Accede al panel para administrar caja, cocina, despacho, usuarios y catalogo del restaurante con permisos por rol.</p>
+        </div>
+      </section>
+
+      <section className="login-form-panel">
+        <div className="login-card" aria-live="polite">
+          <header className="login-card-head">
             <div>
-              <div style={{ fontFamily: "Fraunces, serif", fontSize: "20px", lineHeight: 1 }}>{TWEAK_DEFAULTS.brandName}</div>
-              <div style={{ color: T.muted, fontSize: "12px" }}>Restaurant Operations Cloud</div>
+              <p className="login-kicker">Iniciar sesion</p>
+              <h2>Bienvenido de nuevo</h2>
+              <p>Usa tus credenciales del restaurante para continuar.</p>
             </div>
-          </div>
-          <span className="login-badge">Seguro</span>
-        </header>
+            <span className="login-secure-badge">Seguro</span>
+          </header>
 
-        <form onSubmit={handleLogin}>
-          <label style={{ display: "block", marginBottom: "12px" }}>
-            <span style={{ display: "block", marginBottom: "6px", fontSize: "13px", color: T.muted }}>Correo</span>
-            <input
-              className="login-field"
-              type="email"
-              value={email}
-              onChange={(event) => setEmail(event.target.value)}
-              placeholder="admin@techflavor.com"
-              autoComplete="email"
-              disabled={loading}
-            />
-          </label>
-
-          <label style={{ display: "block", marginBottom: "8px" }}>
-            <span style={{ display: "block", marginBottom: "6px", fontSize: "13px", color: T.muted }}>Contrasena</span>
-            <div style={{ position: "relative" }}>
+          <form className="login-form" onSubmit={handleLogin}>
+            <label>
+              <span>Correo</span>
               <input
                 className="login-field"
-                type={showPassword ? "text" : "password"}
-                value={password}
-                onChange={(event) => setPassword(event.target.value)}
-                placeholder="Ingresa tu contrasena"
-                autoComplete="current-password"
+                type="email"
+                value={email}
+                onChange={(event) => setEmail(event.target.value)}
+                placeholder="admin@techflavor.com"
+                autoComplete="email"
                 disabled={loading}
               />
+            </label>
+
+            <label>
+              <span>Contrasena</span>
+              <div className="login-field-wrap">
+                <input
+                  className="login-field"
+                  type={showPassword ? "text" : "password"}
+                  value={password}
+                  onChange={(event) => setPassword(event.target.value)}
+                  placeholder="Ingresa tu contrasena"
+                  autoComplete="current-password"
+                  disabled={loading}
+                />
+                <button type="button" className="login-password-toggle" onClick={() => setShowPassword((current) => !current)}>
+                  {showPassword ? "Ocultar" : "Ver"}
+                </button>
+              </div>
+            </label>
+
+            <div className="login-row">
               <button
                 type="button"
-                className="login-interactive"
-                onClick={() => setShowPassword((current) => !current)}
-                style={{
-                  position: "absolute",
-                  right: "8px",
-                  top: "7px",
-                  border: "none",
-                  background: "transparent",
-                  color: T.muted,
-                  padding: "6px 8px",
-                  borderRadius: "8px",
-                  cursor: "pointer",
+                className="login-link"
+                onClick={() => {
+                  setShowReset((current) => !current);
+                  setToast(showReset ? "Recuperacion cerrada" : "Recuperacion abierta");
                 }}
               >
-                {showPassword ? "Ocultar" : "Ver"}
+                Olvide mi contrasena
               </button>
             </div>
-          </label>
 
-          <div style={{ display: "flex", justifyContent: "flex-end", margin: "-2px 0 18px" }}>
-            <button
-              type="button"
-              className="login-interactive login-link"
-              onClick={() => {
-                setShowReset((current) => !current);
-                setToast(showReset ? "Recuperacion cerrada" : "Recuperacion abierta");
-              }}
-              style={{ border: "none", background: "transparent", padding: 0, cursor: "pointer", fontSize: "13px" }}
-            >
-              Olvide mi contrasena
+            <button className="login-submit" type="submit" disabled={loading}>
+              {loading ? "Ingresando..." : "Ingresar"}
             </button>
-          </div>
+          </form>
 
-          <button className="login-btn login-interactive" type="submit" disabled={loading}>
-            {loading ? "Ingresando..." : "Ingresar"}
-          </button>
-        </form>
+          {error ? <p className="login-error">{error}</p> : null}
 
-        {error ? (
-          <article style={{ marginTop: "12px", border: `1px solid ${T.danger}`, background: "oklch(0.98 0.02 25)", borderRadius: "12px", padding: "10px 12px", fontSize: "14px", color: T.danger }}>
-            {error}
-          </article>
-        ) : null}
-
-        {showReset ? (
-          <section style={{ marginTop: "16px", border: `1px dashed ${T.border}`, borderRadius: "12px", padding: "14px" }}>
-            <h2 style={{ margin: "0 0 6px", fontSize: "15px", color: T.text }}>Recuperar acceso</h2>
-            <p style={{ margin: "0 0 12px", color: T.muted, fontSize: "13px", lineHeight: 1.5 }}>
-              Usaremos el correo escrito arriba para enviarte instrucciones cuando activemos este flujo.
-            </p>
-            <button
-              type="button"
-              className="login-interactive"
-              onClick={handleReset}
-              style={{ border: `1px solid ${T.border}`, background: "white", borderRadius: "10px", padding: "8px 10px", fontWeight: 700, cursor: "pointer", color: T.text }}
-            >
-              Preparar recuperacion
-            </button>
-          </section>
-        ) : null}
-
-        <section style={{ marginTop: "18px", borderTop: `1px solid ${T.border}`, paddingTop: "16px" }}>
-          <div style={{ display: "grid", gap: "10px" }}>
-            {[
-              "Acceso por roles para caja, cocina, despacho y administracion.",
-              "Sesion segura para proteger la operacion del restaurante.",
-            ].map((item) => (
-              <div key={item} style={{ display: "flex", gap: "10px", alignItems: "flex-start", color: T.muted, fontSize: "13px", lineHeight: 1.45 }}>
-                <span style={{ width: "8px", height: "8px", borderRadius: "999px", background: T.accent, marginTop: "6px", flex: "0 0 auto" }} />
-                <span>{item}</span>
-              </div>
-            ))}
-          </div>
-        </section>
-      </main>
+          {showReset ? (
+            <section className="login-reset-panel">
+              <strong>Recuperar acceso</strong>
+              <p>Usaremos el correo escrito arriba para enviarte instrucciones cuando activemos este flujo.</p>
+              <button type="button" onClick={handleReset}>Preparar recuperacion</button>
+            </section>
+          ) : null}
+        </div>
+      </section>
 
       {toast ? <div className="login-toast">{toast}</div> : null}
-    </div>
+    </main>
   );
 }

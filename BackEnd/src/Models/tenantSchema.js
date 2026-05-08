@@ -56,3 +56,30 @@ export const menuComboItems = mysqlTable("menu_combo_items", {
         .references(() => menuProducts.id, { onDelete: "restrict" }),
     quantity: int("quantity").notNull().default(1),
 });
+
+export const orders = mysqlTable("orders", {
+    id: varchar("id", { length: 36 }).primaryKey(),
+    ticketCode: varchar("ticket_code", { length: 30 }).notNull().unique(),
+    status: varchar("status", { length: 30 }).notNull().default("open"),
+    fulfillmentType: varchar("fulfillment_type", { length: 30 }).notNull().default("takeaway"),
+    tableIdentifier: varchar("table_identifier", { length: 60 }),
+    subtotal: decimal("subtotal", { precision: 10, scale: 2 }).notNull(),
+    total: decimal("total", { precision: 10, scale: 2 }).notNull(),
+    cashierUserId: varchar("cashier_user_id", { length: 36 }).notNull(),
+    cashierName: varchar("cashier_name", { length: 120 }).notNull(),
+    createdAt: timestamp("created_at").defaultNow(),
+    updatedAt: timestamp("updated_at").defaultNow().onUpdateNow(),
+});
+
+export const orderItems = mysqlTable("order_items", {
+    id: varchar("id", { length: 36 }).primaryKey(),
+    orderId: varchar("order_id", { length: 36 })
+        .notNull()
+        .references(() => orders.id, { onDelete: "cascade" }),
+    itemType: varchar("item_type", { length: 20 }).notNull(),
+    itemId: varchar("item_id", { length: 36 }).notNull(),
+    name: varchar("name", { length: 120 }).notNull(),
+    unitPrice: decimal("unit_price", { precision: 10, scale: 2 }).notNull(),
+    quantity: int("quantity").notNull(),
+    lineTotal: decimal("line_total", { precision: 10, scale: 2 }).notNull(),
+});

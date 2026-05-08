@@ -3,7 +3,7 @@ import { admin } from "better-auth/plugins";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
 import { Resend } from "resend";
 import { db } from "./db.js";
-import * as schema from "../models/schema.js";
+import * as schema from "../Models/schema.js";
 import { ROLES } from "../constants/roles.js";
 import 'dotenv/config'
 

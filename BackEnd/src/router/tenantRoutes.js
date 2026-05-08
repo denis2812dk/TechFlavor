@@ -12,6 +12,14 @@ import {
     updateMenuProduct,
 } from "../controllers/tenantMenuController.js";
 import {
+    createTenantOrder,
+    deliverDispatchOrder,
+    finishKitchenOrder,
+    listDispatchOrders,
+    listKitchenOrders,
+    listTenantOrders,
+} from "../controllers/tenantOrdersController.js";
+import {
     createTenantUser,
     listTenantUsers,
 } from "../controllers/tenantUsersController.js";
@@ -31,5 +39,11 @@ router.post("/menu/products", tenantContext, requireTenantRoles(ROLES.ADMIN, ROL
 router.patch("/menu/products/:productId", tenantContext, requireTenantRoles(ROLES.ADMIN, ROLES.GERENTE), updateMenuProduct);
 router.post("/menu/combos", tenantContext, requireTenantRoles(ROLES.ADMIN, ROLES.GERENTE), createMenuCombo);
 router.patch("/menu/combos/:comboId", tenantContext, requireTenantRoles(ROLES.ADMIN, ROLES.GERENTE), updateMenuCombo);
+router.post("/orders", tenantContext, requireTenantRoles(ROLES.CAJERO, ROLES.ADMIN), createTenantOrder);
+router.get("/orders", tenantContext, requireTenantRoles(ROLES.ADMIN, ROLES.GERENTE, ROLES.CAJERO), listTenantOrders);
+router.get("/orders/kitchen", tenantContext, requireTenantRoles(ROLES.COCINA, ROLES.ADMIN), listKitchenOrders);
+router.patch("/orders/:orderId/finish", tenantContext, requireTenantRoles(ROLES.COCINA, ROLES.ADMIN), finishKitchenOrder);
+router.get("/orders/dispatch", tenantContext, requireTenantRoles(ROLES.DESPACHO, ROLES.ADMIN), listDispatchOrders);
+router.patch("/orders/:orderId/deliver", tenantContext, requireTenantRoles(ROLES.DESPACHO, ROLES.ADMIN), deliverDispatchOrder);
 
 export default router;

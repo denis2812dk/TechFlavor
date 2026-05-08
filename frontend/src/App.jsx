@@ -1,11 +1,14 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import "./App.css";
 import { ProtectedRoute } from "./components/ProtectedRoute";
-import { getSession } from "./lib/auth";
+import { getSession, signOut } from "./lib/auth";
 import { ROLE_HOME_PATHS, ROLES } from "./lib/constants/roles";
 import { MenuManagement } from "./views/admin/MenuManagement";
 import { UserManagement } from "./views/admin/UserManagement";
 import { CashierCatalog } from "./views/cashier/CashierCatalog";
+import { DispatchOrders } from "./views/dispatch/DispatchOrders";
+import { KitchenDisplay } from "./views/kitchen/KitchenDisplay";
+import { OrdersList } from "./views/orders/OrdersList";
 import Login from "./views/shared/Login.jsx";
 import { RoleDashboard } from "./views/shared/RoleDashboard";
 
@@ -25,10 +28,20 @@ const ROUTES = {
     title: "Menu",
     description: "Categorias, productos y combos disponibles para caja.",
   },
+  "/admin/orders": {
+    roles: [ROLES.ADMIN],
+    title: "Ordenes",
+    description: "Historial de pedidos, tickets y estados operativos.",
+  },
   "/cajero": {
     roles: [ROLES.CAJERO, ROLES.ADMIN],
     title: "Panel caja",
     description: "Cobros, cuentas abiertas, cierres de turno y pagos.",
+  },
+  "/cajero/orders": {
+    roles: [ROLES.CAJERO, ROLES.ADMIN],
+    title: "Ordenes",
+    description: "Pedidos generados desde caja y seguimiento del ticket.",
   },
   "/cocina": {
     roles: [ROLES.COCINA, ROLES.ADMIN],
@@ -57,15 +70,18 @@ const ROUTES = {
   },
 };
 
+const INACTIVITY_TIMEOUT_MS = 15 * 60 * 1000;
+const ACTIVITY_EVENTS = ["mousemove", "mousedown", "keydown", "touchstart", "scroll"];
+
 function App() {
   const [session, setSession] = useState(null);
   const [path, setPath] = useState(window.location.pathname);
   const [isLoading, setIsLoading] = useState(true);
 
-  const navigate = (nextPath) => {
+  const navigate = useCallback((nextPath) => {
     window.history.pushState({}, "", nextPath);
     setPath(nextPath);
-  };
+  }, []);
 
   const loadSession = async () => {
     try {
@@ -92,6 +108,12 @@ function App() {
     navigate("/login");
   };
 
+  const logoutByInactivity = useCallback(async () => {
+    await signOut();
+    setSession(null);
+    navigate("/login");
+  }, [navigate]);
+
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
     loadSession();
@@ -109,7 +131,31 @@ function App() {
 
     // eslint-disable-next-line react-hooks/set-state-in-effect
     navigate(ROLE_HOME_PATHS[session.user.role] || "/operador");
-  }, [isLoading, path, session]);
+  }, [isLoading, navigate, path, session]);
+
+  useEffect(() => {
+    if (!session?.user || path === "/login" || path === "/") return undefined;
+
+    let timeoutId;
+    const resetInactivityTimer = () => {
+      window.clearTimeout(timeoutId);
+      timeoutId = window.setTimeout(() => {
+        logoutByInactivity();
+      }, INACTIVITY_TIMEOUT_MS);
+    };
+
+    resetInactivityTimer();
+    ACTIVITY_EVENTS.forEach((eventName) => {
+      window.addEventListener(eventName, resetInactivityTimer, { passive: true });
+    });
+
+    return () => {
+      window.clearTimeout(timeoutId);
+      ACTIVITY_EVENTS.forEach((eventName) => {
+        window.removeEventListener(eventName, resetInactivityTimer);
+      });
+    };
+  }, [logoutByInactivity, path, session?.user]);
 
   if (isLoading) {
     return (
@@ -158,7 +204,10 @@ function App() {
       >
         {path === "/admin/users" ? <UserManagement /> : null}
         {path === "/admin/menu" || path === "/gerente/menu" ? <MenuManagement /> : null}
+        {path === "/admin/orders" || path === "/cajero/orders" ? <OrdersList /> : null}
         {path === "/cajero" ? <CashierCatalog /> : null}
+        {path === "/cocina" ? <KitchenDisplay /> : null}
+        {path === "/despacho" ? <DispatchOrders /> : null}
       </RoleDashboard>
     </ProtectedRoute>
   );

@@ -9,21 +9,29 @@ import {
   updateMenuProduct,
 } from "../../lib/auth";
 
-const TABS = ["Productos", "Categorias", "Combos", "Inventario"];
+const TABS = ["Productos", "Categorias", "Combos"];
 const emptyCategory = { name: "", description: "" };
 const emptyProduct = { name: "", description: "", price: "", categoryId: "" };
-const emptyCombo = { name: "", description: "", price: "", productId: "", quantity: 1 };
+const emptyComboItem = { productId: "", quantity: 1 };
+const emptyCombo = { name: "", description: "", price: "", items: [emptyComboItem] };
+
+const getInitials = (value) => value
+  .split(" ")
+  .map((part) => part[0])
+  .join("")
+  .slice(0, 2)
+  .toUpperCase();
 
 export const MenuManagement = () => {
-  const [activeTab, setActiveTab] = useState("Productos");
+  const [activeTab, setActiveTab] = useState("Categorias");
   const [catalog, setCatalog] = useState({ categories: [], products: [], combos: [] });
   const [categoryForm, setCategoryForm] = useState(emptyCategory);
   const [productForm, setProductForm] = useState(emptyProduct);
   const [comboForm, setComboForm] = useState(emptyCombo);
-  const [imageName, setImageName] = useState("");
   const [status, setStatus] = useState("");
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(true);
+  const [showCreate, setShowCreate] = useState(false);
 
   const loadCatalog = async () => {
     try {
@@ -41,19 +49,53 @@ export const MenuManagement = () => {
     loadCatalog();
   }, []);
 
-  const activeProducts = catalog.products.filter((product) => product.isActive);
-  const selectedCategory = catalog.categories.find((category) => category.id === productForm.categoryId);
-  const previewProduct = useMemo(() => ({
-    name: productForm.name || "Nuevo producto",
-    description: productForm.description || "Descripcion breve del producto para el POS.",
-    price: productForm.price || "0.00",
-    category: selectedCategory?.name || "Sin categoria",
-    imageName,
-  }), [imageName, productForm, selectedCategory]);
+  const activeProducts = useMemo(() => (
+    catalog.products.filter((product) => product.isActive)
+  ), [catalog.products]);
+
+  const activeCategories = useMemo(() => (
+    catalog.categories.filter((category) => category.isActive)
+  ), [catalog.categories]);
+
+  const activeCombos = useMemo(() => (
+    catalog.combos.filter((combo) => combo.isActive)
+  ), [catalog.combos]);
+
+  const sectionMeta = {
+    Productos: {
+      title: "Productos",
+      description: "Manage your menu items, pricing, and visibility",
+      count: catalog.products.length,
+      active: activeProducts.length,
+      button: "Add Product",
+    },
+    Categorias: {
+      title: "Categories & Combos",
+      description: "Organize your menu and create special combo offers",
+      count: catalog.categories.length,
+      active: activeCategories.length,
+      button: "Add Category",
+    },
+    Combos: {
+      title: "Categories & Combos",
+      description: "Organize your menu and create special combo offers",
+      count: catalog.combos.length,
+      active: activeCombos.length,
+      button: "Create Combo",
+    },
+  };
+
+  const currentMeta = sectionMeta[activeTab];
 
   const clearMessages = () => {
     setStatus("");
     setError("");
+  };
+
+  const handleTabChange = (tab) => {
+    setActiveTab(tab);
+    setShowCreate(false);
+    clearMessages();
   };
 
   const handleCreateCategory = async (event) => {
@@ -63,6 +105,7 @@ export const MenuManagement = () => {
       await createMenuCategory(categoryForm);
       setCategoryForm(emptyCategory);
       setStatus("Categoria creada.");
+      setShowCreate(false);
       await loadCatalog();
     } catch (requestError) {
       setError(getErrorMessage(requestError));
@@ -75,8 +118,8 @@ export const MenuManagement = () => {
     try {
       await createMenuProduct(productForm);
       setProductForm(emptyProduct);
-      setImageName("");
       setStatus("Producto creado.");
+      setShowCreate(false);
       await loadCatalog();
     } catch (requestError) {
       setError(getErrorMessage(requestError));
@@ -86,19 +129,53 @@ export const MenuManagement = () => {
   const handleCreateCombo = async (event) => {
     event.preventDefault();
     clearMessages();
+
+    const items = comboForm.items
+      .filter((item) => item.productId)
+      .map((item) => ({
+        productId: item.productId,
+        quantity: Number(item.quantity),
+      }));
+
     try {
       await createMenuCombo({
         name: comboForm.name,
         description: comboForm.description,
         price: comboForm.price,
-        items: [{ productId: comboForm.productId, quantity: Number(comboForm.quantity) }],
+        items,
       });
       setComboForm(emptyCombo);
       setStatus("Combo creado.");
+      setShowCreate(false);
       await loadCatalog();
     } catch (requestError) {
       setError(getErrorMessage(requestError));
     }
+  };
+
+  const updateComboItem = (index, field, value) => {
+    setComboForm((form) => ({
+      ...form,
+      items: form.items.map((item, itemIndex) => (
+        itemIndex === index ? { ...item, [field]: value } : item
+      )),
+    }));
+  };
+
+  const addComboItem = () => {
+    setComboForm((form) => ({
+      ...form,
+      items: [...form.items, { ...emptyComboItem }],
+    }));
+  };
+
+  const removeComboItem = (index) => {
+    setComboForm((form) => ({
+      ...form,
+      items: form.items.length === 1
+        ? [{ ...emptyComboItem }]
+        : form.items.filter((_, itemIndex) => itemIndex !== index),
+    }));
   };
 
   const toggleProduct = async (product) => {
@@ -124,219 +201,165 @@ export const MenuManagement = () => {
   };
 
   return (
-    <section className="menu-editor">
-      <header className="menu-editor-top">
+    <section className="menu-catalog-page">
+      <header className="menu-catalog-head">
         <div>
-          <p className="admin-users-kicker">Catalogo inteligente</p>
-          <h2>Menu operativo</h2>
-          <p>Administra productos, categorias y combos con una experiencia lista para POS.</p>
-        </div>
-        <div className="menu-stats">
-          <span>{catalog.products.length} productos</span>
-          <span>{catalog.combos.length} combos</span>
-          <span>{activeProducts.length} visibles</span>
+          <h2>{currentMeta.title}</h2>
+          <p>{currentMeta.description}</p>
         </div>
       </header>
 
-      <nav className="menu-tabs" aria-label="Secciones del menu">
+      <nav className="menu-catalog-tabs" aria-label="Secciones del menu">
         {TABS.map((tab) => (
-          <button key={tab} type="button" className={activeTab === tab ? "is-active" : ""} onClick={() => setActiveTab(tab)}>
+          <button key={tab} type="button" className={activeTab === tab ? "is-active" : ""} onClick={() => handleTabChange(tab)}>
             {tab}
           </button>
         ))}
       </nav>
 
-      <div className="menu-editor-layout">
-        <main className="menu-editor-main">
-          {activeTab === "Productos" && (
-            <>
-              <form className="menu-saas-form" onSubmit={handleCreateProduct}>
-                <div className="menu-section-heading">
-                  <span>01</span>
-                  <div>
-                    <h3>Informacion del producto</h3>
-                    <p>Estos datos se muestran directamente en caja.</p>
-                  </div>
-                </div>
-
-                <label>
-                  <span>Nombre</span>
-                  <input value={productForm.name} onChange={(event) => setProductForm((form) => ({ ...form, name: event.target.value }))} placeholder="Limonada artesanal" />
-                </label>
-
-                <div className="menu-two-columns">
-                  <label>
-                    <span>Precio</span>
-                    <input type="number" step="0.01" value={productForm.price} onChange={(event) => setProductForm((form) => ({ ...form, price: event.target.value }))} placeholder="2.50" />
-                  </label>
-                  <label>
-                    <span>Categoria</span>
-                    <select value={productForm.categoryId} onChange={(event) => setProductForm((form) => ({ ...form, categoryId: event.target.value }))}>
-                      <option value="">Seleccionar</option>
-                      {catalog.categories.filter((category) => category.isActive).map((category) => (
-                        <option key={category.id} value={category.id}>{category.name}</option>
-                      ))}
-                    </select>
-                  </label>
-                </div>
-
-                <label>
-                  <span>Descripcion</span>
-                  <textarea value={productForm.description} onChange={(event) => setProductForm((form) => ({ ...form, description: event.target.value }))} placeholder="Natural, fresca y servida con hierbabuena." />
-                </label>
-
-                <label className="menu-upload">
-                  <input type="file" accept="image/*" onChange={(event) => setImageName(event.target.files?.[0]?.name || "")} />
-                  <span>Arrastra una imagen o selecciona archivo</span>
-                  <small>{imageName || "PNG, JPG o WEBP para futura vista POS"}</small>
-                </label>
-
-                <button className="menu-primary-action" type="submit">Crear producto</button>
-              </form>
-
-              <section className="menu-flat-list">
-                <div className="menu-section-heading">
-                  <span>02</span>
-                  <div>
-                    <h3>Catalogo actual</h3>
-                    <p>Desactivar oculta el producto inmediatamente para caja.</p>
-                  </div>
-                </div>
-                {catalog.products.map((product) => (
-                  <article className="menu-inline-row" key={product.id}>
-                    <div>
-                      <strong>{product.name}</strong>
-                      <p>{product.categoryName} · ${product.price}</p>
-                    </div>
-                    <span className={product.isActive ? "menu-status-pill is-on" : "menu-status-pill"}>{product.isActive ? "Disponible" : "Oculto"}</span>
-                    <button type="button" onClick={() => toggleProduct(product)}>{product.isActive ? "Desactivar" : "Activar"}</button>
-                  </article>
-                ))}
-              </section>
-            </>
-          )}
-
-          {activeTab === "Categorias" && (
-            <form className="menu-saas-form" onSubmit={handleCreateCategory}>
-              <div className="menu-section-heading">
-                <span>01</span>
-                <div>
-                  <h3>Nueva categoria</h3>
-                  <p>Organiza el catalogo para que caja encuentre productos rapido.</p>
-                </div>
-              </div>
-              <label>
-                <span>Nombre</span>
-                <input value={categoryForm.name} onChange={(event) => setCategoryForm((form) => ({ ...form, name: event.target.value }))} placeholder="Bebidas" />
-              </label>
-              <label>
-                <span>Descripcion</span>
-                <textarea value={categoryForm.description} onChange={(event) => setCategoryForm((form) => ({ ...form, description: event.target.value }))} placeholder="Bebidas frias, calientes y naturales." />
-              </label>
-              <button className="menu-primary-action" type="submit">Crear categoria</button>
-            </form>
-          )}
-
-          {activeTab === "Combos" && (
-            <form className="menu-saas-form" onSubmit={handleCreateCombo}>
-              <div className="menu-section-heading">
-                <span>01</span>
-                <div>
-                  <h3>Combo con precio especial</h3>
-                  <p>Agrupa productos activos en una oferta para POS.</p>
-                </div>
-              </div>
-              <div className="menu-two-columns">
-                <label>
-                  <span>Nombre</span>
-                  <input value={comboForm.name} onChange={(event) => setComboForm((form) => ({ ...form, name: event.target.value }))} placeholder="Combo almuerzo" />
-                </label>
-                <label>
-                  <span>Precio especial</span>
-                  <input type="number" step="0.01" value={comboForm.price} onChange={(event) => setComboForm((form) => ({ ...form, price: event.target.value }))} placeholder="7.99" />
-                </label>
-              </div>
-              <div className="menu-two-columns">
-                <label>
-                  <span>Producto incluido</span>
-                  <select value={comboForm.productId} onChange={(event) => setComboForm((form) => ({ ...form, productId: event.target.value }))}>
-                    <option value="">Seleccionar</option>
-                    {activeProducts.map((product) => (
-                      <option key={product.id} value={product.id}>{product.name}</option>
-                    ))}
-                  </select>
-                </label>
-                <label>
-                  <span>Cantidad</span>
-                  <input type="number" min="1" value={comboForm.quantity} onChange={(event) => setComboForm((form) => ({ ...form, quantity: event.target.value }))} />
-                </label>
-              </div>
-              <label>
-                <span>Descripcion</span>
-                <textarea value={comboForm.description} onChange={(event) => setComboForm((form) => ({ ...form, description: event.target.value }))} placeholder="Plato fuerte con bebida y acompanamiento." />
-              </label>
-              <button className="menu-primary-action" type="submit">Crear combo</button>
-
-              <div className="menu-flat-list">
-                {catalog.combos.map((combo) => (
-                  <article className="menu-inline-row" key={combo.id}>
-                    <div>
-                      <strong>{combo.name}</strong>
-                      <p>${combo.price}</p>
-                    </div>
-                    <span className={combo.isActive ? "menu-status-pill is-on" : "menu-status-pill"}>{combo.isActive ? "Disponible" : "Oculto"}</span>
-                    <button type="button" onClick={() => toggleCombo(combo)}>{combo.isActive ? "Desactivar" : "Activar"}</button>
-                  </article>
-                ))}
-              </div>
-            </form>
-          )}
-
-          {activeTab === "Inventario" && (
-            <section className="menu-saas-form">
-              <div className="menu-section-heading">
-                <span>01</span>
-                <div>
-                  <h3>Inventario conectado</h3>
-                  <p>Espacio preparado para vincular productos con ingredientes y existencias.</p>
-                </div>
-              </div>
-              <div className="menu-inventory-empty">
-                <strong>Modulo listo para la siguiente historia</strong>
-                <p>Aqui podremos descontar ingredientes, marcar stock bajo y pausar productos automaticamente.</p>
-              </div>
-            </section>
-          )}
-
-          {status && <p className="admin-users-success">{status}</p>}
-          {error && <p className="admin-users-error">{error}</p>}
-          {isLoading && <p>Cargando catalogo...</p>}
-        </main>
-
-        <aside className="menu-preview-panel">
-          <p className="admin-users-kicker">Preview POS</p>
-          <div className="menu-pos-card">
-            <div className="menu-pos-image">
-              <span>{previewProduct.imageName ? "IMG" : "TF"}</span>
-            </div>
-            <div className="menu-pos-body">
-              <div className="menu-pos-row">
-                <span className="menu-category-badge">{previewProduct.category}</span>
-                <span className="menu-status-pill is-on">Disponible</span>
-              </div>
-              <h3>{previewProduct.name}</h3>
-              <p>{previewProduct.description}</p>
-              <strong>${previewProduct.price}</strong>
-            </div>
-          </div>
-
-          <div className="menu-pos-meta">
-            <span>Visible para caja</span>
-            <span>Precio especial en combos</span>
-            <span>Categoria sincronizada</span>
-          </div>
-        </aside>
+      <div className="menu-catalog-toolbar">
+        <p>{currentMeta.count} {activeTab.toLowerCase()} - {currentMeta.active} active</p>
+        <button type="button" className="menu-catalog-action" onClick={() => setShowCreate((current) => !current)}>
+          <span>+</span>
+          {currentMeta.button}
+        </button>
       </div>
+
+      {showCreate && activeTab === "Productos" && (
+        <form className="menu-create-panel" onSubmit={handleCreateProduct}>
+          <label>
+            <span>Nombre</span>
+            <input value={productForm.name} onChange={(event) => setProductForm((form) => ({ ...form, name: event.target.value }))} placeholder="Classic Burger" />
+          </label>
+          <label>
+            <span>Precio</span>
+            <input type="number" step="0.01" value={productForm.price} onChange={(event) => setProductForm((form) => ({ ...form, price: event.target.value }))} placeholder="12.99" />
+          </label>
+          <label>
+            <span>Categoria</span>
+            <select value={productForm.categoryId} onChange={(event) => setProductForm((form) => ({ ...form, categoryId: event.target.value }))}>
+              <option value="">Seleccionar</option>
+              {activeCategories.map((category) => (
+                <option key={category.id} value={category.id}>{category.name}</option>
+              ))}
+            </select>
+          </label>
+          <label className="is-wide">
+            <span>Descripcion</span>
+            <textarea value={productForm.description} onChange={(event) => setProductForm((form) => ({ ...form, description: event.target.value }))} placeholder="Descripcion breve del producto." />
+          </label>
+          <button type="submit">Crear producto</button>
+        </form>
+      )}
+
+      {showCreate && activeTab === "Categorias" && (
+        <form className="menu-create-panel" onSubmit={handleCreateCategory}>
+          <label>
+            <span>Nombre</span>
+            <input value={categoryForm.name} onChange={(event) => setCategoryForm((form) => ({ ...form, name: event.target.value }))} placeholder="Burgers" />
+          </label>
+          <label className="is-wide">
+            <span>Descripcion</span>
+            <textarea value={categoryForm.description} onChange={(event) => setCategoryForm((form) => ({ ...form, description: event.target.value }))} placeholder="Premium beef and chicken burgers" />
+          </label>
+          <button type="submit">Crear categoria</button>
+        </form>
+      )}
+
+      {showCreate && activeTab === "Combos" && (
+        <form className="menu-create-panel" onSubmit={handleCreateCombo}>
+          <label>
+            <span>Nombre</span>
+            <input value={comboForm.name} onChange={(event) => setComboForm((form) => ({ ...form, name: event.target.value }))} placeholder="Classic Burger Meal" />
+          </label>
+          <label>
+            <span>Precio</span>
+            <input type="number" step="0.01" value={comboForm.price} onChange={(event) => setComboForm((form) => ({ ...form, price: event.target.value }))} placeholder="15.99" />
+          </label>
+          <label className="is-wide">
+            <span>Descripcion</span>
+            <textarea value={comboForm.description} onChange={(event) => setComboForm((form) => ({ ...form, description: event.target.value }))} placeholder="Burger + Fries + Drink" />
+          </label>
+          <div className="menu-combo-items">
+            <div className="menu-combo-items-head">
+              <span>Productos incluidos</span>
+              <button type="button" onClick={addComboItem}>+ Agregar producto</button>
+            </div>
+            {comboForm.items.map((item, index) => (
+              <div className="menu-combo-item-row" key={`combo-item-${index}`}>
+                <select value={item.productId} onChange={(event) => updateComboItem(index, "productId", event.target.value)}>
+                  <option value="">Seleccionar producto</option>
+                  {activeProducts.map((product) => (
+                    <option key={product.id} value={product.id}>{product.name}</option>
+                  ))}
+                </select>
+                <input type="number" min="1" value={item.quantity} onChange={(event) => updateComboItem(index, "quantity", event.target.value)} />
+                <button type="button" onClick={() => removeComboItem(index)}>Quitar</button>
+              </div>
+            ))}
+          </div>
+          <button type="submit">Crear combo</button>
+        </form>
+      )}
+
+      {status && <p className="admin-users-success">{status}</p>}
+      {error && <p className="admin-users-error">{error}</p>}
+      {isLoading && <p className="menu-loading">Cargando catalogo...</p>}
+
+      {activeTab === "Productos" && (
+        <div className="menu-card-grid">
+          {catalog.products.map((product) => (
+            <article className="menu-catalog-card" key={product.id}>
+              <button className="menu-card-menu" type="button" aria-label={`Acciones para ${product.name}`}>⋮</button>
+              <div className="menu-card-icon">{getInitials(product.name)}</div>
+              <h3>{product.name}</h3>
+              <p>{product.description || "Producto disponible para venta en caja."}</p>
+              <div className="menu-card-foot">
+                <span>${product.price}</span>
+                <button type="button" className={product.isActive ? "menu-switch is-on" : "menu-switch"} onClick={() => toggleProduct(product)} aria-label="Cambiar disponibilidad" />
+              </div>
+            </article>
+          ))}
+        </div>
+      )}
+
+      {activeTab === "Categorias" && (
+        <div className="menu-card-grid">
+          {catalog.categories.map((category) => (
+            <article className="menu-catalog-card" key={category.id}>
+              <button className="menu-card-menu" type="button" aria-label={`Acciones para ${category.name}`}>⋮</button>
+              <div className="menu-card-icon">
+                <svg width="27" height="27" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                  <path d="M12 3 5 7v10l7 4 7-4V7l-7-4Zm0 0v8M5 7l7 4 7-4" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" />
+                </svg>
+              </div>
+              <h3>{category.name}</h3>
+              <p>{category.description || "Categoria del catalogo del restaurante."}</p>
+              <div className="menu-card-foot">
+                <span>{catalog.products.filter((product) => product.categoryId === category.id || product.categoryName === category.name).length} products</span>
+                <button type="button" className={category.isActive ? "menu-switch is-on" : "menu-switch"} aria-label="Categoria activa" />
+              </div>
+            </article>
+          ))}
+        </div>
+      )}
+
+      {activeTab === "Combos" && (
+        <div className="menu-card-grid">
+          {catalog.combos.map((combo) => (
+            <article className="menu-catalog-card" key={combo.id}>
+              <button className="menu-card-menu" type="button" aria-label={`Acciones para ${combo.name}`}>⋮</button>
+              <div className="menu-card-icon">{getInitials(combo.name)}</div>
+              <h3>{combo.name}</h3>
+              <p>{combo.description || "Combo con precio especial para caja."}</p>
+              <div className="menu-card-foot">
+                <span>${combo.price}</span>
+                <button type="button" className={combo.isActive ? "menu-switch is-on" : "menu-switch"} onClick={() => toggleCombo(combo)} aria-label="Cambiar disponibilidad" />
+              </div>
+            </article>
+          ))}
+        </div>
+      )}
     </section>
   );
 };

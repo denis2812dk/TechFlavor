@@ -68,6 +68,20 @@ export const createTenantUser = async (payload) => {
   return data;
 };
 
+export const listTenantUsers = async () => {
+  const response = await fetch(`${API_URL}/api/tenant/users`, {
+    credentials: "include",
+  });
+
+  const data = await parseJson(response);
+
+  if (!response.ok) {
+    throw new Error(getErrorMessage(data));
+  }
+
+  return data;
+};
+
 export const getMenuCatalog = async ({ includeInactive = false } = {}) => {
   const params = new URLSearchParams();
   if (includeInactive) params.set("includeInactive", "true");
@@ -139,6 +153,66 @@ export const updateMenuCombo = async (comboId, payload) => {
     credentials: "include",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(payload),
+  });
+  const data = await parseJson(response);
+  if (!response.ok) throw new Error(getErrorMessage(data));
+  return data;
+};
+
+export const createOrder = async (payload) => {
+  const body = Array.isArray(payload) ? { items: payload } : payload;
+  const response = await fetch(`${API_URL}/api/tenant/orders`, {
+    method: "POST",
+    credentials: "include",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+  const data = await parseJson(response);
+  if (!response.ok) throw new Error(getErrorMessage(data));
+  return data;
+};
+
+export const listOrders = async () => {
+  const response = await fetch(`${API_URL}/api/tenant/orders`, {
+    credentials: "include",
+  });
+  const data = await parseJson(response);
+  if (!response.ok) throw new Error(getErrorMessage(data));
+  return data;
+};
+
+export const listKitchenOrders = async () => {
+  const response = await fetch(`${API_URL}/api/tenant/orders/kitchen`, {
+    credentials: "include",
+  });
+  const data = await parseJson(response);
+  if (!response.ok) throw new Error(getErrorMessage(data));
+  return data;
+};
+
+export const finishKitchenOrder = async (orderId) => {
+  const response = await fetch(`${API_URL}/api/tenant/orders/${orderId}/finish`, {
+    method: "PATCH",
+    credentials: "include",
+  });
+  const data = await parseJson(response);
+  if (!response.ok) throw new Error(getErrorMessage(data));
+  return data;
+};
+
+export const listDispatchOrders = async () => {
+  const response = await fetch(`${API_URL}/api/tenant/orders/dispatch`, {
+    credentials: "include",
+  });
+  const data = await parseJson(response);
+  if (!response.ok) throw new Error(getErrorMessage(data));
+  return data;
+};
+
+export const deliverDispatchOrder = async (orderId) => {
+  const response = await fetch(`${API_URL}/api/tenant/orders/${orderId}/deliver`, {
+    method: "PATCH",
+    credentials: "include",
   });
   const data = await parseJson(response);
   if (!response.ok) throw new Error(getErrorMessage(data));

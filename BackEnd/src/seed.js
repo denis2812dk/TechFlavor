@@ -5,7 +5,7 @@ import { and, eq } from "drizzle-orm";
 import { auth } from "./config/auth.js";
 import { connectDB, db } from "./config/db.js";
 import { ROLES } from "./constants/roles.js";
-import { accounts, restaurantUsers, restaurants, users } from "./models/schema.js";
+import { accounts, restaurantUsers, restaurants, users } from "./Models/schema.js";
 
 const DEMO_RESTAURANT = {
   id: "restaurant_brasa_norte",
@@ -172,6 +172,68 @@ const provisionTenantDatabase = async (restaurant) => {
         FOREIGN KEY (product_id) REFERENCES menu_products(id)
     )
   `);
+
+  await tenantConnection.query(`
+    CREATE TABLE IF NOT EXISTS orders (
+      id varchar(36) NOT NULL,
+      ticket_code varchar(30) NOT NULL,
+      status varchar(30) NOT NULL DEFAULT 'open',
+      fulfillment_type varchar(30) NOT NULL DEFAULT 'takeaway',
+      table_identifier varchar(60),
+      subtotal decimal(10,2) NOT NULL,
+      total decimal(10,2) NOT NULL,
+      cashier_user_id varchar(36) NOT NULL,
+      cashier_name varchar(120) NOT NULL,
+      created_at timestamp DEFAULT CURRENT_TIMESTAMP,
+      updated_at timestamp DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+      PRIMARY KEY (id),
+      UNIQUE KEY orders_ticket_code_unique (ticket_code)
+    )
+  `);
+
+  await tenantConnection.query(`
+    CREATE TABLE IF NOT EXISTS order_items (
+      id varchar(36) NOT NULL,
+      order_id varchar(36) NOT NULL,
+      item_type varchar(20) NOT NULL,
+      item_id varchar(36) NOT NULL,
+      name varchar(120) NOT NULL,
+      unit_price decimal(10,2) NOT NULL,
+      quantity int NOT NULL,
+      line_total decimal(10,2) NOT NULL,
+      PRIMARY KEY (id),
+      CONSTRAINT order_items_order_id_fk
+        FOREIGN KEY (order_id) REFERENCES orders(id) ON DELETE CASCADE
+    )
+  `);
+
+  await tenantConnection.query(`
+    ALTER TABLE orders
+    ADD COLUMN fulfillment_type varchar(30) NOT NULL DEFAULT 'takeaway' AFTER status
+  `).catch((error) => {
+    if (error.code !== "ER_DUP_FIELDNAME") throw error;
+  });
+
+  await tenantConnection.query(`
+    ALTER TABLE orders
+    ADD COLUMN table_identifier varchar(60) NULL AFTER fulfillment_type
+  `).catch((error) => {
+    if (error.code !== "ER_DUP_FIELDNAME") throw error;
+  });
+
+  await tenantConnection.query(`
+    ALTER TABLE orders
+    ADD COLUMN cashier_user_id varchar(36) NOT NULL DEFAULT 'legacy' AFTER total
+  `).catch((error) => {
+    if (error.code !== "ER_DUP_FIELDNAME") throw error;
+  });
+
+  await tenantConnection.query(`
+    ALTER TABLE orders
+    ADD COLUMN cashier_name varchar(120) NOT NULL DEFAULT 'Sin responsable' AFTER cashier_user_id
+  `).catch((error) => {
+    if (error.code !== "ER_DUP_FIELDNAME") throw error;
+  });
 
   await tenantConnection.end();
 };
