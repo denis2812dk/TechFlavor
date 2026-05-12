@@ -6,6 +6,7 @@ import {
     orderItems,
     orders,
 } from "../models/tenantSchema.js";
+import { deductInventoryForOrder } from "../services/tenantInventoryService.js";
 
 const money = (value) => Number(value).toFixed(2);
 
@@ -18,49 +19,6 @@ const createTicketCode = () => {
     ].join("");
     const randomPart = Math.random().toString(36).slice(2, 7).toUpperCase();
     return `TF-${stamp}-${randomPart}`;
-};
-
-const parseCartItems = (items) => {
-    if (!Array.isArray(items) || items.length === 0) return null;
-
-    const parsedItems = items.map((item) => ({
-        itemType: item.itemType,
-        itemId: item.itemId,
-        quantity: Number(item.quantity),
-    }));
-
-    const hasInvalidItem = parsedItems.some((item) => (
-        !["product", "combo"].includes(item.itemType)
-        || !item.itemId
-        || !Number.isInteger(item.quantity)
-        || item.quantity < 1
-    ));
-
-    return hasInvalidItem ? null : parsedItems;
-};
-
-const parseFulfillment = (body) => {
-    const fulfillmentType = body.fulfillmentType;
-    const tableIdentifier = typeof body.tableIdentifier === "string"
-        ? body.tableIdentifier.trim()
-        : "";
-
-    if (!["takeaway", "dine_in"].includes(fulfillmentType)) {
-        return {
-            error: "Debes elegir si el pedido es para llevar o para consumir en el lugar.",
-        };
-    }
-
-    if (fulfillmentType === "dine_in" && !tableIdentifier) {
-        return {
-            error: "Debes ingresar el numero de mesa o identificador del cliente.",
-        };
-    }
-
-    return {
-        fulfillmentType,
-        tableIdentifier: fulfillmentType === "dine_in" ? tableIdentifier : null,
-    };
 };
 
 const ignoreDuplicateColumn = (error) => {
@@ -142,22 +100,8 @@ const findSaleItem = async (tenantDb, item) => {
 
 export const createTenantOrder = async (req, res, next) => {
     try {
-        const items = parseCartItems(req.body.items);
-        const fulfillment = parseFulfillment(req.body);
-
-        if (!items) {
-            return res.status(400).json({
-                success: false,
-                message: "El pedido necesita al menos un producto o combo valido.",
-            });
-        }
-
-        if (fulfillment.error) {
-            return res.status(400).json({
-                success: false,
-                message: fulfillment.error,
-            });
-        }
+        // Los datos en req.body ya han sido validados y formateados por Zod en el middleware.
+        const { items, fulfillmentType, tableIdentifier } = req.body;
 
         const saleItems = [];
         for (const item of items) {
@@ -180,8 +124,8 @@ export const createTenantOrder = async (req, res, next) => {
             id: orderId,
             ticketCode,
             status: "in_preparation",
-            fulfillmentType: fulfillment.fulfillmentType,
-            tableIdentifier: fulfillment.tableIdentifier,
+            fulfillmentType,
+            tableIdentifier: fulfillmentType === "dine_in" ? tableIdentifier : null,
             subtotal: money(subtotal),
             total: money(total),
             cashierUserId: req.user.id,
@@ -190,6 +134,7 @@ export const createTenantOrder = async (req, res, next) => {
 
         await ensureOrderColumns(req.tenantDb);
         await req.tenantDb.insert(orders).values(order);
+        
         await req.tenantDb.insert(orderItems).values(saleItems.map((item) => ({
             id: randomUUID(),
             orderId,
@@ -200,6 +145,9 @@ export const createTenantOrder = async (req, res, next) => {
             quantity: item.quantity,
             lineTotal: money(item.unitPrice * item.quantity),
         })));
+
+        // Procesar el descuento de inventario
+        await deductInventoryForOrder(req.tenantDb, orderId, saleItems);
 
         res.status(201).json({
             success: true,

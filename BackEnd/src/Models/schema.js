@@ -1,23 +1,42 @@
-import { mysqlTable, varchar, text, datetime, boolean, int, bigint, longtext, uniqueIndex, date, mysqlEnum, timestamp, decimal } from "drizzle-orm/mysql-core";
+import { mysqlTable, varchar, text, datetime, boolean, int, bigint, timestamp } from "drizzle-orm/mysql-core";
+
+export const restaurants = mysqlTable("restaurants", {
+    id: varchar("id", { length: 36 }).primaryKey(),
+    name: varchar("name", { length: 120 }).notNull(),
+    slug: varchar("slug", { length: 80 }).notNull().unique(),
+    databaseName: varchar("database_name", { length: 120 }).notNull().unique(),
+    plan: varchar("plan", { length: 30 }).notNull().default("starter"),
+    status: varchar("status", { length: 30 }).notNull().default("active"),
+    createdAt: timestamp("created_at").defaultNow(),
+    updatedAt: timestamp("updated_at").defaultNow().onUpdateNow(),
+});
+
 export const users = mysqlTable("users", {
     id: varchar("id", { length: 36 }).primaryKey(),
     name: varchar("name", { length: 80 }).notNull(),
     email: varchar("email", { length: 100 }).notNull().unique(),
     emailVerified: boolean("email_verified").notNull().default(false),
     image: varchar("image", { length: 255 }),
-    role: varchar("role", { length: 20 }).notNull().default("assistant"),
+    role: varchar("role", { length: 20 }).notNull().default("operador"),
     banned: boolean("banned").notNull().default(false),
     banReason: varchar("ban_reason", { length: 255 }),
     banExpires: datetime("ban_expires"),
-    dui: varchar("dui", { length: 10 }).unique(), // Formato 00000000-0
-    phone: varchar("phone", { length: 20 }),
-    address: text("address"), // Opcional (sin .notNull())
-    hiringDate: date("hiring_date"),
-    isNurse: boolean("is_nurse").default(false),
-    jvpm: varchar("jvpm", { length: 20 }).unique(),
-    jvpe: varchar("jvpe", { length: 20 }).unique(),
     createdAt: datetime("created_at").notNull(),
     updatedAt: datetime("updated_at").notNull(),
+});
+
+export const restaurantUsers = mysqlTable("restaurant_users", {
+    id: varchar("id", { length: 36 }).primaryKey(),
+    restaurantId: varchar("restaurant_id", { length: 36 })
+        .notNull()
+        .references(() => restaurants.id, { onDelete: "cascade" }),
+    userId: varchar("user_id", { length: 36 })
+        .notNull()
+        .references(() => users.id, { onDelete: "cascade" }),
+    role: varchar("role", { length: 20 }).notNull(),
+    status: varchar("status", { length: 30 }).notNull().default("active"),
+    createdAt: timestamp("created_at").defaultNow(),
+    updatedAt: timestamp("updated_at").defaultNow().onUpdateNow(),
 });
 
 export const accounts = mysqlTable("accounts", {

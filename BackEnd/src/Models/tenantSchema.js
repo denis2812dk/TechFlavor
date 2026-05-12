@@ -83,3 +83,56 @@ export const orderItems = mysqlTable("order_items", {
     quantity: int("quantity").notNull(),
     lineTotal: decimal("line_total", { precision: 10, scale: 2 }).notNull(),
 });
+export const ingredients = mysqlTable("ingredients", {
+    id: varchar("id", { length: 36 }).primaryKey(),
+    name: varchar("name", { length: 150 }).notNull(),
+    unitOfMeasure: varchar("unit_measure", { length: 50 }).notNull(),
+});
+
+export const inventory = mysqlTable("inventory", {
+    id: varchar("id", { length: 36 }).primaryKey(),
+    ingredientId: varchar("ingredient_id", { length: 36 })
+        .notNull()
+        .references(() => ingredients.id, { onDelete: "cascade" })
+        .unique(),
+    currentStock: decimal("current_stock", { precision: 10, scale: 2 }).notNull().default("0.00"),
+});
+
+export const productIngredients = mysqlTable("product_ingredients", {
+    id: varchar("id", { length: 36 }).primaryKey(),
+    productId: varchar("product_id", { length: 36 })
+        .notNull()
+        .references(() => menuProducts.id, { onDelete: "cascade" }),
+    ingredientId: varchar("ingredient_id", { length: 36 })
+        .notNull()
+        .references(() => ingredients.id, { onDelete: "restrict" }),
+    quantity: decimal("quantity", { precision: 10, scale: 2 }).notNull(),
+});
+
+export const inventoryMovements = mysqlTable("inventory_movements", {
+    id: varchar("id", { length: 36 }).primaryKey(),
+    type: varchar("type", { length: 20 }).notNull(), 
+    quantity: decimal("quantity", { precision: 10, scale: 2 }).notNull(),
+    date: timestamp("date").defaultNow(),
+    reason: varchar("reason", { length: 255 }),
+    ingredientId: varchar("ingredient_id", { length: 36 })
+        .notNull()
+        .references(() => ingredients.id, { onDelete: "cascade" }),
+    orderId: varchar("order_id", { length: 36 }), 
+});
+export const suppliers = mysqlTable("suppliers", {
+    id: varchar("id", { length: 36 }).primaryKey(),
+    name: varchar("name", { length: 150 }).notNull(),
+    contact: varchar("contact", { length: 150 }),
+});
+
+export const supplierIncidences = mysqlTable("supplier_incidences", {
+    id: varchar("id", { length: 36 }).primaryKey(),
+    supplierId: varchar("supplier_id", { length: 36 })
+        .notNull()
+        .references(() => suppliers.id, { onDelete: "cascade" }),
+    description: text("description").notNull(),
+    date: timestamp("date").defaultNow().notNull(),
+    status: varchar("status", { length: 20 }).notNull().default("ABIERTA"), 
+    resolutionDate: timestamp("resolution_date"),
+});
