@@ -10,6 +10,8 @@ import {
     listMenuCatalog,
     updateMenuCombo,
     updateMenuProduct,
+    setProductRecipe,
+    deleteProduct
 } from "../controllers/tenantMenuController.js";
 import {
     createTenantOrder,
@@ -36,7 +38,8 @@ import {
     createOrderSchema, 
     createProductSchema, 
     createComboSchema, 
-    createShrinkageSchema 
+    createShrinkageSchema,
+    updateRecipeSchema 
 } from "../schemas/tenantSchemas.js";
 
 const router = Router();
@@ -52,6 +55,8 @@ router.get("/menu", tenantContext, requireTenantRoles(ROLES.ADMIN, ROLES.GERENTE
 router.post("/menu/categories", tenantContext, requireTenantRoles(ROLES.ADMIN, ROLES.GERENTE), createMenuCategory);
 router.post("/menu/products", tenantContext, requireTenantRoles(ROLES.ADMIN, ROLES.GERENTE), validateSchema(createProductSchema), createMenuProduct);
 router.patch("/menu/products/:productId", tenantContext, requireTenantRoles(ROLES.ADMIN, ROLES.GERENTE), updateMenuProduct);
+router.put("/menu/products/:productId/recipe", tenantContext, requireTenantRoles(ROLES.ADMIN, ROLES.GERENTE), validateSchema(updateRecipeSchema), setProductRecipe);
+router.delete("/menu/products/:productId", tenantContext, requireTenantRoles(ROLES.ADMIN, ROLES.GERENTE), deleteProduct);
 router.post("/menu/combos", tenantContext, requireTenantRoles(ROLES.ADMIN, ROLES.GERENTE), validateSchema(createComboSchema), createMenuCombo);
 router.patch("/menu/combos/:comboId", tenantContext, requireTenantRoles(ROLES.ADMIN, ROLES.GERENTE), updateMenuCombo);
 // Pedidos

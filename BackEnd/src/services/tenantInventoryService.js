@@ -12,7 +12,7 @@ import {
 
 /**
  * ==========================================
- * HU 11: Descuento de Inventario por Venta (BOM)
+ * HU 11: Descuento de Inventario por Venta 
  * ==========================================
  */
 export const deductInventoryForOrder = async (tenantDb, orderId, saleItems) => {
@@ -50,8 +50,6 @@ export const deductInventoryForOrder = async (tenantDb, orderId, saleItems) => {
             ingredientDeductions[recipeItem.ingredientId] += totalNeeded;
         }
     }
-
-    // 5. Aplicar descuentos de forma atómica usando transacciones
     await tenantDb.transaction(async (tx) => {
         const movements = [];
         
@@ -64,7 +62,7 @@ export const deductInventoryForOrder = async (tenantDb, orderId, saleItems) => {
 
             movements.push({
                 id: randomUUID(),
-                type: "SALIDA", // Coincide con el ENUM del diccionario de tipos de movimiento
+                type: "SALIDA", 
                 quantity: totalNeeded,
                 reason: `Venta - Pedido ${orderId}`,
                 ingredientId: ingredientId,

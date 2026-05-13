@@ -1,13 +1,9 @@
 import { randomUUID } from "crypto";
 import { and, eq } from "drizzle-orm";
 import { ROLES } from "../constants/roles.js";
-import {
-    menuCategories,
-    menuComboItems,
-    menuCombos,
-    menuProducts,
-} from "../models/tenantSchema.js";
-
+import {menuCategories, menuComboItems, menuCombos, menuProducts } from "../models/tenantSchema.js";
+import * as menuService from "../services/tenantMenuService.js";
+import * as inventoryService from "../services/tenantInventoryService.js";
 const canManageMenu = (role) => [ROLES.ADMIN, ROLES.GERENTE].includes(role);
 
 const parseActiveFilter = (req) => {
@@ -276,6 +272,35 @@ export const updateMenuCombo = async (req, res, next) => {
         }
 
         res.json({ success: true, combo });
+    } catch (error) {
+        next(error);
+    }
+};
+export const setProductRecipe = async (req, res, next) => {
+    try {
+        const { productId } = req.params;
+        const { ingredients } = req.body; 
+        await menuService.updateProductRecipe(req.tenantDb, productId, ingredients);
+
+        res.json({
+            success: true,
+            message: "Receta actualizada correctamente."
+        });
+    } catch (error) {
+        next(error);
+    }
+};
+
+export const deleteProduct = async (req, res, next) => {
+    try {
+        const { productId } = req.params;
+        
+        await menuService.softDeleteProduct(req.tenantDb, productId);
+
+        res.json({
+            success: true,
+            message: "Producto eliminado correctamente del menú activo."
+        });
     } catch (error) {
         next(error);
     }

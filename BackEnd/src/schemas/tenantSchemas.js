@@ -46,3 +46,11 @@ export const createShrinkageSchema = z.object({
     quantity: z.coerce.number().positive("La cantidad debe ser mayor a 0"),
     reason: z.string().min(5, "Debes proveer un motivo detallado")
 });
+export const updateRecipeSchema = z.object({
+    ingredients: z.array(
+        z.object({
+            ingredientId: z.string().uuid("ID de ingrediente inválido"),
+            quantity: z.coerce.number().positive("La cantidad debe ser mayor a 0")
+        })
+    ).min(1, "La receta debe tener al menos un ingrediente")
+});
