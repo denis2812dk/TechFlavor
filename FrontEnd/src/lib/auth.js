@@ -218,3 +218,37 @@ export const deliverDispatchOrder = async (orderId) => {
   if (!response.ok) throw new Error(getErrorMessage(data));
   return data;
 };
+export const setProductRecipe = async (productId, payload) => {
+  const response = await fetch(`${API_URL}/api/tenant/menu/products/${productId}/recipe`, {
+    method: "PUT",
+    credentials: "include",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+  const data = await parseJson(response);
+  if (!response.ok) throw new Error(getErrorMessage(data));
+  return data;
+};
+
+export const deleteMenuProduct = async (productId) => {
+  const response = await fetch(`${API_URL}/api/tenant/menu/products/${productId}`, {
+    method: "DELETE",
+    credentials: "include",
+  });
+  const data = await parseJson(response);
+  if (!response.ok) throw new Error(getErrorMessage(data));
+  return data;
+};
+export const listIngredients = async () => {
+  const response = await fetch(`${API_URL}/api/tenant/inventory/ingredients`, {
+    credentials: "include",
+  });
+
+  const data = await parseJson(response);
+
+  if (!response.ok) {
+    throw new Error(getErrorMessage(data));
+  }
+
+  return data;
+};

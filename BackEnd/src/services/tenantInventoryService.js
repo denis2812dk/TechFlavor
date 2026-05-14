@@ -1,5 +1,5 @@
 import { randomUUID } from "crypto";
-import { eq, inArray, sql } from "drizzle-orm";
+import { eq, inArray, sql, asc } from "drizzle-orm";
 import {
     ingredients,
     inventory,
@@ -130,4 +130,14 @@ export const createSupplierIncidence = async (tenantDb, { supplierId, descriptio
     });
 
     return incidenceId;
+};
+export const getAllIngredients = async (tenantDb) => {
+    return await tenantDb
+        .select({
+            id: ingredients.id,
+            name: ingredients.name,
+            unitOfMeasure: ingredients.unitOfMeasure,
+        })
+        .from(ingredients)
+        .orderBy(asc(ingredients.name)); 
 };

@@ -98,3 +98,15 @@ export const softDeleteProduct = async (tenantDb, productId) => {
         })
         .where(eq(menuProducts.id, productId));
 };
+export const listIngredients = async (req, res, next) => {
+    try {
+        const ingredientsList = await inventoryService.getAllIngredients(req.tenantDb);
+
+        res.json({
+            success: true,
+            ingredients: ingredientsList,
+        });
+    } catch (error) {
+        next(error);
+    }
+};

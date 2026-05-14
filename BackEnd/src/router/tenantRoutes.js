@@ -27,7 +27,8 @@ import {
 } from "../controllers/tenantUsersController.js";
 import {
     registerShrinkage,
-    registerSupplierIncidence
+    registerSupplierIncidence,
+    listIngredients
 } from "../controllers/tenantInventoryController.js";
 
 import { ROLES } from "../constants/roles.js";
@@ -68,19 +69,9 @@ router.get("/orders/dispatch", tenantContext, requireTenantRoles(ROLES.DESPACHO,
 router.patch("/orders/:orderId/deliver", tenantContext, requireTenantRoles(ROLES.DESPACHO, ROLES.ADMIN), deliverDispatchOrder);
 
 // RUTAS DE INVENTARIO Y PROVEEDORES
-router.post(
-    "/inventory/shrinkage", 
-    tenantContext, 
-    requireTenantRoles(ROLES.ADMIN, ROLES.GERENTE), 
-    validateSchema(createShrinkageSchema),
-    registerShrinkage
-);
+router.get("/inventory/ingredients", tenantContext, requireTenantRoles(ROLES.ADMIN, ROLES.GERENTE), listIngredients);
+router.post("/inventory/shrinkage", tenantContext, requireTenantRoles(ROLES.ADMIN, ROLES.GERENTE), validateSchema(createShrinkageSchema),registerShrinkage);
 
-router.post(
-    "/inventory/suppliers/incidences", 
-    tenantContext, 
-    requireTenantRoles(ROLES.ADMIN, ROLES.GERENTE), 
-    registerSupplierIncidence
-);
+router.post("/inventory/suppliers/incidences", tenantContext, requireTenantRoles(ROLES.ADMIN, ROLES.GERENTE), registerSupplierIncidence);
 
 export default router;
