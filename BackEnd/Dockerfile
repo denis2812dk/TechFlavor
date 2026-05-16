@@ -1,20 +1,15 @@
-# Usa una imagen ligera de Node
-FROM node:22-alpine as build
-
-# Crea el directorio de trabajo dentro del contenedor
+FROM node:22-alpine
 WORKDIR /app
 
-# Copia los archivos de dependencias primero (para aprovechar el caché de Docker)
+# Instalar dependencias
 COPY package*.json ./
-
-# Instala las dependencias
 RUN npm install
 
-# Copia el resto del código del backend
+# Copiar el código
 COPY . .
 
-# Expone el puerto que usa tu backend (asumiendo que es el 3000, cámbialo si es otro)
+# Exponer el puerto del API
 EXPOSE 3000
 
-# Comando para iniciar tu servidor (revisa tu package.json si usas otro script como 'npm run start')
+# Iniciar el servidor (ajusta "npm start" si usas otro comando en tu package.json)
 CMD ["npm", "start"]
