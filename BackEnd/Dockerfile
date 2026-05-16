@@ -1,5 +1,5 @@
 # Usa una imagen ligera de Node
-FROM node:18-alpine
+FROM node:22-alpine as build
 
 # Crea el directorio de trabajo dentro del contenedor
 WORKDIR /app
