@@ -6,6 +6,9 @@ const parseJson = async (response) => {
 
 export const getErrorMessage = (error) => {
   if (error?.message) return error.message;
+  if (Array.isArray(error?.errors) && error.errors.length > 0) {
+    return error.errors.map((item) => `${item.campo}: ${item.mensaje}`).join("\n");
+  }
   if (error?.error?.message) return error.error.message;
   if (typeof error === "string") return error;
   return "Ocurrio un error inesperado.";
@@ -242,6 +245,72 @@ export const deleteMenuProduct = async (productId) => {
 export const listIngredients = async () => {
   const response = await fetch(`${API_URL}/api/tenant/inventory/ingredients`, {
     credentials: "include",
+  });
+
+  const data = await parseJson(response);
+
+  if (!response.ok) {
+    throw new Error(getErrorMessage(data));
+  }
+
+  return data;
+};
+
+export const createIngredient = async (payload) => {
+  const response = await fetch(`${API_URL}/api/tenant/inventory/ingredients`, {
+    method: "POST",
+    credentials: "include",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+
+  const data = await parseJson(response);
+
+  if (!response.ok) {
+    throw new Error(getErrorMessage(data));
+  }
+
+  return data;
+};
+
+export const updateIngredient = async (ingredientId, payload) => {
+  const response = await fetch(`${API_URL}/api/tenant/inventory/ingredients/${ingredientId}`, {
+    method: "PATCH",
+    credentials: "include",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+
+  const data = await parseJson(response);
+
+  if (!response.ok) {
+    throw new Error(getErrorMessage(data));
+  }
+
+  return data;
+};
+
+export const deleteIngredient = async (ingredientId) => {
+  const response = await fetch(`${API_URL}/api/tenant/inventory/ingredients/${ingredientId}`, {
+    method: "DELETE",
+    credentials: "include",
+  });
+
+  const data = await parseJson(response);
+
+  if (!response.ok) {
+    throw new Error(getErrorMessage(data));
+  }
+
+  return data;
+};
+
+export const registerShrinkage = async (payload) => {
+  const response = await fetch(`${API_URL}/api/tenant/inventory/shrinkage`, {
+    method: "POST",
+    credentials: "include",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
   });
 
   const data = await parseJson(response);

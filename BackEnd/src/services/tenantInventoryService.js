@@ -1,5 +1,5 @@
 import { randomUUID } from "crypto";
-import { eq, inArray, sql, asc } from "drizzle-orm";
+import { and, asc, eq, inArray, ne, sql } from "drizzle-orm";
 import {
     ingredients,
     inventory,
@@ -10,12 +10,89 @@ import {
     suppliers
 } from "../models/tenantSchema.js";
 
+export const ensureInventoryTables = async (tenantDb) => {
+    await tenantDb.execute(sql`
+        CREATE TABLE IF NOT EXISTS ingredients (
+            id varchar(36) NOT NULL,
+            name varchar(150) NOT NULL,
+            unit_measure varchar(50) NOT NULL,
+            PRIMARY KEY (id)
+        )
+    `);
+
+    await tenantDb.execute(sql`
+        CREATE TABLE IF NOT EXISTS inventory (
+            id varchar(36) NOT NULL,
+            ingredient_id varchar(36) NOT NULL,
+            current_stock decimal(10,2) NOT NULL DEFAULT 0.00,
+            PRIMARY KEY (id),
+            UNIQUE KEY inventory_ingredient_id_unique (ingredient_id),
+            CONSTRAINT inventory_ingredient_id_fk
+                FOREIGN KEY (ingredient_id) REFERENCES ingredients(id) ON DELETE CASCADE
+        )
+    `);
+
+    await tenantDb.execute(sql`
+        CREATE TABLE IF NOT EXISTS product_ingredients (
+            id varchar(36) NOT NULL,
+            product_id varchar(36) NOT NULL,
+            ingredient_id varchar(36) NOT NULL,
+            quantity decimal(10,2) NOT NULL,
+            PRIMARY KEY (id),
+            CONSTRAINT product_ingredients_product_id_fk
+                FOREIGN KEY (product_id) REFERENCES menu_products(id) ON DELETE CASCADE,
+            CONSTRAINT product_ingredients_ingredient_id_fk
+                FOREIGN KEY (ingredient_id) REFERENCES ingredients(id)
+        )
+    `);
+
+    await tenantDb.execute(sql`
+        CREATE TABLE IF NOT EXISTS inventory_movements (
+            id varchar(36) NOT NULL,
+            type varchar(20) NOT NULL,
+            quantity decimal(10,2) NOT NULL,
+            date timestamp DEFAULT CURRENT_TIMESTAMP,
+            reason varchar(255),
+            ingredient_id varchar(36) NOT NULL,
+            order_id varchar(36),
+            PRIMARY KEY (id),
+            CONSTRAINT inventory_movements_ingredient_id_fk
+                FOREIGN KEY (ingredient_id) REFERENCES ingredients(id) ON DELETE CASCADE
+        )
+    `);
+
+    await tenantDb.execute(sql`
+        CREATE TABLE IF NOT EXISTS suppliers (
+            id varchar(36) NOT NULL,
+            name varchar(150) NOT NULL,
+            contact varchar(150),
+            PRIMARY KEY (id)
+        )
+    `);
+
+    await tenantDb.execute(sql`
+        CREATE TABLE IF NOT EXISTS supplier_incidences (
+            id varchar(36) NOT NULL,
+            supplier_id varchar(36) NOT NULL,
+            description text NOT NULL,
+            date timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            status varchar(20) NOT NULL DEFAULT 'ABIERTA',
+            resolution_date timestamp NULL,
+            PRIMARY KEY (id),
+            CONSTRAINT supplier_incidences_supplier_id_fk
+                FOREIGN KEY (supplier_id) REFERENCES suppliers(id) ON DELETE CASCADE
+        )
+    `);
+};
+
 /**
  * ==========================================
  * HU 11: Descuento de Inventario por Venta 
  * ==========================================
  */
 export const deductInventoryForOrder = async (tenantDb, orderId, saleItems) => {
+    await ensureInventoryTables(tenantDb);
+
     const [settings] = await tenantDb
         .select({ allowInventory: restaurantSettings.allowInventory })
         .from(restaurantSettings)
@@ -78,6 +155,8 @@ export const deductInventoryForOrder = async (tenantDb, orderId, saleItems) => {
 };
 
 export const createShrinkageRecord = async (tenantDb, { ingredientId, quantity, reason }) => {
+    await ensureInventoryTables(tenantDb);
+
     const [ingredientExists] = await tenantDb
         .select({ id: ingredients.id })
         .from(ingredients)
@@ -109,6 +188,8 @@ export const createShrinkageRecord = async (tenantDb, { ingredientId, quantity, 
 };
 
 export const createSupplierIncidence = async (tenantDb, { supplierId, description }) => {
+    await ensureInventoryTables(tenantDb);
+
     const [supplierExists] = await tenantDb
         .select({ id: suppliers.id })
         .from(suppliers)
@@ -131,13 +212,119 @@ export const createSupplierIncidence = async (tenantDb, { supplierId, descriptio
 
     return incidenceId;
 };
+
+export const createIngredient = async (tenantDb, { name, unitOfMeasure, currentStock }) => {
+    await ensureInventoryTables(tenantDb);
+
+    const normalizedName = name.trim();
+    const [existingIngredient] = await tenantDb
+        .select({ id: ingredients.id })
+        .from(ingredients)
+        .where(eq(ingredients.name, normalizedName))
+        .limit(1);
+
+    if (existingIngredient) {
+        throw new Error("INGREDIENT_NAME_EXISTS");
+    }
+
+    const ingredientId = randomUUID();
+
+    await tenantDb.transaction(async (tx) => {
+        await tx.insert(ingredients).values({
+            id: ingredientId,
+            name: normalizedName,
+            unitOfMeasure: unitOfMeasure.trim(),
+        });
+
+        await tx.insert(inventory).values({
+            id: randomUUID(),
+            ingredientId,
+            currentStock,
+        });
+    });
+
+    return ingredientId;
+};
+
+export const updateIngredient = async (tenantDb, ingredientId, { name, unitOfMeasure, currentStock }) => {
+    await ensureInventoryTables(tenantDb);
+
+    const [ingredientExists] = await tenantDb
+        .select({ id: ingredients.id })
+        .from(ingredients)
+        .where(eq(ingredients.id, ingredientId))
+        .limit(1);
+
+    if (!ingredientExists) {
+        throw new Error("INGREDIENT_NOT_FOUND");
+    }
+
+    const normalizedName = name.trim();
+    const [duplicatedName] = await tenantDb
+        .select({ id: ingredients.id })
+        .from(ingredients)
+        .where(and(eq(ingredients.name, normalizedName), ne(ingredients.id, ingredientId)))
+        .limit(1);
+
+    if (duplicatedName) {
+        throw new Error("INGREDIENT_NAME_EXISTS");
+    }
+
+    await tenantDb.transaction(async (tx) => {
+        await tx
+            .update(ingredients)
+            .set({
+                name: normalizedName,
+                unitOfMeasure: unitOfMeasure.trim(),
+            })
+            .where(eq(ingredients.id, ingredientId));
+
+        await tx
+            .update(inventory)
+            .set({ currentStock })
+            .where(eq(inventory.ingredientId, ingredientId));
+    });
+};
+
+export const deleteIngredient = async (tenantDb, ingredientId) => {
+    await ensureInventoryTables(tenantDb);
+
+    const [ingredientExists] = await tenantDb
+        .select({ id: ingredients.id })
+        .from(ingredients)
+        .where(eq(ingredients.id, ingredientId))
+        .limit(1);
+
+    if (!ingredientExists) {
+        throw new Error("INGREDIENT_NOT_FOUND");
+    }
+
+    const [usedInRecipe] = await tenantDb
+        .select({ id: productIngredients.id })
+        .from(productIngredients)
+        .where(eq(productIngredients.ingredientId, ingredientId))
+        .limit(1);
+
+    if (usedInRecipe) {
+        throw new Error("INGREDIENT_IN_USE");
+    }
+
+    await tenantDb
+        .delete(ingredients)
+        .where(eq(ingredients.id, ingredientId));
+};
+
 export const getAllIngredients = async (tenantDb) => {
+    await ensureInventoryTables(tenantDb);
+
     return await tenantDb
         .select({
             id: ingredients.id,
             name: ingredients.name,
             unitOfMeasure: ingredients.unitOfMeasure,
+            currentStock: inventory.currentStock,
         })
         .from(ingredients)
+        .innerJoin(inventory, eq(inventory.ingredientId, ingredients.id))
         .orderBy(asc(ingredients.name)); 
 };

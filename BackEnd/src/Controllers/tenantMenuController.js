@@ -1,7 +1,14 @@
 import { randomUUID } from "crypto";
 import { and, eq } from "drizzle-orm";
 import { ROLES } from "../constants/roles.js";
-import {menuCategories, menuComboItems, menuCombos, menuProducts } from "../models/tenantSchema.js";
+import {
+    ingredients,
+    menuCategories,
+    menuComboItems,
+    menuCombos,
+    menuProducts,
+    productIngredients,
+} from "../models/tenantSchema.js";
 import * as menuService from "../services/tenantMenuService.js";
 import * as inventoryService from "../services/tenantInventoryService.js";
 const canManageMenu = (role) => [ROLES.ADMIN, ROLES.GERENTE].includes(role);
@@ -39,6 +46,8 @@ const parseComboItems = (items) => {
 
 export const listMenuCatalog = async (req, res, next) => {
     try {
+        await inventoryService.ensureInventoryTables(req.tenantDb);
+
         const activeOnly = parseActiveFilter(req);
         const productWhere = activeOnly ? eq(menuProducts.isActive, true) : undefined;
         const comboWhere = activeOnly ? eq(menuCombos.isActive, true) : undefined;
@@ -73,10 +82,25 @@ export const listMenuCatalog = async (req, res, next) => {
             .from(menuComboItems)
             .innerJoin(menuProducts, eq(menuComboItems.productId, menuProducts.id));
 
+        const recipeItems = await req.tenantDb
+            .select({
+                id: productIngredients.id,
+                productId: productIngredients.productId,
+                ingredientId: productIngredients.ingredientId,
+                ingredientName: ingredients.name,
+                unitOfMeasure: ingredients.unitOfMeasure,
+                quantity: productIngredients.quantity,
+            })
+            .from(productIngredients)
+            .innerJoin(ingredients, eq(productIngredients.ingredientId, ingredients.id));
+
         res.json({
             success: true,
             categories,
-            products,
+            products: products.map((product) => ({
+                ...product,
+                recipe: recipeItems.filter((item) => item.productId === product.id),
+            })),
             combos: combos.map((combo) => ({
                 ...combo,
                 items: comboItems.filter((item) => item.comboId === combo.id),
@@ -280,6 +304,7 @@ export const setProductRecipe = async (req, res, next) => {
     try {
         const { productId } = req.params;
         const { ingredients } = req.body; 
+        await inventoryService.ensureInventoryTables(req.tenantDb);
         await menuService.updateProductRecipe(req.tenantDb, productId, ingredients);
 
         res.json({

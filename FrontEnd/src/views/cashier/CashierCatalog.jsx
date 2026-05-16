@@ -88,15 +88,20 @@ export const CashierCatalog = () => {
     setIsSaving(true);
 
     try {
-      const result = await createOrder({
+      const orderPayload = {
         fulfillmentType,
-        tableIdentifier: fulfillmentType === "dine_in" ? tableIdentifier.trim() : null,
         items: cart.map((item) => ({
           itemType: item.itemType,
           itemId: item.itemId,
           quantity: item.quantity,
         })),
-      });
+      };
+
+      if (fulfillmentType === "dine_in") {
+        orderPayload.tableIdentifier = tableIdentifier.trim();
+      }
+
+      const result = await createOrder(orderPayload);
       setTicket(result.ticket);
       setCart([]);
       setFulfillmentType("");

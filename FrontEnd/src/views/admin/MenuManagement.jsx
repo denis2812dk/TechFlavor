@@ -5,6 +5,8 @@ import {
   createMenuProduct,
   getErrorMessage,
   getMenuCatalog,
+  listIngredients,
+  setProductRecipe,
   updateMenuCombo,
   updateMenuProduct,
 } from "../../lib/auth";
@@ -14,6 +16,7 @@ const emptyCategory = { name: "", description: "" };
 const emptyProduct = { name: "", description: "", price: "", categoryId: "" };
 const emptyComboItem = { productId: "", quantity: 1 };
 const emptyCombo = { name: "", description: "", price: "", items: [emptyComboItem] };
+const emptyRecipeItem = { ingredientId: "", quantity: "" };
 
 const getInitials = (value) => value
   .split(" ")
@@ -25,9 +28,12 @@ const getInitials = (value) => value
 export const MenuManagement = () => {
   const [activeTab, setActiveTab] = useState("Categorias");
   const [catalog, setCatalog] = useState({ categories: [], products: [], combos: [] });
+  const [ingredients, setIngredients] = useState([]);
   const [categoryForm, setCategoryForm] = useState(emptyCategory);
   const [productForm, setProductForm] = useState(emptyProduct);
   const [comboForm, setComboForm] = useState(emptyCombo);
+  const [recipeProduct, setRecipeProduct] = useState(null);
+  const [recipeRows, setRecipeRows] = useState([emptyRecipeItem]);
   const [status, setStatus] = useState("");
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(true);
@@ -35,8 +41,12 @@ export const MenuManagement = () => {
 
   const loadCatalog = async () => {
     try {
-      const data = await getMenuCatalog({ includeInactive: true });
+      const [data, ingredientData] = await Promise.all([
+        getMenuCatalog({ includeInactive: true }),
+        listIngredients(),
+      ]);
       setCatalog(data);
+      setIngredients(ingredientData.ingredients || []);
     } catch (requestError) {
       setError(getErrorMessage(requestError));
     } finally {
@@ -95,6 +105,7 @@ export const MenuManagement = () => {
   const handleTabChange = (tab) => {
     setActiveTab(tab);
     setShowCreate(false);
+    setRecipeProduct(null);
     clearMessages();
   };
 
@@ -183,6 +194,61 @@ export const MenuManagement = () => {
     try {
       await updateMenuProduct(product.id, { isActive: !product.isActive });
       setStatus(product.isActive ? "Producto oculto para caja." : "Producto visible en caja.");
+      await loadCatalog();
+    } catch (requestError) {
+      setError(getErrorMessage(requestError));
+    }
+  };
+
+  const openRecipeEditor = (product) => {
+    clearMessages();
+    setRecipeProduct(product);
+    setRecipeRows(
+      product.recipe?.length
+        ? product.recipe.map((item) => ({
+          ingredientId: item.ingredientId,
+          quantity: item.quantity,
+        }))
+        : [{ ...emptyRecipeItem }],
+    );
+  };
+
+  const updateRecipeRow = (index, field, value) => {
+    setRecipeRows((rows) => rows.map((row, rowIndex) => (
+      rowIndex === index ? { ...row, [field]: value } : row
+    )));
+  };
+
+  const addRecipeRow = () => {
+    setRecipeRows((rows) => [...rows, { ...emptyRecipeItem }]);
+  };
+
+  const removeRecipeRow = (index) => {
+    setRecipeRows((rows) => (
+      rows.length === 1
+        ? [{ ...emptyRecipeItem }]
+        : rows.filter((_, rowIndex) => rowIndex !== index)
+    ));
+  };
+
+  const handleSaveRecipe = async (event) => {
+    event.preventDefault();
+    clearMessages();
+
+    if (!recipeProduct) return;
+
+    const recipe = recipeRows
+      .filter((row) => row.ingredientId && row.quantity)
+      .map((row) => ({
+        ingredientId: row.ingredientId,
+        quantity: Number(row.quantity),
+      }));
+
+    try {
+      await setProductRecipe(recipeProduct.id, { ingredients: recipe });
+      setRecipeProduct(null);
+      setRecipeRows([{ ...emptyRecipeItem }]);
+      setStatus("Receta actualizada correctamente.");
       await loadCatalog();
     } catch (requestError) {
       setError(getErrorMessage(requestError));
@@ -306,6 +372,48 @@ export const MenuManagement = () => {
       {error && <p className="admin-users-error">{error}</p>}
       {isLoading && <p className="menu-loading">Cargando catalogo...</p>}
 
+      {recipeProduct && activeTab === "Productos" && (
+        <form className="menu-recipe-panel" onSubmit={handleSaveRecipe}>
+          <div className="menu-recipe-head">
+            <div>
+              <p className="admin-users-kicker">Receta</p>
+              <h3>{recipeProduct.name}</h3>
+              <span>Define cuánto inventario descuenta cada venta de este producto.</span>
+            </div>
+            <button type="button" onClick={() => setRecipeProduct(null)}>Cerrar</button>
+          </div>
+
+          <div className="menu-recipe-list">
+            {recipeRows.map((row, index) => (
+              <div className="menu-recipe-row" key={`recipe-${index}`}>
+                <select value={row.ingredientId} onChange={(event) => updateRecipeRow(index, "ingredientId", event.target.value)}>
+                  <option value="">Seleccionar ingrediente</option>
+                  {ingredients.map((ingredient) => (
+                    <option key={ingredient.id} value={ingredient.id}>
+                      {ingredient.name} ({ingredient.unitOfMeasure})
+                    </option>
+                  ))}
+                </select>
+                <input
+                  type="number"
+                  min="0.01"
+                  step="0.01"
+                  value={row.quantity}
+                  onChange={(event) => updateRecipeRow(index, "quantity", event.target.value)}
+                  placeholder="Cantidad"
+                />
+                <button type="button" onClick={() => removeRecipeRow(index)}>Quitar</button>
+              </div>
+            ))}
+          </div>
+
+          <div className="menu-recipe-actions">
+            <button type="button" onClick={addRecipeRow}>+ Agregar ingrediente</button>
+            <button type="submit">Guardar receta</button>
+          </div>
+        </form>
+      )}
+
       {activeTab === "Productos" && (
         <div className="menu-card-grid">
           {catalog.products.map((product) => (
@@ -314,9 +422,23 @@ export const MenuManagement = () => {
               <div className="menu-card-icon">{getInitials(product.name)}</div>
               <h3>{product.name}</h3>
               <p>{product.description || "Producto disponible para venta en caja."}</p>
+              {product.recipe?.length ? (
+                <div className="menu-card-recipe">
+                  {product.recipe.map((item) => (
+                    <span key={item.id}>{item.quantity} {item.unitOfMeasure} {item.ingredientName}</span>
+                  ))}
+                </div>
+              ) : (
+                <div className="menu-card-recipe">
+                  <span>Sin receta de inventario</span>
+                </div>
+              )}
               <div className="menu-card-foot">
                 <span>${product.price}</span>
-                <button type="button" className={product.isActive ? "menu-switch is-on" : "menu-switch"} onClick={() => toggleProduct(product)} aria-label="Cambiar disponibilidad" />
+                <div className="menu-card-actions">
+                  <button type="button" onClick={() => openRecipeEditor(product)}>Receta</button>
+                  <button type="button" className={product.isActive ? "menu-switch is-on" : "menu-switch"} onClick={() => toggleProduct(product)} aria-label="Cambiar disponibilidad" />
+                </div>
               </div>
             </article>
           ))}

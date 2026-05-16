@@ -54,7 +54,7 @@ const getSidebarItems = (role) => {
       { label: "Orders", icon: "orders", path: "/admin/orders" },
       { label: "Tables", icon: "tables", path: "/admin/tables", disabled: true },
       { label: "Menu", icon: "menu", path: "/admin/menu" },
-      { label: "Inventory", icon: "inventory", path: "/admin/inventory", disabled: true },
+      { label: "Inventory", icon: "inventory", path: "/admin/inventory" },
       { label: "Reports", icon: "reports", path: "/admin/reports", disabled: true },
       { label: "Users", icon: "users", path: "/admin/users" },
       { label: "Settings", icon: "settings", path: "/admin/settings", disabled: true },
@@ -65,7 +65,7 @@ const getSidebarItems = (role) => {
     return [
       { label: "Dashboard", icon: "dashboard", path: "/gerente" },
       { label: "Menu", icon: "menu", path: "/gerente/menu" },
-      { label: "Inventory", icon: "inventory", path: "/gerente/inventory", disabled: true },
+      { label: "Inventory", icon: "inventory", path: "/gerente/inventory" },
       { label: "Reports", icon: "reports", path: "/gerente/reports", disabled: true },
     ];
   }

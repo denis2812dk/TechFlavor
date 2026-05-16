@@ -26,6 +26,9 @@ import {
     listTenantUsers,
 } from "../controllers/tenantUsersController.js";
 import {
+    createIngredient,
+    deleteIngredient,
+    updateIngredient,
     registerShrinkage,
     registerSupplierIncidence,
     listIngredients
@@ -70,6 +73,9 @@ router.patch("/orders/:orderId/deliver", tenantContext, requireTenantRoles(ROLES
 
 // RUTAS DE INVENTARIO Y PROVEEDORES
 router.get("/inventory/ingredients", tenantContext, requireTenantRoles(ROLES.ADMIN, ROLES.GERENTE), listIngredients);
+router.post("/inventory/ingredients", tenantContext, requireTenantRoles(ROLES.ADMIN, ROLES.GERENTE), createIngredient);
+router.patch("/inventory/ingredients/:ingredientId", tenantContext, requireTenantRoles(ROLES.ADMIN, ROLES.GERENTE), updateIngredient);
+router.delete("/inventory/ingredients/:ingredientId", tenantContext, requireTenantRoles(ROLES.ADMIN, ROLES.GERENTE), deleteIngredient);
 router.post("/inventory/shrinkage", tenantContext, requireTenantRoles(ROLES.ADMIN, ROLES.GERENTE), validateSchema(createShrinkageSchema),registerShrinkage);
 
 router.post("/inventory/suppliers/incidences", tenantContext, requireTenantRoles(ROLES.ADMIN, ROLES.GERENTE), registerSupplierIncidence);

@@ -3,6 +3,7 @@ import "./App.css";
 import { ProtectedRoute } from "./components/ProtectedRoute";
 import { getSession, signOut } from "./lib/auth";
 import { ROLE_HOME_PATHS, ROLES } from "./lib/constants/roles";
+import { InventoryManagement } from "./views/admin/InventoryManagement";
 import { MenuManagement } from "./views/admin/MenuManagement";
 import { UserManagement } from "./views/admin/UserManagement";
 import { CashierCatalog } from "./views/cashier/CashierCatalog";
@@ -32,6 +33,11 @@ const ROUTES = {
     roles: [ROLES.ADMIN],
     title: "Ordenes",
     description: "Historial de pedidos, tickets y estados operativos.",
+  },
+  "/admin/inventory": {
+    roles: [ROLES.ADMIN],
+    title: "Inventario",
+    description: "Control de insumos, existencias y registro de merma.",
   },
   "/cajero": {
     roles: [ROLES.CAJERO, ROLES.ADMIN],
@@ -67,6 +73,11 @@ const ROUTES = {
     roles: [ROLES.GERENTE, ROLES.ADMIN],
     title: "Menu",
     description: "Categorias, productos y combos disponibles para caja.",
+  },
+  "/gerente/inventory": {
+    roles: [ROLES.GERENTE, ROLES.ADMIN],
+    title: "Inventario",
+    description: "Control de insumos, existencias y registro de merma.",
   },
 };
 
@@ -204,6 +215,7 @@ function App() {
       >
         {path === "/admin/users" ? <UserManagement /> : null}
         {path === "/admin/menu" || path === "/gerente/menu" ? <MenuManagement /> : null}
+        {path === "/admin/inventory" || path === "/gerente/inventory" ? <InventoryManagement /> : null}
         {path === "/admin/orders" || path === "/cajero/orders" ? <OrdersList /> : null}
         {path === "/cajero" ? <CashierCatalog /> : null}
         {path === "/cocina" ? <KitchenDisplay /> : null}
