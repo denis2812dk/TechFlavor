@@ -46,6 +46,8 @@ export const UserManagement = () => {
   const [roleFilter, setRoleFilter] = useState("all");
   const [statusFilter, setStatusFilter] = useState("all");
   const [isCreateOpen, setIsCreateOpen] = useState(false);
+  const [editingUser, setEditingUser] = useState(null);
+  const [activeMenu, setActiveMenu] = useState(null);
 
   const filteredEmployees = useMemo(() => {
     const query = searchQuery.trim().toLowerCase();
@@ -100,6 +102,33 @@ export const UserManagement = () => {
     } finally {
       setIsSaving(false);
     }
+  };
+
+  // Mockup: Funciones solo visuales
+  const handleEditClick = (employee) => {
+    setEditingUser({ ...employee });
+    setActiveMenu(null);
+  };
+
+  const handleDeleteClick = (employee) => {
+    if (window.confirm(`¿Estás seguro de que deseas eliminar a ${employee.name}?`)) {
+      setEmployees((current) => current.filter((e) => e.id !== employee.id));
+      setStatus(`${employee.name} fue eliminado (Mockup).`);
+    }
+    setActiveMenu(null);
+  };
+
+  const handleEditSubmit = (event) => {
+    event.preventDefault();
+    setEmployees((current) =>
+      current.map((e) =>
+        e.id === editingUser.id
+          ? { ...e, name: editingUser.name, tenantRole: editingUser.tenantRole, status: editingUser.status }
+          : e
+      )
+    );
+    setStatus(`${editingUser.name} fue actualizado (Mockup).`);
+    setEditingUser(null);
   };
 
   return (
@@ -203,9 +232,22 @@ export const UserManagement = () => {
                     </span>
                   </td>
                   <td>
-                    <button className="users-row-menu" type="button" aria-label={`Acciones para ${employee.name}`}>
-                      ⋮
-                    </button>
+                    <div style={{ position: "relative" }}>
+                      <button
+                        className="users-row-menu"
+                        type="button"
+                        aria-label={`Acciones para ${employee.name}`}
+                        onClick={() => setActiveMenu(activeMenu === employee.id ? null : employee.id)}
+                      >
+                        ⋮
+                      </button>
+                      {activeMenu === employee.id && (
+                        <div style={{ position: "absolute", right: "100%", top: "0", background: "white", border: "1px solid #e2e8f0", borderRadius: "6px", padding: "4px", boxShadow: "0 4px 6px -1px rgb(0 0 0 / 0.1)", zIndex: 10, minWidth: "120px", display: "flex", flexDirection: "column", gap: "4px" }}>
+                          <button type="button" style={{ textAlign: "left", padding: "6px 12px", background: "transparent", border: "none", cursor: "pointer", borderRadius: "4px", fontSize: "14px" }} onClick={() => handleEditClick(employee)}>Editar</button>
+                          <button type="button" style={{ textAlign: "left", padding: "6px 12px", background: "transparent", border: "none", cursor: "pointer", borderRadius: "4px", fontSize: "14px", color: "#ef4444" }} onClick={() => handleDeleteClick(employee)}>Eliminar</button>
+                        </div>
+                      )}
+                    </div>
                   </td>
                 </tr>
               ))}
@@ -293,6 +335,70 @@ export const UserManagement = () => {
                 </button>
                 <button type="submit" disabled={isSaving}>
                   {isSaving ? "Creando..." : "Crear usuario"}
+                </button>
+              </footer>
+            </form>
+          </section>
+        </div>
+      )}
+
+      {editingUser && (
+        <div className="users-modal-backdrop" role="presentation">
+          <section className="users-modal" role="dialog" aria-modal="true" aria-labelledby="edit-user-title">
+            <header className="users-modal-head">
+              <div>
+                <h3 id="edit-user-title">Editar Usuario</h3>
+                <p>Modifica la información, el rol o el estado de este empleado.</p>
+              </div>
+              <button type="button" onClick={() => setEditingUser(null)} aria-label="Cerrar modal">x</button>
+            </header>
+
+            <form className="users-create-panel users-create-modal-form" onSubmit={handleEditSubmit}>
+              <label>
+                <span>Nombre</span>
+                <input
+                  type="text"
+                  value={editingUser.name}
+                  onChange={(event) => setEditingUser(current => ({ ...current, name: event.target.value }))}
+                />
+              </label>
+
+              <label>
+                <span>Correo de acceso</span>
+                <input
+                  type="email"
+                  value={editingUser.email}
+                  disabled
+                  title="El correo no se puede cambiar una vez creado"
+                  style={{ opacity: 0.6, cursor: "not-allowed" }}
+                />
+              </label>
+
+              <label>
+                <span>Rol</span>
+                <select value={editingUser.tenantRole} onChange={(event) => setEditingUser(current => ({ ...current, tenantRole: event.target.value }))}>
+                  {ROLE_OPTIONS.map((role) => (
+                    <option key={role.value} value={role.value}>
+                      {role.label}
+                    </option>
+                  ))}
+                </select>
+              </label>
+
+              <label>
+                <span>Estado</span>
+                <select value={editingUser.status} onChange={(event) => setEditingUser(current => ({ ...current, status: event.target.value }))}>
+                  <option value="active">Activo</option>
+                  <option value="inactive">Inactivo</option>
+                </select>
+              </label>
+
+              <footer className="users-modal-actions">
+                <button className="users-secondary-action" type="button" onClick={() => setEditingUser(null)}>
+                  Cancelar
+                </button>
+                <button type="submit">
+                  Guardar cambios
                 </button>
               </footer>
             </form>
