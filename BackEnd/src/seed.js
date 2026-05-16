@@ -5,7 +5,7 @@ import { and, eq } from "drizzle-orm";
 import { auth } from "./config/auth.js";
 import { connectDB, db } from "./config/db.js";
 import { ROLES } from "./constants/roles.js";
-import { accounts, restaurantUsers, restaurants, users } from "./Models/schema.js";
+import { accounts, restaurantUsers, restaurants, users } from "./models/schema.js";
 
 const DEMO_RESTAURANT = {
   id: "restaurant_brasa_norte",
