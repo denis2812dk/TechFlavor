@@ -257,7 +257,6 @@ export const InventoryManagement = () => {
                 placeholder="Ej. 2.50"
               />
             </label>
-
             <label>
               <span>Motivo</span>
               <textarea

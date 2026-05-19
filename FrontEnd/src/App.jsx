@@ -3,9 +3,9 @@ import "./App.css";
 import { ProtectedRoute } from "./components/ProtectedRoute";
 import { getSession, signOut } from "./lib/auth";
 import { ROLE_HOME_PATHS, ROLES } from "./lib/constants/roles";
-import { InventoryManagement } from "./views/admin/InventoryManagement";
-import { MenuManagement } from "./views/admin/MenuManagement";
-import { UserManagement } from "./views/admin/UserManagement";
+import { InventoryManagement } from "./views/manager/InventoryManagement";
+import { MenuManagement } from "./views/manager/MenuManagement";
+import { UserManagement } from "./views/manager/UserManagement";
 import { CashierCatalog } from "./views/cashier/CashierCatalog";
 import { DispatchOrders } from "./views/dispatch/DispatchOrders";
 import { KitchenDisplay } from "./views/kitchen/KitchenDisplay";
@@ -14,27 +14,27 @@ import Login from "./views/shared/Login.jsx";
 import { RoleDashboard } from "./views/shared/RoleDashboard";
 
 const ROUTES = {
-  "/admin": {
+  "/manager": {
     roles: [ROLES.ADMIN],
-    title: "Panel administrador",
+    title: "Panel manager",
     description: "Gestion de usuarios, configuracion general y control del restaurante.",
   },
-  "/admin/users": {
+  "/manager/users": {
     roles: [ROLES.ADMIN],
     title: "Usuarios",
     description: "Creacion de empleados y asignacion de roles por restaurante.",
   },
-  "/admin/menu": {
+  "/manager/menu": {
     roles: [ROLES.ADMIN],
     title: "Menu",
     description: "Categorias, productos y combos disponibles para caja.",
   },
-  "/admin/orders": {
+  "/manager/orders": {
     roles: [ROLES.ADMIN],
     title: "Ordenes",
     description: "Historial de pedidos, tickets y estados operativos.",
   },
-  "/admin/inventory": {
+  "/manager/inventory": {
     roles: [ROLES.ADMIN],
     title: "Inventario",
     description: "Control de insumos, existencias y registro de merma.",
@@ -213,10 +213,10 @@ function App() {
         currentPath={path}
         onNavigate={navigate}
       >
-        {path === "/admin/users" ? <UserManagement /> : null}
-        {path === "/admin/menu" || path === "/gerente/menu" ? <MenuManagement /> : null}
-        {path === "/admin/inventory" || path === "/gerente/inventory" ? <InventoryManagement /> : null}
-        {path === "/admin/orders" || path === "/cajero/orders" ? <OrdersList /> : null}
+        {path === "/manager/users" ? <UserManagement /> : null}
+        {path === "/manager/menu" || path === "/gerente/menu" ? <MenuManagement /> : null}
+        {path === "/manager/inventory" || path === "/gerente/inventory" ? <InventoryManagement /> : null}
+        {path === "/manager/orders" || path === "/cajero/orders" ? <OrdersList /> : null}
         {path === "/cajero" ? <CashierCatalog /> : null}
         {path === "/cocina" ? <KitchenDisplay /> : null}
         {path === "/despacho" ? <DispatchOrders /> : null}

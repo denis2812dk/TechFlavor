@@ -72,6 +72,6 @@ router.post("/inventory/shrinkage", tenantContext, requireTenantRoles(ROLES.ADMI
 router.post("/inventory/suppliers/incidences", tenantContext, requireTenantRoles(ROLES.ADMIN, ROLES.GERENTE), registerSupplierIncidence);
 
 //Rutas de promociones
-router.post("/promotions", tenantContext, requireTenantRoles(ROLES.ADMIN, ROLES.GERENTE), validateSchema(createPromotionSchema), createTenantPromotion);
-router.get( "/promotions/active", tenantContext, requireTenantRoles(ROLES.ADMIN, ROLES.GERENTE, ROLES.CAJERO), listActivePromotions);
+router.post("/promotions", tenantContext, requireTenantRoles(ROLES.GERENTE), validateSchema(createPromotionSchema), createTenantPromotion);
+router.get( "/promotions/active", tenantContext, requireTenantRoles(ROLES.GERENTE, ROLES.CAJERO), listActivePromotions);
 export default router;

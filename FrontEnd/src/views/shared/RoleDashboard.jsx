@@ -50,14 +50,14 @@ const iconMap = {
 const getSidebarItems = (role) => {
   if (role === "admin") {
     return [
-      { label: "Dashboard", icon: "dashboard", path: "/admin" },
-      { label: "Orders", icon: "orders", path: "/admin/orders" },
-      { label: "Tables", icon: "tables", path: "/admin/tables", disabled: true },
-      { label: "Menu", icon: "menu", path: "/admin/menu" },
-      { label: "Inventory", icon: "inventory", path: "/admin/inventory" },
-      { label: "Reports", icon: "reports", path: "/admin/reports", disabled: true },
-      { label: "Users", icon: "users", path: "/admin/users" },
-      { label: "Settings", icon: "settings", path: "/admin/settings", disabled: true },
+      { label: "Dashboard", icon: "dashboard", path: "/manager" },
+      { label: "Orders", icon: "orders", path: "/manager/orders" },
+      { label: "Tables", icon: "tables", path: "/manager/tables", disabled: true },
+      { label: "Menu", icon: "menu", path: "/manager/menu" },
+      { label: "Inventory", icon: "inventory", path: "/manager/inventory" },
+      { label: "Reports", icon: "reports", path: "/manager/reports", disabled: true },
+      { label: "Users", icon: "users", path: "/manager/users" },
+      { label: "Settings", icon: "settings", path: "/manager/settings", disabled: true },
     ];
   }
 
@@ -242,7 +242,7 @@ export const RoleDashboard = ({ title, description, session, onLogout, children,
               </div>
               <div>
                 <div className="sidebar-brand-title">RestaurantOS</div>
-                <div className="sidebar-brand-subtitle">Admin dashboard</div>
+                <div className="sidebar-brand-subtitle">Manager dashboard</div>
               </div>
             </div>
 

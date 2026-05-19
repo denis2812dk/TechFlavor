@@ -1,23 +1,31 @@
 import { useEffect, useMemo, useState } from "react";
 import { createOrder, getErrorMessage, getMenuCatalog } from "../../lib/auth";
+import { listActivePromotions } from "../../lib/promotions"; 
 
 const toMoney = (value) => Number(value || 0).toFixed(2);
 
 export const CashierCatalog = () => {
   const [catalog, setCatalog] = useState({ products: [], combos: [] });
+  const [activePromotions, setActivePromotions] = useState([]); 
   const [cart, setCart] = useState([]);
   const [ticket, setTicket] = useState(null);
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
+  
   const [fulfillmentType, setFulfillmentType] = useState("");
   const [tableIdentifier, setTableIdentifier] = useState("");
+  const [selectedPromotionId, setSelectedPromotionId] = useState(""); 
 
   useEffect(() => {
-    const loadCatalog = async () => {
+    const loadInitialData = async () => {
       try {
-        const data = await getMenuCatalog();
-        setCatalog(data);
+        const [catalogData, promosData] = await Promise.all([
+          getMenuCatalog(),
+          listActivePromotions()
+        ]);
+        setCatalog(catalogData);
+        setActivePromotions(promosData.promotions || []);
       } catch (requestError) {
         setError(getErrorMessage(requestError));
       } finally {
@@ -25,7 +33,7 @@ export const CashierCatalog = () => {
       }
     };
 
-    loadCatalog();
+    loadInitialData();
   }, []);
 
   const addToCart = (item, itemType) => {
@@ -46,6 +54,7 @@ export const CashierCatalog = () => {
           cartId: `${itemType}-${item.id}`,
           itemId: item.id,
           itemType,
+          categoryId: item.categoryId || null, 
           name: item.name,
           price: Number(item.price),
           quantity: 1,
@@ -67,9 +76,40 @@ export const CashierCatalog = () => {
     setCart((currentCart) => currentCart.filter((item) => item.cartId !== cartId));
   };
 
-  const total = useMemo(() => (
-    cart.reduce((sum, item) => sum + item.price * item.quantity, 0)
-  ), [cart]);
+  const { subtotal, discount, total } = useMemo(() => {
+    let sub = 0;
+    let disc = 0;
+    
+    const activePromo = activePromotions.find(p => p.id === selectedPromotionId);
+
+    cart.forEach((item) => {
+      const lineSubtotal = item.price * item.quantity;
+      let lineDiscount = 0;
+
+      if (activePromo) {
+        const applies = activePromo.targets.some(target => 
+          target.targetType === 'all' || 
+          (target.targetType === 'product' && target.targetId === item.itemId) ||
+          (target.targetType === 'category' && target.targetId === item.categoryId)
+        );
+
+        if (applies) {
+          if (activePromo.discountType === 'percentage') {
+            lineDiscount = lineSubtotal * (Number(activePromo.discountValue) / 100);
+          } else if (activePromo.discountType === 'fixed_amount') {
+            lineDiscount = Number(activePromo.discountValue) * item.quantity;
+          }
+        }
+      }
+
+      if (lineDiscount > lineSubtotal) lineDiscount = lineSubtotal; 
+
+      sub += lineSubtotal;
+      disc += lineDiscount;
+    });
+
+    return { subtotal: sub, discount: disc, total: sub - disc };
+  }, [cart, activePromotions, selectedPromotionId]);
 
   const handleCreateOrder = async () => {
     setError("");
@@ -90,6 +130,7 @@ export const CashierCatalog = () => {
     try {
       const orderPayload = {
         fulfillmentType,
+        promotionId: selectedPromotionId || undefined, // Mandamos la promo al backend
         items: cart.map((item) => ({
           itemType: item.itemType,
           itemId: item.itemId,
@@ -106,6 +147,7 @@ export const CashierCatalog = () => {
       setCart([]);
       setFulfillmentType("");
       setTableIdentifier("");
+      setSelectedPromotionId("");
     } catch (requestError) {
       setError(getErrorMessage(requestError));
     } finally {
@@ -215,11 +257,43 @@ export const CashierCatalog = () => {
               />
             </label>
           )}
+
+          {/*  SECCIÓN DE PROMOCIONES */}
+          {activePromotions.length > 0 && cart.length > 0 && (
+            <label className="cashier-table-field" style={{ marginTop: '1rem' }}>
+              <span>Aplicar Promoción</span>
+              <select 
+                value={selectedPromotionId} 
+                onChange={(e) => setSelectedPromotionId(e.target.value)}
+                style={{ width: '100%', padding: '0.5rem', borderRadius: '4px', border: '1px solid #ccc' }}
+              >
+                <option value="">Sin promoción</option>
+                {activePromotions.map(promo => (
+                  <option key={promo.id} value={promo.id}>
+                    {promo.name} ({promo.discountType === 'percentage' ? `-${promo.discountValue}%` : `-$${promo.discountValue}`})
+                  </option>
+                ))}
+              </select>
+            </label>
+          )}
         </section>
 
-        <div className="cashier-total">
-          <span>Total</span>
-          <strong>${toMoney(total)}</strong>
+        {/* RESUMEN DE COBROS ACTUALIZADO */}
+        <div className="cashier-total-summary" style={{ margin: '1.5rem 0', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', color: '#666' }}>
+            <span>Subtotal</span>
+            <span>${toMoney(subtotal)}</span>
+          </div>
+          {discount > 0 && (
+            <div style={{ display: 'flex', justifyContent: 'space-between', color: '#16a34a', fontWeight: '500' }}>
+              <span>Descuento</span>
+              <span>-${toMoney(discount)}</span>
+            </div>
+          )}
+          <div className="cashier-total" style={{ borderTop: '1px solid #eee', paddingTop: '0.5rem', marginTop: '0.5rem' }}>
+            <span>Total</span>
+            <strong>${toMoney(total)}</strong>
+          </div>
         </div>
 
         <button className="cashier-checkout" type="button" disabled={cart.length === 0 || isSaving} onClick={handleCreateOrder}>
@@ -251,7 +325,17 @@ export const CashierCatalog = () => {
               ))}
             </div>
             <div className="ticket-total">
-              <span>Total</span>
+              <span>Subtotal</span>
+              <b>${ticket.subtotal}</b>
+            </div>
+            {Number(ticket.discountTotal) > 0 && (
+              <div className="ticket-total" style={{ color: '#16a34a' }}>
+                <span>Descuento ({ticket.promotionApplied})</span>
+                <b>-${ticket.discountTotal}</b>
+              </div>
+            )}
+            <div className="ticket-total" style={{ borderTop: '1px dashed #000', marginTop: '5px', paddingTop: '5px' }}>
+              <span>TOTAL A PAGAR</span>
               <strong>${ticket.total}</strong>
             </div>
             <p>Cobro validado. Pedido enviado a cocina.</p>
