@@ -67,6 +67,8 @@ export const orders = mysqlTable("orders", {
     total: decimal("total", { precision: 10, scale: 2 }).notNull(),
     cashierUserId: varchar("cashier_user_id", { length: 36 }).notNull(),
     cashierName: varchar("cashier_name", { length: 120 }).notNull(),
+    discountTotal: decimal("discount_total", { precision: 10, scale: 2 }).notNull().default("0.00"),
+    promotionId: varchar("promotion_id", { length: 36 }),
     createdAt: timestamp("created_at").defaultNow(),
     updatedAt: timestamp("updated_at").defaultNow().onUpdateNow(),
 });
@@ -135,4 +137,25 @@ export const supplierIncidences = mysqlTable("supplier_incidences", {
     date: timestamp("date").defaultNow().notNull(),
     status: varchar("status", { length: 20 }).notNull().default("ABIERTA"), 
     resolutionDate: timestamp("resolution_date"),
+});
+export const promotions = mysqlTable("promotions", {
+    id: varchar("id", { length: 36 }).primaryKey(),
+    name: varchar("name", { length: 120 }).notNull(),
+    description: text("description"),
+    discountType: varchar("discount_type", { length: 20 }).notNull(), 
+    discountValue: decimal("discount_value", { precision: 10, scale: 2 }).notNull(),
+    startDate: timestamp("start_date").notNull(),
+    endDate: timestamp("end_date").notNull(),
+    isActive: boolean("is_active").notNull().default(true),
+    createdAt: timestamp("created_at").defaultNow(),
+    updatedAt: timestamp("updated_at").defaultNow().onUpdateNow(),
+});
+
+export const promotionTargets = mysqlTable("promotion_targets", {
+    id: varchar("id", { length: 36 }).primaryKey(),
+    promotionId: varchar("promotion_id", { length: 36 })
+        .notNull()
+        .references(() => promotions.id, { onDelete: "cascade" }),
+    targetType: varchar("target_type", { length: 20 }).notNull(), 
+    targetId: varchar("target_id", { length: 36 }), 
 });

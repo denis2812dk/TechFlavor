@@ -3,16 +3,8 @@ import {
     getTenantSettings,
     updateTenantSettings,
 } from "../controllers/tenantSettingsController.js";
-import {
-    createMenuCategory,
-    createMenuCombo,
-    createMenuProduct,
-    listMenuCatalog,
-    updateMenuCombo,
-    updateMenuProduct,
-    setProductRecipe,
-    deleteProduct
-} from "../controllers/tenantMenuController.js";
+import { createMenuCategory, createMenuCombo, createMenuProduct, listMenuCatalog, updateMenuCombo, updateMenuProduct,
+    setProductRecipe, deleteProduct } from "../controllers/tenantMenuController.js";
 import {
     createTenantOrder,
     deliverDispatchOrder,
@@ -33,7 +25,7 @@ import {
     registerSupplierIncidence,
     listIngredients
 } from "../controllers/tenantInventoryController.js";
-
+import { createTenantPromotion, listActivePromotions } from "../controllers/tenantPromotionController.js";
 import { ROLES } from "../constants/roles.js";
 import { requireTenantRoles } from "../middleware/tenantAuthorization.js";
 import { tenantContext } from "../middleware/tenantContext.js";
@@ -43,7 +35,7 @@ import {
     createProductSchema, 
     createComboSchema, 
     createShrinkageSchema,
-    updateRecipeSchema 
+    updateRecipeSchema, createPromotionSchema
 } from "../schemas/tenantSchemas.js";
 
 const router = Router();
@@ -77,7 +69,9 @@ router.post("/inventory/ingredients", tenantContext, requireTenantRoles(ROLES.AD
 router.patch("/inventory/ingredients/:ingredientId", tenantContext, requireTenantRoles(ROLES.ADMIN, ROLES.GERENTE), updateIngredient);
 router.delete("/inventory/ingredients/:ingredientId", tenantContext, requireTenantRoles(ROLES.ADMIN, ROLES.GERENTE), deleteIngredient);
 router.post("/inventory/shrinkage", tenantContext, requireTenantRoles(ROLES.ADMIN, ROLES.GERENTE), validateSchema(createShrinkageSchema),registerShrinkage);
-
 router.post("/inventory/suppliers/incidences", tenantContext, requireTenantRoles(ROLES.ADMIN, ROLES.GERENTE), registerSupplierIncidence);
 
+//Rutas de promociones
+router.post("/promotions", tenantContext, requireTenantRoles(ROLES.ADMIN, ROLES.GERENTE), validateSchema(createPromotionSchema), createTenantPromotion);
+router.get( "/promotions/active", tenantContext, requireTenantRoles(ROLES.ADMIN, ROLES.GERENTE, ROLES.CAJERO), listActivePromotions);
 export default router;

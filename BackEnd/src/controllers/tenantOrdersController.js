@@ -1,10 +1,12 @@
 import { randomUUID } from "crypto";
-import { desc, eq, sql } from "drizzle-orm";
+import { and, desc, eq, gte, lte, sql } from "drizzle-orm";
 import {
     menuCombos,
     menuProducts,
     orderItems,
     orders,
+    promotions, 
+    promotionTargets 
 } from "../models/tenantSchema.js";
 import { deductInventoryForOrder } from "../services/tenantInventoryService.js";
 
@@ -28,42 +30,28 @@ const ignoreDuplicateColumn = (error) => {
 
 const ensureOrderColumns = async (tenantDb) => {
     try {
-        await tenantDb.execute(sql`
-            ALTER TABLE orders
-            ADD COLUMN fulfillment_type varchar(30) NOT NULL DEFAULT 'takeaway' AFTER status
-        `);
-    } catch (error) {
-        ignoreDuplicateColumn(error);
-    }
+        await tenantDb.execute(sql`ALTER TABLE orders ADD COLUMN fulfillment_type varchar(30) NOT NULL DEFAULT 'takeaway' AFTER status`);
+    } catch (error) { ignoreDuplicateColumn(error); }
 
     try {
-        await tenantDb.execute(sql`
-            ALTER TABLE orders
-            ADD COLUMN table_identifier varchar(60) NULL AFTER fulfillment_type
-        `);
-    } catch (error) {
-        ignoreDuplicateColumn(error);
-    }
+        await tenantDb.execute(sql`ALTER TABLE orders ADD COLUMN table_identifier varchar(60) NULL AFTER fulfillment_type`);
+    } catch (error) { ignoreDuplicateColumn(error); }
 
     try {
-        await tenantDb.execute(sql`
-            ALTER TABLE orders
-            ADD COLUMN cashier_user_id varchar(36) NOT NULL DEFAULT 'legacy' AFTER total
-        `);
-    } catch (error) {
-        ignoreDuplicateColumn(error);
-    }
+        await tenantDb.execute(sql`ALTER TABLE orders ADD COLUMN cashier_user_id varchar(36) NOT NULL DEFAULT 'legacy' AFTER total`);
+    } catch (error) { ignoreDuplicateColumn(error); }
 
     try {
-        await tenantDb.execute(sql`
-            ALTER TABLE orders
-            ADD COLUMN cashier_name varchar(120) NOT NULL DEFAULT 'Sin responsable' AFTER cashier_user_id
-        `);
-    } catch (error) {
-        ignoreDuplicateColumn(error);
-    }
+        await tenantDb.execute(sql`ALTER TABLE orders ADD COLUMN cashier_name varchar(120) NOT NULL DEFAULT 'Sin responsable' AFTER cashier_user_id`);
+    } catch (error) { ignoreDuplicateColumn(error); }
+    try {
+        await tenantDb.execute(sql`ALTER TABLE orders ADD COLUMN discount_total decimal(10,2) NOT NULL DEFAULT 0.00 AFTER subtotal`);
+    } catch (error) { ignoreDuplicateColumn(error); }
+
+    try {
+        await tenantDb.execute(sql`ALTER TABLE orders ADD COLUMN promotion_id varchar(36) NULL AFTER discount_total`);
+    } catch (error) { ignoreDuplicateColumn(error); }
 };
-
 const findSaleItem = async (tenantDb, item) => {
     if (item.itemType === "product") {
         const [product] = await tenantDb
@@ -76,6 +64,7 @@ const findSaleItem = async (tenantDb, item) => {
         return {
             itemType: item.itemType,
             itemId: product.id,
+            categoryId: product.categoryId, 
             name: product.name,
             unitPrice: Number(product.price),
             quantity: item.quantity,
@@ -92,6 +81,7 @@ const findSaleItem = async (tenantDb, item) => {
     return {
         itemType: item.itemType,
         itemId: combo.id,
+        categoryId: null, 
         name: combo.name,
         unitPrice: Number(combo.price),
         quantity: item.quantity,
@@ -100,8 +90,7 @@ const findSaleItem = async (tenantDb, item) => {
 
 export const createTenantOrder = async (req, res, next) => {
     try {
-        // Los datos en req.body ya han sido validados y formateados por Zod en el middleware.
-        const { items, fulfillmentType, tableIdentifier } = req.body;
+        const { items, fulfillmentType, tableIdentifier, promotionId } = req.body;
 
         const saleItems = [];
         for (const item of items) {
@@ -114,9 +103,63 @@ export const createTenantOrder = async (req, res, next) => {
             }
             saleItems.push(saleItem);
         }
+        let subtotal = 0;
+        let discountTotal = 0;
+        let activePromotion = null;
+        let promoTargets = [];
+        if (promotionId) {
+            const now = new Date();
+            const [promo] = await req.tenantDb.select().from(promotions)
+                .where(and(
+                    eq(promotions.id, promotionId),
+                    eq(promotions.isActive, true),
+                    lte(promotions.startDate, now),
+                    gte(promotions.endDate, now)
+                )).limit(1);
 
-        const subtotal = saleItems.reduce((sum, item) => sum + item.unitPrice * item.quantity, 0);
-        const total = subtotal;
+            if (promo) {
+                activePromotion = promo;
+                promoTargets = await req.tenantDb.select().from(promotionTargets)
+                    .where(eq(promotionTargets.promotionId, promo.id));
+            } else {
+                return res.status(400).json({
+                    success: false,
+                    message: "La promoción ingresada no existe, está inactiva o ha expirado.",
+                });
+            }
+        }
+        for (const item of saleItems) {
+            const lineSubtotal = item.unitPrice * item.quantity;
+            let lineDiscount = 0;
+
+            if (activePromotion) {
+                const appliesToItem = promoTargets.some(target => 
+                    target.targetType === 'all' || 
+                    (target.targetType === 'product' && target.targetId === item.itemId) ||
+                    (target.targetType === 'category' && target.targetId === item.categoryId)
+                );
+
+                if (appliesToItem) {
+                    if (activePromotion.discountType === 'percentage') {
+                        lineDiscount = lineSubtotal * (Number(activePromotion.discountValue) / 100);
+                    } else if (activePromotion.discountType === 'fixed_amount') {
+                        lineDiscount = Number(activePromotion.discountValue) * item.quantity;
+                    }
+                }
+            }
+
+            // Un descuento nunca puede ser mayor al precio del producto
+            if (lineDiscount > lineSubtotal) lineDiscount = lineSubtotal;
+
+            item.lineSubtotal = lineSubtotal;
+            item.lineDiscount = lineDiscount;
+            item.lineNetTotal = lineSubtotal - lineDiscount; 
+
+            subtotal += lineSubtotal;
+            discountTotal += lineDiscount;
+        }
+
+        const total = subtotal - discountTotal;
         const orderId = randomUUID();
         const ticketCode = createTicketCode();
 
@@ -127,6 +170,8 @@ export const createTenantOrder = async (req, res, next) => {
             fulfillmentType,
             tableIdentifier: fulfillmentType === "dine_in" ? tableIdentifier : null,
             subtotal: money(subtotal),
+            discountTotal: money(discountTotal), 
+            promotionId: activePromotion ? activePromotion.id : null,
             total: money(total),
             cashierUserId: req.user.id,
             cashierName: req.user.name || req.user.email || "Usuario de caja",
@@ -143,10 +188,8 @@ export const createTenantOrder = async (req, res, next) => {
             name: item.name,
             unitPrice: money(item.unitPrice),
             quantity: item.quantity,
-            lineTotal: money(item.unitPrice * item.quantity),
+            lineTotal: money(item.lineNetTotal),
         })));
-
-        // Procesar el descuento de inventario
         await deductInventoryForOrder(req.tenantDb, orderId, saleItems);
 
         res.status(201).json({
@@ -164,10 +207,13 @@ export const createTenantOrder = async (req, res, next) => {
                     name: item.name,
                     quantity: item.quantity,
                     unitPrice: money(item.unitPrice),
-                    lineTotal: money(item.unitPrice * item.quantity),
+                    discount: money(item.lineDiscount),
+                    lineTotal: money(item.lineNetTotal),
                 })),
                 subtotal: order.subtotal,
+                discountTotal: order.discountTotal,
                 total: order.total,
+                promotionApplied: activePromotion ? activePromotion.name : null
             },
         });
     } catch (error) {

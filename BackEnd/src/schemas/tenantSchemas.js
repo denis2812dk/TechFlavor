@@ -57,3 +57,23 @@ export const updateRecipeSchema = z.object({
         }),
     ).min(1, "La receta debe tener al menos un ingrediente"),
 });
+export const createPromotionSchema = z.object({
+    name: z.string().min(1, "El nombre de la promoción es obligatorio").max(120),
+    description: z.string().optional(),
+    discountType: z.enum(["percentage", "fixed_amount"], {
+        errorMap: () => ({ message: "El tipo de descuento debe ser porcentaje o monto fijo" })
+    }),
+    discountValue: z.coerce.number().positive("El valor del descuento debe ser mayor a 0"),
+    startDate: z.string().datetime({ message: "Formato de fecha de inicio inválido (ISO-8601 esperado)" }),
+    endDate: z.string().datetime({ message: "Formato de fecha de fin inválido (ISO-8601 esperado)" }),
+    isActive: z.boolean().optional().default(true),
+    targets: z.array(
+        z.object({
+            targetType: z.enum(["product", "category", "all"]),
+            targetId: z.string().uuid("El ID del objetivo debe ser válido").optional().nullable()
+        })
+    ).min(1, "La promoción debe aplicar al menos a un producto, categoría o a todo el menú")
+}).refine(data => new Date(data.startDate) < new Date(data.endDate), {
+    message: "La fecha de finalización debe ser posterior a la fecha de inicio",
+    path: ["endDate"]
+});
