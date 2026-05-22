@@ -1,6 +1,11 @@
 import { useEffect, useMemo, useState } from "react";
 import { getErrorMessage, getMenuCatalog } from "../../lib/auth";
-import { createPromotion, listAllPromotions } from "../../lib/promotions";
+import {
+  createPromotion,
+  deletePromotion,
+  listAllPromotions,
+  updatePromotion,
+} from "../../lib/promotions";
 
 const emptyPromo = {
   code: "",
@@ -29,15 +34,23 @@ const parseLocal = (value) => {
   return new Date(year, month - 1, day, hours, minutes);
 };
 
+const formatForInput = (isoString) => {
+  if (!isoString) return "";
+  const date = new Date(isoString);
+  const offset = date.getTimezoneOffset() * 60000;
+  return new Date(date - offset).toISOString().slice(0, 16);
+};
+
 const normalizeCode = (value) => value.toUpperCase().replace(/[^A-Z0-9]/g, "");
 
-const formatDateTime = (value) => new Date(value).toLocaleString("es-SV", {
-  day: "2-digit",
-  month: "short",
-  year: "numeric",
-  hour: "2-digit",
-  minute: "2-digit",
-});
+const formatDateTime = (value) =>
+  new Date(value).toLocaleString("es-SV", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
 
 const formatTarget = (promotion) => {
   if (!promotion.targets || promotion.targets.length === 0) {
@@ -55,7 +68,11 @@ const formatTarget = (promotion) => {
 export const PromotionsManagement = () => {
   const [promotions, setPromotions] = useState([]);
   const [catalog, setCatalog] = useState({ products: [], categories: [] });
+  
   const [form, setForm] = useState(emptyPromo);
+  const [editingId, setEditingId] = useState(null);
+  const [activeTab, setActiveTab] = useState("current"); // "current" o "past"
+  
   const [status, setStatus] = useState("");
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(true);
@@ -86,12 +103,60 @@ export const PromotionsManagement = () => {
     setError("");
   };
 
-  const activeCount = useMemo(
-    () => promotions.filter((promotion) => promotion.isActive).length,
-    [promotions],
-  );
+  // Clasificación de promociones para las pestañas
+  const { currentPromos, pastPromos } = useMemo(() => {
+    const now = new Date();
+    const current = [];
+    const past = [];
 
-  const handleCreate = async (event) => {
+    promotions.forEach((promo) => {
+      const isExpired = new Date(promo.endDate) < now;
+      if (!promo.isActive || isExpired) {
+        past.push(promo);
+      } else {
+        current.push(promo);
+      }
+    });
+
+    return { currentPromos: current, pastPromos: past };
+  }, [promotions]);
+
+  const handleEditClick = (promo) => {
+    clearMessages();
+    const target = promo.targets && promo.targets[0] ? promo.targets[0] : { targetType: "all", targetId: "" };
+    
+    setForm({
+      code: promo.code,
+      name: promo.name,
+      description: promo.description || "",
+      discountType: promo.discountType,
+      discountValue: promo.discountValue,
+      startDate: formatForInput(promo.startDate),
+      endDate: formatForInput(promo.endDate),
+      targetType: target.targetType,
+      targetId: target.targetId || ""
+    });
+    setEditingId(promo.id);
+    setShowCreate(true);
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  };
+
+  const handleDeleteClick = async (promoId) => {
+    if (!window.confirm("¿Estás seguro de que deseas desactivar esta promocion? Los clientes no podran usar el codigo.")) {
+      return;
+    }
+    
+    clearMessages();
+    try {
+      await deletePromotion(promoId);
+      setStatus("Promocion desactivada correctamente.");
+      await loadData();
+    } catch (requestError) {
+      setError(getErrorMessage(requestError));
+    }
+  };
+
+  const handleCreateOrUpdate = async (event) => {
     event.preventDefault();
     clearMessages();
 
@@ -110,7 +175,7 @@ export const PromotionsManagement = () => {
       return;
     }
 
-    if (start < now) {
+    if (!editingId && start < now) {
       setError("La fecha y hora de inicio no pueden estar en el pasado.");
       return;
     }
@@ -129,7 +194,7 @@ export const PromotionsManagement = () => {
       const payload = {
         code,
         name: form.name.trim(),
-        description: form.description.trim(),
+        description: form.description.trim() || undefined,
         discountType: form.discountType,
         discountValue: Number(form.discountValue),
         startDate: start.toISOString(),
@@ -143,15 +208,24 @@ export const PromotionsManagement = () => {
         ],
       };
 
-      await createPromotion(payload);
+      if (editingId) {
+        await updatePromotion(editingId, payload);
+        setStatus("Promocion actualizada correctamente.");
+      } else {
+        await createPromotion(payload);
+        setStatus("Promocion creada y programada correctamente.");
+      }
+
       setForm(emptyPromo);
-      setStatus("Promocion creada y programada correctamente.");
+      setEditingId(null);
       setShowCreate(false);
       await loadData();
     } catch (requestError) {
       setError(getErrorMessage(requestError));
     }
   };
+
+  const activeCount = currentPromos.length;
 
   return (
     <div className="container-fluid py-4 px-3 px-lg-4">
@@ -163,7 +237,7 @@ export const PromotionsManagement = () => {
         </div>
         <div className="d-flex flex-wrap align-items-center gap-2">
           <span className="badge text-bg-light border rounded-pill px-3 py-2">
-            {activeCount} activas de {promotions.length}
+            {activeCount} vigentes o programadas
           </span>
           <button
             type="button"
@@ -171,6 +245,7 @@ export const PromotionsManagement = () => {
             onClick={() => {
               setShowCreate(!showCreate);
               clearMessages();
+              if(showCreate) { setForm(emptyPromo); setEditingId(null); }
             }}
           >
             {showCreate ? "Ocultar formulario" : "Nueva promocion"}
@@ -181,18 +256,42 @@ export const PromotionsManagement = () => {
       {status && <div className="alert alert-success">{status}</div>}
       {error && <div className="alert alert-danger">{error}</div>}
 
+      {/* PESTAÑAS DE NAVEGACIÓN */}
+      {!showCreate && (
+        <ul className="nav nav-pills mb-4">
+          <li className="nav-item">
+            <button 
+              className={`nav-link ${activeTab === "current" ? "active" : ""}`} 
+              onClick={() => setActiveTab("current")}
+              type="button"
+            >
+              Vigentes y Programadas
+            </button>
+          </li>
+          <li className="nav-item">
+            <button 
+              className={`nav-link ${activeTab === "past" ? "active" : ""}`} 
+              onClick={() => setActiveTab("past")}
+              type="button"
+            >
+              Historial (Inactivas)
+            </button>
+          </li>
+        </ul>
+      )}
+
       {showCreate && (
         <div className="card border-0 shadow-sm mb-4">
           <div className="card-body p-4 p-lg-5">
             <div className="d-flex flex-column flex-md-row justify-content-between gap-2 mb-4">
               <div>
-                <h3 className="h5 mb-1">Nueva promocion</h3>
-                <p className="text-muted mb-0">Registra el codigo que luego veran los cajeros al aplicar el descuento.</p>
+                <h3 className="h5 mb-1">{editingId ? "Editar promocion" : "Nueva promocion"}</h3>
+                <p className="text-muted mb-0">Registra el codigo que luego validaran los cajeros al aplicar el descuento.</p>
               </div>
-              <span className="badge text-bg-primary align-self-start">Codigo unico del backend</span>
+              <span className="badge text-bg-primary align-self-start">Codigo promocional</span>
             </div>
 
-            <form onSubmit={handleCreate} className="row g-3">
+            <form onSubmit={handleCreateOrUpdate} className="row g-3">
               <div className="col-12 col-md-6">
                 <label className="form-label fw-semibold">Codigo de promocion</label>
                 <input
@@ -264,7 +363,7 @@ export const PromotionsManagement = () => {
                   type="datetime-local"
                   className="form-control"
                   required
-                  min={getNowMin()}
+                  min={editingId ? "" : getNowMin()}
                   value={form.startDate}
                   onChange={(event) => setForm({ ...form, startDate: event.target.value })}
                 />
@@ -336,12 +435,14 @@ export const PromotionsManagement = () => {
                   onClick={() => {
                     setShowCreate(false);
                     clearMessages();
+                    setForm(emptyPromo);
+                    setEditingId(null);
                   }}
                 >
                   Cancelar
                 </button>
                 <button type="submit" className="btn btn-success">
-                  Guardar promocion
+                  {editingId ? "Actualizar promocion" : "Guardar promocion"}
                 </button>
               </div>
             </form>
@@ -349,69 +450,98 @@ export const PromotionsManagement = () => {
         </div>
       )}
 
-      {isLoading ? (
-        <div className="text-center text-muted py-5">Cargando promociones...</div>
-      ) : (
-        <div className="row g-3">
-          {promotions.map((promotion) => {
-            const activeNow = promotion.isActive
-              && new Date(promotion.startDate) <= new Date()
-              && new Date(promotion.endDate) >= new Date();
+      {!showCreate && (
+        isLoading ? (
+          <div className="text-center text-muted py-5">Cargando promociones...</div>
+        ) : (
+          <div className="row g-3">
+            {(activeTab === "current" ? currentPromos : pastPromos).map((promotion) => {
+              const now = new Date();
+              const startDate = new Date(promotion.startDate);
+              const endDate = new Date(promotion.endDate);
+              
+              const isFuture = startDate > now && promotion.isActive;
+              const isInProgress = startDate <= now && endDate >= now && promotion.isActive;
 
-            return (
-              <div className="col-12 col-md-6 col-xl-4" key={promotion.id}>
-                <div className="card h-100 shadow-sm border-0">
-                  <div className="card-body d-flex flex-column gap-3">
-                    <div className="d-flex align-items-start justify-content-between gap-3">
-                      <div>
-                        <div className="d-flex flex-wrap gap-2 align-items-center mb-2">
-                          <span className="badge text-bg-dark">{promotion.code}</span>
-                          <span className={`badge ${activeNow ? "text-bg-success" : "text-bg-secondary"}`}>
-                            {activeNow ? "Activa" : "Programada / inactiva"}
-                          </span>
+              return (
+                <div className="col-12 col-md-6 col-xl-4" key={promotion.id}>
+                  <div className={`card h-100 shadow-sm border-0 ${!promotion.isActive ? "opacity-75 bg-light" : ""}`}>
+                    <div className="card-body d-flex flex-column gap-3">
+                      <div className="d-flex align-items-start justify-content-between gap-3">
+                        <div>
+                          <div className="d-flex flex-wrap gap-2 align-items-center mb-2">
+                            <span className="badge text-bg-dark">{promotion.code}</span>
+                            <span className={`badge ${isInProgress ? "text-bg-success" : isFuture ? "text-bg-primary" : "text-bg-secondary"}`}>
+                              {isInProgress ? "En curso" : isFuture ? "Programada" : "Inactiva / Expirada"}
+                            </span>
+                          </div>
+                          <h3 className="h5 mb-1">{promotion.name}</h3>
+                          <p className="text-muted mb-0">{promotion.description || "Sin descripcion"}</p>
                         </div>
-                        <h3 className="h5 mb-1">{promotion.name}</h3>
-                        <p className="text-muted mb-0">{promotion.description || "Sin descripcion"}</p>
+                        <span className="badge rounded-pill text-bg-primary fs-6">
+                          {promotion.discountType === "percentage" ? "%" : "$"}
+                        </span>
                       </div>
-                      <span className="badge rounded-pill text-bg-primary fs-6">
-                        {promotion.discountType === "percentage" ? "%" : "$"}
-                      </span>
-                    </div>
 
-                    <div className="border-top pt-3 small text-muted d-grid gap-2">
-                      <div className="d-flex justify-content-between gap-3">
-                        <span>Descuento</span>
-                        <strong className="text-dark">
-                          {promotion.discountType === "percentage"
-                            ? `${promotion.discountValue}%`
-                            : `$${promotion.discountValue}`}
-                        </strong>
+                      <div className="border-top pt-3 small text-muted d-grid gap-2">
+                        <div className="d-flex justify-content-between gap-3">
+                          <span>Descuento</span>
+                          <strong className="text-dark">
+                            {promotion.discountType === "percentage"
+                              ? `${promotion.discountValue}%`
+                              : `$${promotion.discountValue}`}
+                          </strong>
+                        </div>
+                        <div className="d-flex justify-content-between gap-3">
+                          <span>Aplica a</span>
+                          <strong className="text-dark text-end">{formatTarget(promotion)}</strong>
+                        </div>
+                        <div className="d-flex justify-content-between gap-3">
+                          <span>Inicio</span>
+                          <strong className="text-dark text-end">{formatDateTime(promotion.startDate)}</strong>
+                        </div>
+                        <div className="d-flex justify-content-between gap-3">
+                          <span>Fin</span>
+                          <strong className="text-dark text-end">{formatDateTime(promotion.endDate)}</strong>
+                        </div>
                       </div>
-                      <div className="d-flex justify-content-between gap-3">
-                        <span>Aplica a</span>
-                        <strong className="text-dark text-end">{formatTarget(promotion)}</strong>
-                      </div>
-                      <div className="d-flex justify-content-between gap-3">
-                        <span>Inicio</span>
-                        <strong className="text-dark text-end">{formatDateTime(promotion.startDate)}</strong>
-                      </div>
-                      <div className="d-flex justify-content-between gap-3">
-                        <span>Fin</span>
-                        <strong className="text-dark text-end">{formatDateTime(promotion.endDate)}</strong>
-                      </div>
+
+                      {/* BOTONES DE ACCIÓN (Respetando Inmutabilidad) */}
+                      {(isFuture || isInProgress) && (
+                        <div className="d-flex gap-2 pt-2 border-top mt-auto">
+                          {isFuture && (
+                            <button 
+                              className="btn btn-sm btn-outline-secondary flex-grow-1"
+                              onClick={() => handleEditClick(promotion)}
+                            >
+                              Editar
+                            </button>
+                          )}
+                          <button 
+                            className="btn btn-sm btn-outline-danger flex-grow-1"
+                            onClick={() => handleDeleteClick(promotion.id)}
+                          >
+                            Desactivar
+                          </button>
+                        </div>
+                      )}
                     </div>
                   </div>
                 </div>
-              </div>
-            );
-          })}
+              );
+            })}
 
-          {promotions.length === 0 && (
-            <div className="col-12">
-              <div className="alert alert-light border text-center mb-0">No hay promociones registradas aun.</div>
-            </div>
-          )}
-        </div>
+            {(activeTab === "current" ? currentPromos : pastPromos).length === 0 && (
+              <div className="col-12">
+                <div className="alert alert-light border text-center mb-0">
+                  {activeTab === "current" 
+                    ? "No hay promociones vigentes ni programadas." 
+                    : "No hay historial de promociones pasadas."}
+                </div>
+              </div>
+            )}
+          </div>
+        )
       )}
     </div>
   );

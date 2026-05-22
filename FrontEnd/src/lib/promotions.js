@@ -49,3 +49,34 @@ export const listAllPromotions = async () => {
 
   return data;
 };
+export const updatePromotion = async (promotionId, payload) => {
+  const response = await fetch(`${API_URL}/api/tenant/promotions/${promotionId}`, {
+    method: "PATCH",
+    credentials: "include",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+
+  const data = await parseJson(response);
+
+  if (!response.ok) {
+    throw new Error(getErrorMessage(data));
+  }
+
+  return data;
+};
+
+export const deletePromotion = async (promotionId) => {
+  const response = await fetch(`${API_URL}/api/tenant/promotions/${promotionId}`, {
+    method: "DELETE",
+    credentials: "include",
+  });
+
+  const data = await parseJson(response);
+
+  if (!response.ok) {
+    throw new Error(getErrorMessage(data));
+  }
+
+  return data;
+};

@@ -57,6 +57,7 @@ export const createPromotion = async (tenantDb, data) => {
     await tenantDb.transaction(async (tx) => {
         await tx.insert(promotions).values({
             id: promotionId,
+            code: data.code,
             name: data.name,
             description: data.description,
             discountType: data.discountType,
