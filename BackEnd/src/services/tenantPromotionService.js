@@ -128,3 +128,68 @@ export const getAllPromotions = async (tenantDb) => {
 
     return promosWithTargets;
 };
+export const updatePromotion = async (tenantDb, promotionId, data) => {
+    await ensurePromotionTables(tenantDb);
+    const [currentPromo] = await tenantDb.select()
+        .from(promotions)
+        .where(eq(promotions.id, promotionId))
+        .limit(1);
+
+    if (!currentPromo) {
+        throw new Error("PROMOTION_NOT_FOUND");
+    }
+
+    const now = new Date();
+    if (new Date(currentPromo.startDate) <= now) {
+        throw new Error("PROMOTION_ALREADY_STARTED");
+    }
+    await tenantDb.transaction(async (tx) => {
+        await tx.update(promotions).set({
+            code: data.code,
+            name: data.name,
+            description: data.description,
+            discountType: data.discountType,
+            discountValue: data.discountValue,
+            startDate: new Date(data.startDate),
+            endDate: new Date(data.endDate),
+            isActive: data.isActive !== undefined ? data.isActive : true,
+            updatedAt: new Date()
+        }).where(eq(promotions.id, promotionId));
+
+        await tx.delete(promotionTargets).where(eq(promotionTargets.promotionId, promotionId));
+        
+        if (data.targets && data.targets.length > 0) {
+            const targetsToInsert = data.targets.map(target => ({
+                id: randomUUID(),
+                promotionId,
+                targetType: target.targetType,
+                targetId: target.targetId || null,
+            }));
+            await tx.insert(promotionTargets).values(targetsToInsert);
+        }
+    });
+};
+
+export const softDeletePromotion = async (tenantDb, promotionId) => {
+    await ensurePromotionTables(tenantDb);
+    const [currentPromo] = await tenantDb.select()
+        .from(promotions)
+        .where(eq(promotions.id, promotionId))
+        .limit(1);
+
+    if (!currentPromo) {
+        throw new Error("PROMOTION_NOT_FOUND");
+    }
+
+    const now = new Date();
+    if (new Date(currentPromo.endDate) < now) {
+        throw new Error("PROMOTION_ALREADY_EXPIRED");
+    }
+
+    await tenantDb.update(promotions)
+        .set({ 
+            isActive: false, 
+            updatedAt: new Date() 
+        })
+        .where(eq(promotions.id, promotionId));
+};

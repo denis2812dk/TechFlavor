@@ -5,14 +5,7 @@ import {
 } from "../controllers/tenantSettingsController.js";
 import { createMenuCategory, createMenuCombo, createMenuProduct, listMenuCatalog, updateMenuCombo, updateMenuProduct,
     setProductRecipe, deleteProduct } from "../controllers/tenantMenuController.js";
-import {
-    createTenantOrder,
-    deliverDispatchOrder,
-    finishKitchenOrder,
-    listDispatchOrders,
-    listKitchenOrders,
-    listTenantOrders,
-} from "../controllers/tenantOrdersController.js";
+import { createTenantOrder, deliverDispatchOrder, finishKitchenOrder, listDispatchOrders, listKitchenOrders, listTenantOrders,} from "../controllers/tenantOrdersController.js";
 import {
     createTenantUser,
     listTenantUsers,
@@ -25,7 +18,7 @@ import {
     registerSupplierIncidence,
     listIngredients
 } from "../controllers/tenantInventoryController.js";
-import { createTenantPromotion, listActivePromotions, listAllPromotions } from "../controllers/tenantPromotionController.js";
+import { createTenantPromotion, listActivePromotions, listAllPromotions, deleteTenantPromotion, updateTenantPromotion,  } from "../controllers/tenantPromotionController.js";
 import { ROLES } from "../constants/roles.js";
 import { requireTenantRoles } from "../middleware/tenantAuthorization.js";
 import { tenantContext } from "../middleware/tenantContext.js";
@@ -75,4 +68,6 @@ router.post("/inventory/suppliers/incidences", tenantContext, requireTenantRoles
 router.post("/promotions", tenantContext, requireTenantRoles(ROLES.GERENTE), validateSchema(createPromotionSchema), createTenantPromotion);
 router.get( "/promotions/active", tenantContext, requireTenantRoles(ROLES.GERENTE, ROLES.CAJERO), listActivePromotions);
 router.get( "/promotions", tenantContext, requireTenantRoles(ROLES.GERENTE), listAllPromotions);
+router.patch("/promotions/:promotionId", tenantContext, requireTenantRoles(ROLES.GERENTE), validateSchema(createPromotionSchema), updateTenantPromotion);
+router.delete("/promotions/:promotionId", tenantContext, requireTenantRoles(ROLES.GERENTE), deleteTenantPromotion);
 export default router;
