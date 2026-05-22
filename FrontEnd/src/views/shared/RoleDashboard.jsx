@@ -29,6 +29,9 @@ const iconMap = {
       <path d="M9.2 11.6h5.6M9.2 14.4h5.6M12 7.3v3" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" />
     </>
   ),
+  promotions: (
+    <path d="M21.5 12.5L12 22l-9.5-9.5V3h9.5l9.5 9.5z M8.5 8.5a2 2 0 11-4 0 2 2 0 014 0z" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" />
+  ),
   reports: (
     <path d="M5 19h14M8 16V9m4 7V5m4 11v-4" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
   ),
@@ -55,6 +58,7 @@ const getSidebarItems = (role) => {
       { label: "Tables", icon: "tables", path: "/manager/tables", disabled: true },
       { label: "Menu", icon: "menu", path: "/manager/menu" },
       { label: "Inventory", icon: "inventory", path: "/manager/inventory" },
+      { label: "Promotions", icon: "promotions", path: "/manager/promotions" },
       { label: "Reports", icon: "reports", path: "/manager/reports", disabled: true },
       { label: "Users", icon: "users", path: "/manager/users" },
       { label: "Settings", icon: "settings", path: "/manager/settings", disabled: true },
@@ -66,6 +70,7 @@ const getSidebarItems = (role) => {
       { label: "Dashboard", icon: "dashboard", path: "/gerente" },
       { label: "Menu", icon: "menu", path: "/gerente/menu" },
       { label: "Inventory", icon: "inventory", path: "/gerente/inventory" },
+      { label: "Promotions", icon: "promotions", path: "/gerente/promotions" },
       { label: "Reports", icon: "reports", path: "/gerente/reports", disabled: true },
     ];
   }

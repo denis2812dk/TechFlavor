@@ -140,6 +140,7 @@ export const supplierIncidences = mysqlTable("supplier_incidences", {
 });
 export const promotions = mysqlTable("promotions", {
     id: varchar("id", { length: 36 }).primaryKey(),
+    code: varchar("codes", { length: 30 }).notNull().unique(),
     name: varchar("name", { length: 120 }).notNull(),
     description: text("description"),
     discountType: varchar("discount_type", { length: 20 }).notNull(), 

@@ -28,3 +28,15 @@ export const listActivePromotions = async (req, res, next) => {
         next(error);
     }
 };
+export const listAllPromotions = async (req, res, next) => {
+    try {
+        const allPromotions = await promotionService.getAllPromotions(req.tenantDb);
+
+        res.json({
+            success: true,
+            promotions: allPromotions
+        });
+    } catch (error) {
+        next(error);
+    }
+};

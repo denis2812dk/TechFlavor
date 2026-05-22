@@ -26,6 +26,7 @@ export const createOrderSchema = z.object({
         errorMap: () => ({ message: "Tipo de entrega invalido" }),
     }),
     tableIdentifier: z.string().nullable().optional(),
+    promoCode: z.string().min(1).max(30).optional(),
     items: z.array(
         z.object({
             itemType: z.enum(["product", "combo"]),
@@ -58,6 +59,7 @@ export const updateRecipeSchema = z.object({
     ).min(1, "La receta debe tener al menos un ingrediente"),
 });
 export const createPromotionSchema = z.object({
+    code: z.string().min(3, "El código debe tener al menos 3 caracteres").max(30), 
     name: z.string().min(1, "El nombre de la promoción es obligatorio").max(120),
     description: z.string().optional(),
     discountType: z.enum(["percentage", "fixed_amount"], {
@@ -70,7 +72,7 @@ export const createPromotionSchema = z.object({
     targets: z.array(
         z.object({
             targetType: z.enum(["product", "category", "all"]),
-            targetId: z.string().uuid("El ID del objetivo debe ser válido").optional().nullable()
+            targetId: z.string().optional().nullable() 
         })
     ).min(1, "La promoción debe aplicar al menos a un producto, categoría o a todo el menú")
 }).refine(data => new Date(data.startDate) < new Date(data.endDate), {

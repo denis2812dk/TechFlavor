@@ -90,7 +90,7 @@ const findSaleItem = async (tenantDb, item) => {
 
 export const createTenantOrder = async (req, res, next) => {
     try {
-        const { items, fulfillmentType, tableIdentifier, promotionId } = req.body;
+        const { items, fulfillmentType, tableIdentifier, promotionId, promoCode } = req.body;
 
         const saleItems = [];
         for (const item of items) {
@@ -107,24 +107,34 @@ export const createTenantOrder = async (req, res, next) => {
         let discountTotal = 0;
         let activePromotion = null;
         let promoTargets = [];
-        if (promotionId) {
-            const now = new Date();
+        if (promoCode) {
+            const normalizedCode = promoCode.trim().toUpperCase();
+            
             const [promo] = await req.tenantDb.select().from(promotions)
                 .where(and(
-                    eq(promotions.id, promotionId),
-                    eq(promotions.isActive, true),
-                    lte(promotions.startDate, now),
-                    gte(promotions.endDate, now)
+                    eq(promotions.code, normalizedCode),
+                    eq(promotions.isActive, true)
                 )).limit(1);
 
             if (promo) {
-                activePromotion = promo;
-                promoTargets = await req.tenantDb.select().from(promotionTargets)
-                    .where(eq(promotionTargets.promotionId, promo.id));
+                const now = new Date();
+                const start = new Date(promo.startDate);
+                const end = new Date(promo.endDate);
+
+                if (now >= start && now <= end) {
+                    activePromotion = promo;
+                    promoTargets = await req.tenantDb.select().from(promotionTargets)
+                        .where(eq(promotionTargets.promotionId, promo.id));
+                } else {
+                    return res.status(400).json({
+                        success: false,
+                        message: "El código promocional ha expirado o aún no está vigente.",
+                    });
+                }
             } else {
-                return res.status(400).json({
+                return res.status(404).json({
                     success: false,
-                    message: "La promoción ingresada no existe, está inactiva o ha expirado.",
+                    message: "El código promocional no existe o está inactivo.",
                 });
             }
         }
@@ -157,6 +167,13 @@ export const createTenantOrder = async (req, res, next) => {
 
             subtotal += lineSubtotal;
             discountTotal += lineDiscount;
+        }
+
+        if (promoCode && activePromotion && discountTotal <= 0) {
+            return res.status(400).json({
+                success: false,
+                message: "No Aplicable",
+            });
         }
 
         const total = subtotal - discountTotal;

@@ -1,11 +1,18 @@
 import { randomUUID } from "crypto";
-import { and, eq, gte, lte, sql } from "drizzle-orm";
+import { and, eq, gte, lte, sql,desc } from "drizzle-orm";
 import { promotions, promotionTargets } from "../models/tenantSchema.js";
+
+const ignoreDuplicateColumn = (error) => {
+    if (error?.cause?.code === "ER_DUP_FIELDNAME" || error?.code === "ER_DUP_FIELDNAME") return;
+    if (error?.cause?.code === "ER_DUP_KEYNAME" || error?.code === "ER_DUP_KEYNAME") return; 
+    throw error;
+};
 
 export const ensurePromotionTables = async (tenantDb) => {
     await tenantDb.execute(sql`
         CREATE TABLE IF NOT EXISTS promotions (
             id varchar(36) NOT NULL,
+            codes varchar(30) NOT NULL UNIQUE,
             name varchar(120) NOT NULL,
             description text,
             discount_type varchar(20) NOT NULL,
@@ -30,8 +37,15 @@ export const ensurePromotionTables = async (tenantDb) => {
                 FOREIGN KEY (promotion_id) REFERENCES promotions(id) ON DELETE CASCADE
         )
     `);
+    try {
+        await tenantDb.execute(sql`
+            ALTER TABLE promotions 
+            ADD COLUMN codes varchar(30) NOT NULL UNIQUE AFTER id
+        `);
+    } catch (error) { 
+        ignoreDuplicateColumn(error); 
+    }
 };
-
 // ==========================================
 // SERVICIOS DE PROMOCIÓN
 // ==========================================
@@ -84,6 +98,26 @@ export const getActivePromotions = async (tenantDb) => {
 
     const promosWithTargets = [];
     for (const promo of activePromos) {
+        const targets = await tenantDb
+            .select()
+            .from(promotionTargets)
+            .where(eq(promotionTargets.promotionId, promo.id));
+        
+        promosWithTargets.push({ ...promo, targets });
+    }
+
+    return promosWithTargets;
+};
+export const getAllPromotions = async (tenantDb) => {
+    await ensurePromotionTables(tenantDb);
+
+    const allPromos = await tenantDb
+        .select()
+        .from(promotions)
+        .orderBy(desc(promotions.createdAt));
+
+    const promosWithTargets = [];
+    for (const promo of allPromos) {
         const targets = await tenantDb
             .select()
             .from(promotionTargets)

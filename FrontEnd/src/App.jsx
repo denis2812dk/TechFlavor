@@ -11,6 +11,7 @@ import { DispatchOrders } from "./views/dispatch/DispatchOrders";
 import { KitchenDisplay } from "./views/kitchen/KitchenDisplay";
 import { OrdersList } from "./views/orders/OrdersList";
 import Login from "./views/shared/Login.jsx";
+import { PromotionsManagement } from "./views/manager/PromotionsManagement";
 import { RoleDashboard } from "./views/shared/RoleDashboard";
 
 const ROUTES = {
@@ -38,6 +39,11 @@ const ROUTES = {
     roles: [ROLES.ADMIN],
     title: "Inventario",
     description: "Control de insumos, existencias y registro de merma.",
+  },
+  "/manager/promotions": {
+    roles: [ROLES.ADMIN],
+    title: "Promociones",
+    description: "Descuentos temporales y reglas especiales.",
   },
   "/cajero": {
     roles: [ROLES.CAJERO, ROLES.ADMIN],
@@ -68,6 +74,11 @@ const ROUTES = {
     roles: [ROLES.GERENTE, ROLES.ADMIN],
     title: "Panel gerente",
     description: "Supervision operativa, equipo y reportes del restaurante.",
+  },
+  "/gerente/promotions": {
+    roles: [ROLES.GERENTE, ROLES.ADMIN],
+    title: "Promociones",
+    description: "Descuentos temporales y reglas especiales.",
   },
   "/gerente/menu": {
     roles: [ROLES.GERENTE, ROLES.ADMIN],
@@ -216,6 +227,7 @@ function App() {
         {path === "/manager/users" ? <UserManagement /> : null}
         {path === "/manager/menu" || path === "/gerente/menu" ? <MenuManagement /> : null}
         {path === "/manager/inventory" || path === "/gerente/inventory" ? <InventoryManagement /> : null}
+        {path === "/manager/promotions" || path === "/gerente/promotions" ? <PromotionsManagement /> : null}
         {path === "/manager/orders" || path === "/cajero/orders" ? <OrdersList /> : null}
         {path === "/cajero" ? <CashierCatalog /> : null}
         {path === "/cocina" ? <KitchenDisplay /> : null}

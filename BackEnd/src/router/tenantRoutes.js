@@ -25,7 +25,7 @@ import {
     registerSupplierIncidence,
     listIngredients
 } from "../controllers/tenantInventoryController.js";
-import { createTenantPromotion, listActivePromotions } from "../controllers/tenantPromotionController.js";
+import { createTenantPromotion, listActivePromotions, listAllPromotions } from "../controllers/tenantPromotionController.js";
 import { ROLES } from "../constants/roles.js";
 import { requireTenantRoles } from "../middleware/tenantAuthorization.js";
 import { tenantContext } from "../middleware/tenantContext.js";
@@ -74,4 +74,5 @@ router.post("/inventory/suppliers/incidences", tenantContext, requireTenantRoles
 //Rutas de promociones
 router.post("/promotions", tenantContext, requireTenantRoles(ROLES.GERENTE), validateSchema(createPromotionSchema), createTenantPromotion);
 router.get( "/promotions/active", tenantContext, requireTenantRoles(ROLES.GERENTE, ROLES.CAJERO), listActivePromotions);
+router.get( "/promotions", tenantContext, requireTenantRoles(ROLES.GERENTE), listAllPromotions);
 export default router;

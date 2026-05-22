@@ -36,3 +36,16 @@ export const createPromotion = async (payload) => {
 
   return data;
 };
+export const listAllPromotions = async () => {
+  const response = await fetch(`${API_URL}/api/tenant/promotions`, {
+    credentials: "include",
+  });
+
+  const data = await parseJson(response);
+
+  if (!response.ok) {
+    throw new Error(getErrorMessage(data));
+  }
+
+  return data;
+};

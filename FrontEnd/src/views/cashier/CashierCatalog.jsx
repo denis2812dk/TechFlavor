@@ -1,29 +1,31 @@
 import { useEffect, useMemo, useState } from "react";
 import { createOrder, getErrorMessage, getMenuCatalog } from "../../lib/auth";
-import { listActivePromotions } from "../../lib/promotions"; 
+import { listActivePromotions } from "../../lib/promotions";
 
 const toMoney = (value) => Number(value || 0).toFixed(2);
 
 export const CashierCatalog = () => {
   const [catalog, setCatalog] = useState({ products: [], combos: [] });
-  const [activePromotions, setActivePromotions] = useState([]); 
+  const [activePromotions, setActivePromotions] = useState([]);
   const [cart, setCart] = useState([]);
   const [ticket, setTicket] = useState(null);
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
-  
   const [fulfillmentType, setFulfillmentType] = useState("");
   const [tableIdentifier, setTableIdentifier] = useState("");
-  const [selectedPromotionId, setSelectedPromotionId] = useState(""); 
+  const [promoCodeInput, setPromoCodeInput] = useState("");
+  const [appliedPromo, setAppliedPromo] = useState(null);
+  const [promoError, setPromoError] = useState("");
 
   useEffect(() => {
     const loadInitialData = async () => {
       try {
         const [catalogData, promosData] = await Promise.all([
           getMenuCatalog(),
-          listActivePromotions()
+          listActivePromotions(),
         ]);
+
         setCatalog(catalogData);
         setActivePromotions(promosData.promotions || []);
       } catch (requestError) {
@@ -36,10 +38,44 @@ export const CashierCatalog = () => {
     loadInitialData();
   }, []);
 
+  const normalizedPromoInput = promoCodeInput.trim().toUpperCase();
+
+  const matchedPromoInRealtime = useMemo(
+    () => activePromotions.find((promotion) => promotion.code === normalizedPromoInput),
+    [activePromotions, normalizedPromoInput],
+  );
+
+  const promoStatusBadge = useMemo(() => {
+    if (appliedPromo) {
+      return { label: "Aplicada", className: "text-bg-success" };
+    }
+
+    if (!promoCodeInput.trim()) return null;
+
+    if (promoError === "No Aplicable") {
+      return { label: "No aplicable", className: "text-bg-warning" };
+    }
+
+    if (promoError) {
+      return { label: "Inválido", className: "text-bg-danger" };
+    }
+
+    if (matchedPromoInRealtime) {
+      return promoAppliesToCart(matchedPromoInRealtime, cart)
+        ? { label: "Válido", className: "text-bg-success" }
+        : { label: "No aplicable", className: "text-bg-warning" };
+    }
+
+    return { label: "Sin coincidencia", className: "text-bg-secondary" };
+  }, [appliedPromo, cart, matchedPromoInRealtime, promoCodeInput, promoError]);
+
   const addToCart = (item, itemType) => {
     setTicket(null);
     setCart((currentCart) => {
-      const existingItem = currentCart.find((cartItem) => cartItem.itemId === item.id && cartItem.itemType === itemType);
+      const existingItem = currentCart.find(
+        (cartItem) => cartItem.itemId === item.id && cartItem.itemType === itemType,
+      );
+
       if (existingItem) {
         return currentCart.map((cartItem) => (
           cartItem.cartId === existingItem.cartId
@@ -54,7 +90,7 @@ export const CashierCatalog = () => {
           cartId: `${itemType}-${item.id}`,
           itemId: item.id,
           itemType,
-          categoryId: item.categoryId || null, 
+          categoryId: item.categoryId || null,
           name: item.name,
           price: Number(item.price),
           quantity: 1,
@@ -76,40 +112,80 @@ export const CashierCatalog = () => {
     setCart((currentCart) => currentCart.filter((item) => item.cartId !== cartId));
   };
 
+  function promoAppliesToCart(promotion, cartItems) {
+    return cartItems.some((item) => (
+      promotion.targets.some((target) => (
+        target.targetType === "all"
+        || (target.targetType === "product" && target.targetId === item.itemId)
+        || (target.targetType === "category" && target.targetId === item.categoryId)
+      ))
+    ));
+  }
+
+  const handleApplyPromo = () => {
+    setPromoError("");
+    if (!promoCodeInput.trim()) return;
+
+    const normalizedInput = promoCodeInput.trim().toUpperCase();
+    
+    // Buscamos si existe entre las promociones activas bajadas del backend
+    const foundPromo = activePromotions.find(p => p.code === normalizedInput);
+
+    if (foundPromo) {
+      if (!promoAppliesToCart(foundPromo, cart)) {
+        setPromoError("No Aplicable");
+        setAppliedPromo(null);
+        return;
+      }
+
+      setAppliedPromo(foundPromo);
+    } else {
+      setPromoError("Código inválido o expirado");
+      setAppliedPromo(null);
+    }
+  };
+
+  useEffect(() => {
+    if (!appliedPromo) return;
+
+    if (!promoAppliesToCart(appliedPromo, cart)) {
+      setAppliedPromo(null);
+      setPromoError("No Aplicable");
+    }
+  }, [cart, appliedPromo]);
+
   const { subtotal, discount, total } = useMemo(() => {
     let sub = 0;
     let disc = 0;
-    
-    const activePromo = activePromotions.find(p => p.id === selectedPromotionId);
 
     cart.forEach((item) => {
       const lineSubtotal = item.price * item.quantity;
       let lineDiscount = 0;
 
-      if (activePromo) {
-        const applies = activePromo.targets.some(target => 
-          target.targetType === 'all' || 
-          (target.targetType === 'product' && target.targetId === item.itemId) ||
-          (target.targetType === 'category' && target.targetId === item.categoryId)
-        );
+      if (appliedPromo) {
+        const applies = appliedPromo.targets.some((target) => (
+          target.targetType === "all"
+          || (target.targetType === "product" && target.targetId === item.itemId)
+          || (target.targetType === "category" && target.targetId === item.categoryId)
+        ));
 
         if (applies) {
-          if (activePromo.discountType === 'percentage') {
-            lineDiscount = lineSubtotal * (Number(activePromo.discountValue) / 100);
-          } else if (activePromo.discountType === 'fixed_amount') {
-            lineDiscount = Number(activePromo.discountValue) * item.quantity;
+          if (appliedPromo.discountType === "percentage") {
+            lineDiscount = lineSubtotal * (Number(appliedPromo.discountValue) / 100);
+          } else if (appliedPromo.discountType === "fixed_amount") {
+            lineDiscount = Number(appliedPromo.discountValue) * item.quantity;
           }
         }
       }
 
-      if (lineDiscount > lineSubtotal) lineDiscount = lineSubtotal; 
+      if (lineDiscount > lineSubtotal) lineDiscount = lineSubtotal;
 
       sub += lineSubtotal;
       disc += lineDiscount;
     });
 
     return { subtotal: sub, discount: disc, total: sub - disc };
-  }, [cart, activePromotions, selectedPromotionId]);
+  }, [cart, appliedPromo]);
 
   const handleCreateOrder = async () => {
     setError("");
@@ -130,7 +206,7 @@ export const CashierCatalog = () => {
     try {
       const orderPayload = {
         fulfillmentType,
-        promotionId: selectedPromotionId || undefined, // Mandamos la promo al backend
+        promoCode: appliedPromo?.code || undefined,
         items: cart.map((item) => ({
           itemType: item.itemType,
           itemId: item.itemId,
@@ -147,7 +223,9 @@ export const CashierCatalog = () => {
       setCart([]);
       setFulfillmentType("");
       setTableIdentifier("");
-      setSelectedPromotionId("");
+      setPromoCodeInput("");
+      setAppliedPromo(null);
+      setPromoError("");
     } catch (requestError) {
       setError(getErrorMessage(requestError));
     } finally {
@@ -156,192 +234,332 @@ export const CashierCatalog = () => {
   };
 
   return (
-    <section className="cashier-workspace">
-      <main className="cashier-catalog">
-        <div className="cashier-header">
-          <div>
-            <p className="admin-users-kicker">Caja</p>
-            <h2>Nuevo pedido</h2>
-            <p>Agrega productos o combos, edita el carrito y genera ticket antes del pago.</p>
-          </div>
-          {isLoading && <span>Cargando catalogo...</span>}
-        </div>
-
-        {error && <p className="admin-users-error">{error}</p>}
-
-        <section>
-          <h3>Productos</h3>
-          <div className="cashier-item-grid">
-            {catalog.products.map((product) => (
-              <button className="cashier-sale-item" type="button" key={product.id} onClick={() => addToCart(product, "product")}>
-                <strong>{product.name}</strong>
-                <span>{product.categoryName}</span>
-                <p>{product.description}</p>
-                <b>${product.price}</b>
-              </button>
-            ))}
-          </div>
-        </section>
-
-        <section>
-          <h3>Combos</h3>
-          <div className="cashier-item-grid">
-            {catalog.combos.map((combo) => (
-              <button className="cashier-sale-item" type="button" key={combo.id} onClick={() => addToCart(combo, "combo")}>
-                <strong>{combo.name}</strong>
-                <span>{combo.items.map((item) => `${item.quantity}x ${item.productName}`).join(", ")}</span>
-                <p>{combo.description}</p>
-                <b>${combo.price}</b>
-              </button>
-            ))}
-          </div>
-        </section>
-      </main>
-
-      <aside className="cashier-cart">
+    <section className="container-fluid py-4">
+      <div className="d-flex flex-column flex-xl-row justify-content-between align-items-xl-end gap-3 mb-4 border-bottom pb-3">
         <div>
-          <p className="admin-users-kicker">Carrito editable</p>
-          <h3>Pedido actual</h3>
+          <p className="text-uppercase text-muted fw-semibold small mb-1">Caja</p>
+          <h2 className="h3 mb-1">Nuevo pedido</h2>
+          <p className="text-muted mb-0">Agrega productos o combos, aplica una promocion y genera el ticket antes del pago.</p>
         </div>
+        {isLoading && <span className="badge text-bg-light border">Cargando catalogo...</span>}
+      </div>
 
-        {cart.length === 0 ? (
-          <p className="cashier-empty-cart">Agrega productos o combos para iniciar el pedido.</p>
-        ) : (
-          <div className="cashier-cart-list">
-            {cart.map((item) => (
-              <article className="cashier-cart-row" key={item.cartId}>
-                <div>
-                  <strong>{item.name}</strong>
-                  <span>${toMoney(item.price)} · {item.itemType === "combo" ? "Combo" : "Producto"}</span>
-                </div>
-                <input type="number" min="1" value={item.quantity} onChange={(event) => updateQuantity(item.cartId, event.target.value)} />
-                <button type="button" onClick={() => removeItem(item.cartId)}>Eliminar</button>
-              </article>
-            ))}
-          </div>
-        )}
+      {error && <div className="alert alert-danger">{error}</div>}
 
-        <section className="cashier-fulfillment" aria-label="Modalidad del pedido">
-          <div>
-            <p className="admin-users-kicker">Modalidad</p>
-            <h4>Entrega del pedido</h4>
-          </div>
-
-          <div className="cashier-mode-toggle">
-            <button
-              type="button"
-              className={fulfillmentType === "takeaway" ? "is-active" : ""}
-              onClick={() => {
-                setFulfillmentType("takeaway");
-                setTableIdentifier("");
-              }}
-            >
-              Para llevar
-            </button>
-            <button
-              type="button"
-              className={fulfillmentType === "dine_in" ? "is-active" : ""}
-              onClick={() => setFulfillmentType("dine_in")}
-            >
-              Consumir aqui
-            </button>
-          </div>
-
-          {fulfillmentType === "dine_in" && (
-            <label className="cashier-table-field">
-              <span>Mesa o identificador</span>
-              <input
-                value={tableIdentifier}
-                onChange={(event) => setTableIdentifier(event.target.value)}
-                placeholder="Ej. Mesa 8, Cliente 42, A17"
-              />
-            </label>
-          )}
-
-          {/*  SECCIÓN DE PROMOCIONES */}
-          {activePromotions.length > 0 && cart.length > 0 && (
-            <label className="cashier-table-field" style={{ marginTop: '1rem' }}>
-              <span>Aplicar Promoción</span>
-              <select 
-                value={selectedPromotionId} 
-                onChange={(e) => setSelectedPromotionId(e.target.value)}
-                style={{ width: '100%', padding: '0.5rem', borderRadius: '4px', border: '1px solid #ccc' }}
-              >
-                <option value="">Sin promoción</option>
-                {activePromotions.map(promo => (
-                  <option key={promo.id} value={promo.id}>
-                    {promo.name} ({promo.discountType === 'percentage' ? `-${promo.discountValue}%` : `-$${promo.discountValue}`})
-                  </option>
+      <div className="row g-4">
+        <main className="col-12 col-xl-8">
+          <div className="card shadow-sm border-0 mb-4">
+            <div className="card-header bg-white d-flex justify-content-between align-items-center">
+              <div>
+                <h3 className="h5 mb-0">Productos</h3>
+                <small className="text-muted">Toca un producto para enviarlo al carrito.</small>
+              </div>
+              <span className="badge text-bg-light border">{catalog.products.length} disponibles</span>
+            </div>
+            <div className="card-body">
+              <div className="row row-cols-1 row-cols-md-2 row-cols-xxl-3 g-3">
+                {catalog.products.map((product) => (
+                  <div className="col" key={product.id}>
+                    <button
+                      className="card h-100 border-0 shadow-sm text-start w-100 btn btn-light p-0"
+                      type="button"
+                      onClick={() => addToCart(product, "product")}
+                    >
+                      <div className="card-body d-flex flex-column gap-2">
+                        <div className="d-flex justify-content-between gap-2 align-items-start">
+                          <div>
+                            <h4 className="h6 mb-1">{product.name}</h4>
+                            <span className="badge text-bg-primary-subtle text-primary-emphasis">{product.categoryName}</span>
+                          </div>
+                          <span className="fw-bold text-primary">${toMoney(product.price)}</span>
+                        </div>
+                        <p className="text-muted small mb-0">{product.description}</p>
+                      </div>
+                    </button>
+                  </div>
                 ))}
-              </select>
-            </label>
-          )}
-        </section>
 
-        {/* RESUMEN DE COBROS ACTUALIZADO */}
-        <div className="cashier-total-summary" style={{ margin: '1.5rem 0', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', color: '#666' }}>
-            <span>Subtotal</span>
-            <span>${toMoney(subtotal)}</span>
-          </div>
-          {discount > 0 && (
-            <div style={{ display: 'flex', justifyContent: 'space-between', color: '#16a34a', fontWeight: '500' }}>
-              <span>Descuento</span>
-              <span>-${toMoney(discount)}</span>
-            </div>
-          )}
-          <div className="cashier-total" style={{ borderTop: '1px solid #eee', paddingTop: '0.5rem', marginTop: '0.5rem' }}>
-            <span>Total</span>
-            <strong>${toMoney(total)}</strong>
-          </div>
-        </div>
-
-        <button className="cashier-checkout" type="button" disabled={cart.length === 0 || isSaving} onClick={handleCreateOrder}>
-          {isSaving ? "Enviando..." : "Validar cobro y enviar a cocina"}
-        </button>
-
-        {ticket && (
-          <section className="ticket-preview" aria-label="Ticket generado">
-            <div className="ticket-head">
-              <span>TechFlavor</span>
-              <strong>{ticket.code}</strong>
-              <em>
-                {ticket.fulfillmentType === "dine_in"
-                  ? `Consumir en el lugar - ${ticket.tableIdentifier}`
-                  : "Para llevar"}
-              </em>
-              <small>{new Date(ticket.createdAt).toLocaleString()}</small>
-            </div>
-            <div className="ticket-lines">
-              <div className="ticket-line">
-                <span>Responsable</span>
-                <b>{ticket.cashierName}</b>
+                {!isLoading && catalog.products.length === 0 && (
+                  <div className="col-12">
+                    <div className="alert alert-light border mb-0">No hay productos disponibles.</div>
+                  </div>
+                )}
               </div>
-              {ticket.items.map((item) => (
-                <div className="ticket-line" key={`${item.type}-${item.name}`}>
-                  <span>{item.quantity}x {item.name}</span>
-                  <b>${item.lineTotal}</b>
+            </div>
+          </div>
+
+          <div className="card shadow-sm border-0">
+            <div className="card-header bg-white d-flex justify-content-between align-items-center">
+              <div>
+                <h3 className="h5 mb-0">Combos</h3>
+                <small className="text-muted">Incluye combos listos para la venta.</small>
+              </div>
+              <span className="badge text-bg-light border">{catalog.combos.length} disponibles</span>
+            </div>
+            <div className="card-body">
+              <div className="row row-cols-1 row-cols-md-2 row-cols-xxl-3 g-3">
+                {catalog.combos.map((combo) => (
+                  <div className="col" key={combo.id}>
+                    <button
+                      className="card h-100 border-0 shadow-sm text-start w-100 btn btn-light p-0"
+                      type="button"
+                      onClick={() => addToCart(combo, "combo")}
+                    >
+                      <div className="card-body d-flex flex-column gap-2">
+                        <div className="d-flex justify-content-between gap-2 align-items-start">
+                          <div>
+                            <h4 className="h6 mb-1">{combo.name}</h4>
+                            <span className="badge text-bg-secondary">Combo</span>
+                          </div>
+                          <span className="fw-bold text-primary">${toMoney(combo.price)}</span>
+                        </div>
+                        <p className="text-muted small mb-0">
+                          {combo.items.map((item) => `${item.quantity}x ${item.productName}`).join(", ")}
+                        </p>
+                        <p className="text-muted small mb-0">{combo.description}</p>
+                      </div>
+                    </button>
+                  </div>
+                ))}
+
+                {!isLoading && catalog.combos.length === 0 && (
+                  <div className="col-12">
+                    <div className="alert alert-light border mb-0">No hay combos disponibles.</div>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        </main>
+
+        <aside className="col-12 col-xl-4">
+          <div className="card shadow-sm border-0 mb-4">
+            <div className="card-body">
+              <div className="d-flex justify-content-between align-items-start mb-3">
+                <div>
+                  <p className="text-uppercase text-muted fw-semibold small mb-1">Carrito editable</p>
+                  <h3 className="h5 mb-0">Pedido actual</h3>
                 </div>
-              ))}
-            </div>
-            <div className="ticket-total">
-              <span>Subtotal</span>
-              <b>${ticket.subtotal}</b>
-            </div>
-            {Number(ticket.discountTotal) > 0 && (
-              <div className="ticket-total" style={{ color: '#16a34a' }}>
-                <span>Descuento ({ticket.promotionApplied})</span>
-                <b>-${ticket.discountTotal}</b>
+                <span className="badge text-bg-light border">{cart.length} items</span>
               </div>
-            )}
-            <div className="ticket-total" style={{ borderTop: '1px dashed #000', marginTop: '5px', paddingTop: '5px' }}>
-              <span>TOTAL A PAGAR</span>
-              <strong>${ticket.total}</strong>
+
+              {cart.length === 0 ? (
+                <div className="alert alert-light border mb-0">Agrega productos o combos para iniciar el pedido.</div>
+              ) : (
+                <div className="list-group list-group-flush border rounded-3 overflow-hidden">
+                  {cart.map((item) => (
+                    <div className="list-group-item d-flex flex-column gap-3" key={item.cartId}>
+                      <div className="d-flex justify-content-between gap-3 align-items-start">
+                        <div>
+                          <strong className="d-block">{item.name}</strong>
+                          <small className="text-muted">
+                            ${toMoney(item.price)} · {item.itemType === "combo" ? "Combo" : "Producto"}
+                          </small>
+                        </div>
+                        <button type="button" className="btn btn-sm btn-outline-danger" onClick={() => removeItem(item.cartId)}>
+                          Eliminar
+                        </button>
+                      </div>
+                      <div className="input-group input-group-sm w-auto">
+                        <span className="input-group-text">Cant.</span>
+                        <input
+                          type="number"
+                          min="1"
+                          className="form-control"
+                          value={item.quantity}
+                          onChange={(event) => updateQuantity(item.cartId, event.target.value)}
+                        />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
-            <p>Cobro validado. Pedido enviado a cocina.</p>
-          </section>
-        )}
-      </aside>
+          </div>
+
+          <div className="card shadow-sm border-0 mb-4">
+            <div className="card-body d-grid gap-3">
+              <div>
+                <p className="text-uppercase text-muted fw-semibold small mb-1">Modalidad</p>
+                <h4 className="h6 mb-0">Entrega del pedido</h4>
+              </div>
+
+              <div className="btn-group" role="group" aria-label="Modalidad del pedido">
+                <button
+                  type="button"
+                  className={`btn ${fulfillmentType === "takeaway" ? "btn-primary" : "btn-outline-primary"}`}
+                  onClick={() => {
+                    setFulfillmentType("takeaway");
+                    setTableIdentifier("");
+                  }}
+                >
+                  Para llevar
+                </button>
+                <button
+                  type="button"
+                  className={`btn ${fulfillmentType === "dine_in" ? "btn-primary" : "btn-outline-primary"}`}
+                  onClick={() => setFulfillmentType("dine_in")}
+                >
+                  Consumir aqui
+                </button>
+              </div>
+
+              {fulfillmentType === "dine_in" && (
+                <div>
+                  <label className="form-label fw-semibold">Mesa o identificador</label>
+                  <input
+                    className="form-control"
+                    value={tableIdentifier}
+                    onChange={(event) => setTableIdentifier(event.target.value)}
+                    placeholder="Ej. Mesa 8, Cliente 42, A17"
+                  />
+                </div>
+              )}
+
+              {activePromotions.length > 0 && cart.length > 0 && (
+                <div>
+                  <label className="form-label fw-semibold">Aplicar promocion</label>
+                  <div className="input-group">
+                    <input
+                      type="text"
+                      className="form-control"
+                      value={promoCodeInput}
+                      onChange={(event) => {
+                        setPromoCodeInput(event.target.value);
+                        setPromoError("");
+                      }}
+                      placeholder="Escribe el codigo exacto"
+                    />
+                    <button
+                      className="btn btn-outline-primary"
+                      type="button"
+                      onClick={handleApplyPromo}
+                    >
+                      Aplicar
+                    </button>
+                  </div>
+
+                  {promoStatusBadge && (
+                    <div className="mt-2 d-flex align-items-center gap-2">
+                      <span className="small text-muted">Estado del código:</span>
+                      <span className={`badge ${promoStatusBadge.className}`}>{promoStatusBadge.label}</span>
+                    </div>
+                  )}
+
+                  {promoCodeInput.trim() && (
+                    <div className={`mt-2 small ${matchedPromoInRealtime ? "text-success" : "text-muted"}`}>
+                      {matchedPromoInRealtime
+                        ? `Codigo valido detectado: ${matchedPromoInRealtime.name}`
+                        : "Codigo no encontrado entre promociones activas."}
+                    </div>
+                  )}
+
+                  {promoError && <div className="mt-2 small text-danger">{promoError}</div>}
+
+                  {appliedPromo && (
+                    <div className="mt-2 d-flex align-items-center gap-2 flex-wrap">
+                      <span className="small text-muted">Promocion aplicada:</span>
+                      <span className="badge text-bg-success">{appliedPromo.code}</span>
+                      <span className="small text-muted">{appliedPromo.name}</span>
+                      <button
+                        type="button"
+                        className="btn btn-sm btn-outline-secondary"
+                        onClick={() => {
+                          setAppliedPromo(null);
+                          setPromoCodeInput("");
+                          setPromoError("");
+                        }}
+                      >
+                        Quitar
+                      </button>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          </div>
+
+          <div className="card shadow-sm border-0 mb-4">
+            <div className="card-body">
+              <div className="d-flex justify-content-between mb-2">
+                <span className="text-muted">Subtotal</span>
+                <strong>${toMoney(subtotal)}</strong>
+              </div>
+              {discount > 0 && (
+                <div className="d-flex justify-content-between mb-2 text-success">
+                  <span>Descuento</span>
+                  <strong>-${toMoney(discount)}</strong>
+                </div>
+              )}
+              <div className="d-flex justify-content-between border-top pt-2 fs-5">
+                <span>Total</span>
+                <strong>${toMoney(total)}</strong>
+              </div>
+
+              <button
+                className="btn btn-success w-100 mt-3"
+                type="button"
+                disabled={cart.length === 0 || isSaving}
+                onClick={handleCreateOrder}
+              >
+                {isSaving ? "Enviando..." : "Validar cobro y enviar a cocina"}
+              </button>
+            </div>
+          </div>
+
+          {ticket && (
+            <div className="card shadow-sm border-0">
+              <div className="card-body bg-light">
+                <div className="d-flex flex-column gap-2 mb-3">
+                  <span className="text-uppercase text-muted fw-semibold small">Ticket generado</span>
+                  <strong className="fs-5">{ticket.code}</strong>
+                  <span className="text-muted small">
+                    {ticket.fulfillmentType === "dine_in"
+                      ? `Consumir en el lugar - ${ticket.tableIdentifier}`
+                      : "Para llevar"}
+                  </span>
+                  <small className="text-muted">{new Date(ticket.createdAt).toLocaleString()}</small>
+                </div>
+
+                <div className="list-group list-group-flush border rounded-3 overflow-hidden">
+                  <div className="list-group-item d-flex justify-content-between">
+                    <span>Responsable</span>
+                    <strong>{ticket.cashierName}</strong>
+                  </div>
+                  {ticket.items.map((item) => (
+                    <div className="list-group-item d-flex justify-content-between align-items-start" key={`${item.type}-${item.name}`}>
+                      <span>{item.quantity}x {item.name}</span>
+                      <strong>${toMoney(Number(item.unitPrice) * Number(item.quantity))}</strong>
+                    </div>
+                  ))}
+                  <div className="list-group-item d-flex justify-content-between">
+                    <span>Subtotal</span>
+                    <strong>${toMoney(ticket.subtotal)}</strong>
+                  </div>
+                  {Number(ticket.discountTotal) > 0 && (
+                    <>
+                      <div className="list-group-item d-flex justify-content-between text-muted">
+                        <span>Promocion aplicada</span>
+                        <strong>{ticket.promotionApplied || "Promocion activa"}</strong>
+                      </div>
+                      <div className="list-group-item d-flex justify-content-between text-success">
+                        <span>Descuento</span>
+                        <strong>-${toMoney(ticket.discountTotal)}</strong>
+                      </div>
+                    </>
+                  )}
+                  <div className="list-group-item d-flex justify-content-between fw-bold">
+                    <span>TOTAL A PAGAR</span>
+                    <strong>${toMoney(ticket.total)}</strong>
+                  </div>
+                </div>
+
+                <p className="text-success mb-0 mt-3">Cobro validado. Pedido enviado a cocina.</p>
+              </div>
+            </div>
+          )}
+        </aside>
+      </div>
     </section>
   );
 };

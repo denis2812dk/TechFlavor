@@ -5,15 +5,19 @@ const parseJson = async (response) => {
 };
 
 export const getErrorMessage = (error) => {
-  if (error?.message) return error.message;
   if (Array.isArray(error?.errors) && error.errors.length > 0) {
-    return error.errors.map((item) => `${item.campo}: ${item.mensaje}`).join("\n");
+    return error.errors.map((item) => {
+      const campo = item.path ? item.path.join(".") : (item.campo || "Campo");
+      const msj = item.message || item.mensaje || "Dato inválido";
+      return `${campo}: ${msj}`;
+    }).join("\n");
   }
+  if (error?.message) return error.message;
   if (error?.error?.message) return error.error.message;
   if (typeof error === "string") return error;
-  return "Ocurrio un error inesperado.";
+  
+  return "Ocurrió un error inesperado.";
 };
-
 export const signInWithEmail = async ({ email, password }) => {
   const response = await fetch(`${API_URL}/api/auth/sign-in/email`, {
     method: "POST",
