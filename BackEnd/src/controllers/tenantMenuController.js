@@ -131,6 +131,41 @@ export const createMenuCategory = async (req, res, next) => {
     }
 };
 
+export const updateMenuCategory = async (req, res, next) => {
+    try {
+        const { categoryId } = req.params;
+        const allowedFields = ["name", "description", "isActive"];
+        const dataToUpdate = {};
+
+        for (const field of allowedFields) {
+            if (!Object.prototype.hasOwnProperty.call(req.body, field)) continue;
+
+            if (field === "isActive") {
+                dataToUpdate.isActive = Boolean(req.body.isActive);
+            } else if (field !== "description" && !requiredText(req.body[field])) {
+                return res.status(400).json({ success: false, message: `${field} no puede ir vacio.` });
+            } else {
+                dataToUpdate[field] = req.body[field].trim();
+            }
+        }
+
+        if (Object.keys(dataToUpdate).length === 0) {
+            return res.status(400).json({ success: false, message: "No enviaste campos para actualizar." });
+        }
+
+        await req.tenantDb.update(menuCategories).set(dataToUpdate).where(eq(menuCategories.id, categoryId));
+        const [category] = await req.tenantDb.select().from(menuCategories).where(eq(menuCategories.id, categoryId)).limit(1);
+
+        if (!category) {
+            return res.status(404).json({ success: false, message: "Categoria no encontrada." });
+        }
+
+        res.json({ success: true, category });
+    } catch (error) {
+        next(error);
+    }
+};
+
 export const createMenuProduct = async (req, res, next) => {
     try {
         const name = req.body.name?.trim();
@@ -187,7 +222,7 @@ export const updateMenuProduct = async (req, res, next) => {
                 dataToUpdate.price = price;
             } else if (field === "isActive") {
                 dataToUpdate.isActive = Boolean(req.body.isActive);
-            } else if (!requiredText(req.body[field])) {
+            } else if (field !== "description" && !requiredText(req.body[field])) {
                 return res.status(400).json({ success: false, message: `${field} no puede ir vacio.` });
             } else {
                 dataToUpdate[field] = req.body[field].trim();
@@ -274,7 +309,7 @@ export const updateMenuCombo = async (req, res, next) => {
                 dataToUpdate.price = price;
             } else if (field === "isActive") {
                 dataToUpdate.isActive = Boolean(req.body.isActive);
-            } else if (!requiredText(req.body[field])) {
+            } else if (field !== "description" && !requiredText(req.body[field])) {
                 return res.status(400).json({ success: false, message: `${field} no puede ir vacio.` });
             } else {
                 dataToUpdate[field] = req.body[field].trim();

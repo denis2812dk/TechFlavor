@@ -51,46 +51,30 @@ const iconMap = {
 };
 
 const getSidebarItems = (role) => {
-  if (role === "admin") {
-    return [
-      { label: "Dashboard", icon: "dashboard", path: "/manager" },
-      { label: "Orders", icon: "orders", path: "/manager/orders" },
-      { label: "Tables", icon: "tables", path: "/manager/tables", disabled: true },
-      { label: "Menu", icon: "menu", path: "/manager/menu" },
-      { label: "Inventory", icon: "inventory", path: "/manager/inventory" },
-      { label: "Promotions", icon: "promotions", path: "/manager/promotions" },
-      { label: "Reports", icon: "reports", path: "/manager/reports", disabled: true },
-      { label: "Users", icon: "users", path: "/manager/users" },
-      { label: "Mi Perfil", icon: "profile", path: "/perfil" },
-      { label: "Settings", icon: "settings", path: "/manager/settings", disabled: true },
-    ];
-  }
-
   if (role === "gerente") {
     return [
       { label: "Dashboard", icon: "dashboard", path: "/gerente" },
       { label: "Usuarios", icon: "users", path: "/gerente/users" },
-      { label: "Menu", icon: "menu", path: "/gerente/menu" },
-      { label: "Salon", icon: "tables", path: "/gerente/salon" },
-      { label: "Cocina", icon: "orders", path: "/cocina" },
-      { label: "Inventory", icon: "inventory", path: "/gerente/inventory" },
-      { label: "Promotions", icon: "promotions", path: "/gerente/promotions" },
+      { label: "Menú", icon: "menu", path: "/gerente/menu" },
+      { label: "Salón", icon: "tables", path: "/gerente/salon" },
+      { label: "Inventario", icon: "inventory", path: "/gerente/inventory" },
+      { label: "Promociones", icon: "promotions", path: "/gerente/promotions" },
+      { label: "Órdenes", icon: "orders", path: "/gerente/orders" },
       { label: "Mi Perfil", icon: "profile", path: "/perfil" },
-      { label: "Reports", icon: "reports", path: "/gerente/reports", disabled: true },
     ];
   }
 
   if (role === "cajero") {
     return [
       { label: "Caja", icon: "dashboard", path: "/cajero" },
-      { label: "Ordenes", icon: "orders", path: "/cajero/orders" },
+      { label: "Órdenes Activas", icon: "orders", path: "/cajero/orders" },
       { label: "Mi Perfil", icon: "profile", path: "/perfil" },
     ];
   }
 
   if (role === "cocina") {
     return [
-      { label: "KDS", icon: "orders", path: "/cocina" },
+      { label: "KDS Cocina", icon: "orders", path: "/cocina" },
       { label: "Órdenes", icon: "orders", path: "/cocina/orders" },
       { label: "Mi Perfil", icon: "profile", path: "/perfil" },
     ];

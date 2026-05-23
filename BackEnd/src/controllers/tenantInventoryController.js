@@ -172,3 +172,20 @@ export const listIngredients = async (req, res, next) => {
         next(error);
     }
 };
+
+export const setProductRecipe = async (req, res, next) => {
+    try {
+        const { productId } = req.params;
+        const { ingredients: recipeItems } = req.body; // Array de { ingredientId, quantity }
+
+        // Delegamos al servicio la lógica de reemplazo de la receta
+        await inventoryService.updateProductRecipe(req.tenantDb, productId, recipeItems);
+
+        res.json({
+            success: true,
+            message: "Receta del producto actualizada correctamente.",
+        });
+    } catch (error) {
+        next(error);
+    }
+};

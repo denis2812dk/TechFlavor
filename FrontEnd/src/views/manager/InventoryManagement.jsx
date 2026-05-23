@@ -22,6 +22,16 @@ const emptyIngredient = {
 
 const toStock = (value) => Number(value || 0).toFixed(2);
 
+const UNIT_OPTIONS = [
+  { value: "unidad", label: "Unidad" },
+  { value: "libra", label: "Libra" },
+  { value: "kilo", label: "Kilogramo" },
+  { value: "gramo", label: "Gramo" },
+  { value: "litro", label: "Litro" },
+  { value: "mililitro", label: "Mililitro" },
+  { value: "onza", label: "Onza" },
+];
+
 export const InventoryManagement = () => {
   const [ingredients, setIngredients] = useState([]);
   const [shrinkageForm, setShrinkageForm] = useState(emptyShrinkage);
@@ -196,11 +206,15 @@ export const InventoryManagement = () => {
 
             <label>
               <span>Unidad de medida</span>
-              <input
+              <select
                 value={ingredientForm.unitOfMeasure}
                 onChange={(event) => setIngredientForm((current) => ({ ...current, unitOfMeasure: event.target.value }))}
-                placeholder="Ej. lb, kg, unidad, lt"
-              />
+              >
+                <option value="">Seleccionar unidad...</option>
+                {UNIT_OPTIONS.map((opt) => (
+                  <option key={opt.value} value={opt.value}>{opt.label}</option>
+                ))}
+              </select>
             </label>
 
             <label>

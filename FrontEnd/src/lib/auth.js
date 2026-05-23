@@ -118,6 +118,18 @@ export const createMenuCategory = async (payload) => {
   return data;
 };
 
+export const updateMenuCategory = async (categoryId, payload) => {
+  const response = await fetch(`${API_URL}/api/tenant/menu/categories/${categoryId}`, {
+    method: "PATCH",
+    credentials: "include",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+  const data = await parseJson(response);
+  if (!response.ok) throw new Error(getErrorMessage(data));
+  return data;
+};
+
 export const createMenuProduct = async (payload) => {
   const response = await fetch(`${API_URL}/api/tenant/menu/products`, {
     method: "POST",

@@ -25,7 +25,7 @@ export const createOrderSchema = z.object({
     fulfillmentType: z.enum(["takeaway", "dine_in"], {
         errorMap: () => ({ message: "Tipo de entrega invalido" }),
     }),
-    tableId: z.string().nullable().optional(), 
+    tableIdentifier: z.string().nullable().optional(),
     promoCode: z.string().min(1).max(30).optional(),
     items: z.array(
         z.object({
@@ -35,14 +35,15 @@ export const createOrderSchema = z.object({
         }),
     ).min(1, "El pedido no puede estar vacio"),
 }).refine((data) => {
-    if (data.fulfillmentType === "dine_in" && (!data.tableId || data.tableId.trim() === "")) {
+    if (data.fulfillmentType === "dine_in" && (!data.tableIdentifier || data.tableIdentifier.trim() === "")) {
         return false;
     }
     return true;
 }, {
-    message: "Debes seleccionar una mesa para consumo en el local",
-    path: ["tableId"], 
+    message: "Debes ingresar el numero de mesa para consumo en el local",
+    path: ["tableIdentifier"],
 });
+
 export const createShrinkageSchema = z.object({
     ingredientId: idSchema,
     quantity: z.coerce.number().positive("La cantidad debe ser mayor a 0"),
@@ -53,7 +54,7 @@ export const updateRecipeSchema = z.object({
     ingredients: z.array(
         z.object({
             ingredientId: idSchema,
-            quantity: z.coerce.number().positive("La cantidad debe ser mayor a 0"),
+            quantity: z.coerce.number().int().positive("La cantidad debe ser un número entero mayor a 0"),
         }),
     ).min(1, "La receta debe tener al menos un ingrediente"),
 });

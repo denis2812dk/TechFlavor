@@ -3,7 +3,7 @@ import {
     getTenantSettings,
     updateTenantSettings,
 } from "../controllers/tenantSettingsController.js";
-import { createMenuCategory, createMenuCombo, createMenuProduct, listMenuCatalog, updateMenuCombo, updateMenuProduct,
+import { createMenuCategory, updateMenuCategory, createMenuCombo, createMenuProduct, listMenuCatalog, updateMenuCombo, updateMenuProduct,
     setProductRecipe, deleteProduct } from "../controllers/tenantMenuController.js";
 import { createTenantOrder, deliverDispatchOrder, finishKitchenOrder, listDispatchOrders, listKitchenOrders, listTenantOrders,} from "../controllers/tenantOrdersController.js";
 import {
@@ -46,6 +46,7 @@ router.delete("/users/:userId", tenantContext, requireTenantRoles(ROLES.GERENTE)
 // Catálogo / Menú
 router.get("/menu", tenantContext, requireTenantRoles( ROLES.GERENTE, ROLES.CAJERO), listMenuCatalog);
 router.post("/menu/categories", tenantContext, requireTenantRoles( ROLES.GERENTE), createMenuCategory);
+router.patch("/menu/categories/:categoryId", tenantContext, requireTenantRoles(ROLES.GERENTE), updateMenuCategory);
 router.post("/menu/products", tenantContext, requireTenantRoles(ROLES.GERENTE), validateSchema(createProductSchema), createMenuProduct);
 router.patch("/menu/products/:productId", tenantContext, requireTenantRoles(ROLES.GERENTE), updateMenuProduct);
 router.put("/menu/products/:productId/recipe", tenantContext, requireTenantRoles(ROLES.GERENTE), validateSchema(updateRecipeSchema), setProductRecipe);
