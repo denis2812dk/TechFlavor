@@ -15,7 +15,9 @@ const fulfillmentLabels = {
 
 const formatDate = (value) => {
   if (!value) return "-";
-  return new Date(value).toLocaleString();
+  const d = new Date(value);
+  const offset = d.getTimezoneOffset() * 60000;
+  return new Date(d.getTime() + offset).toLocaleString();
 };
 
 export const OrdersList = () => {

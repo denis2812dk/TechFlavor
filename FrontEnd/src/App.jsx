@@ -19,6 +19,7 @@ import { RoleDashboard } from "./views/shared/RoleDashboard";
 import { SaaSManagement } from "./views/admin/SaaSManagement";
 import { SaaSRestaurants } from "./views/admin/SaaSRestaurants";
 import { ProfileEdit } from "./views/shared/ProfileEdit";
+import { OperationalOverview } from "./views/shared/OperationalOverview";
 
 const ROUTES = {
   // ==========================================
@@ -305,6 +306,7 @@ function App() {
         {path === "/perfil" ? <ProfileEdit session={session} onRefresh={loadSession} /> : null}
 
         {/* VISTAS DEL GERENTE */}
+        {path === "/gerente" ? <OperationalOverview /> : null}
         {path === "/gerente/users" ? <UserManagement /> : null}
         {path === "/gerente/menu" ? <MenuManagement /> : null}
         {path === "/gerente/salon" ? <SalonManagement /> : null}
@@ -318,6 +320,7 @@ function App() {
         {path === "/cocina" ? <KitchenDisplay /> : null}
         {path === "/cocina/orders" ? <OrdersList /> : null}
         {path === "/despacho" ? <DispatchOrders /> : null}
+        {path === "/operador" ? <OperationalOverview /> : null}
       </RoleDashboard>
     </ProtectedRoute>
   );
