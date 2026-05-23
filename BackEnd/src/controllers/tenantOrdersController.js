@@ -61,7 +61,7 @@ const findSaleItem = async (tenantDb, item) => {
 
 export const createTenantOrder = async (req, res, next) => {
     try {
-        const { items, fulfillmentType, tableIdentifier, promoCode } = req.body;
+        const { items, fulfillmentType, tableId, promoCode } = req.body;
 
         const saleItems = [];
         for (const item of items) {
@@ -158,7 +158,7 @@ export const createTenantOrder = async (req, res, next) => {
             ticketCode,
             status: "in_preparation",
             fulfillmentType,
-            tableIdentifier: fulfillmentType === "dine_in" ? tableIdentifier : null,
+            tableId: fulfillmentType === "dine_in" ? tableId : null,
             subtotal: money(subtotal),
             discountTotal: money(discountTotal), 
             promotionId: activePromotion ? activePromotion.id : null,
@@ -190,7 +190,7 @@ export const createTenantOrder = async (req, res, next) => {
                 code: ticketCode,
                 status: order.status,
                 fulfillmentType: order.fulfillmentType,
-                tableIdentifier: order.tableIdentifier,
+                tableId: order.tableId,
                 cashierName: order.cashierName,
                 createdAt: new Date().toISOString(),
                 items: saleItems.map((item) => ({
@@ -232,7 +232,7 @@ export const listTenantOrders = async (req, res, next) => {
                 code: order.ticketCode,
                 status: order.status,
                 fulfillmentType: order.fulfillmentType,
-                tableIdentifier: order.tableIdentifier,
+                tableId: order.tableId,
                 subtotal: order.subtotal,
                 total: order.total,
                 cashierUserId: order.cashierUserId,
@@ -280,7 +280,7 @@ export const listKitchenOrders = async (req, res, next) => {
                 code: order.ticketCode,
                 status: order.status,
                 fulfillmentType: order.fulfillmentType,
-                tableIdentifier: order.tableIdentifier,
+                tableId: order.tableId,
                 cashierName: order.cashierName,
                 createdAt: order.createdAt,
                 items: items.map((item) => ({
@@ -363,7 +363,7 @@ export const listDispatchOrders = async (req, res, next) => {
                 code: order.ticketCode,
                 status: order.status,
                 fulfillmentType: order.fulfillmentType,
-                tableIdentifier: order.tableIdentifier,
+                tableId: order.tableId,
                 cashierName: order.cashierName,
                 createdAt: order.createdAt,
                 updatedAt: order.updatedAt,

@@ -46,6 +46,7 @@ export const UserManagement = () => {
   const [roleFilter, setRoleFilter] = useState("all");
   const [statusFilter, setStatusFilter] = useState("all");
   const [isCreateOpen, setIsCreateOpen] = useState(false);
+  const [showCreatePassword, setShowCreatePassword] = useState(false);
   const [editingUser, setEditingUser] = useState(null);
   const [activeMenu, setActiveMenu] = useState(null);
 
@@ -85,6 +86,21 @@ export const UserManagement = () => {
     setForm((current) => ({ ...current, [field]: value }));
   };
 
+  const openCreateModal = () => {
+    setForm(initialForm);
+    setError("");
+    setStatus("");
+    setShowCreatePassword(false);
+    setIsCreateOpen(true);
+  };
+
+  const closeCreateModal = () => {
+    setIsCreateOpen(false);
+    setForm(initialForm);
+    setError("");
+    setShowCreatePassword(false);
+  };
+
   const handleSubmit = async (event) => {
     event.preventDefault();
     setStatus("");
@@ -94,8 +110,7 @@ export const UserManagement = () => {
     try {
       const result = await createTenantUser(form);
       setStatus(`${result.user.name} fue creado para ${restaurantName}.`);
-      setForm(initialForm);
-      setIsCreateOpen(false);
+      closeCreateModal();
       await loadUsers();
     } catch (requestError) {
       setError(getErrorMessage(requestError));
@@ -138,7 +153,7 @@ export const UserManagement = () => {
           <h2>User Management</h2>
           <p>Manage your restaurant team members, roles, and permissions</p>
         </div>
-        <button className="users-primary-action" type="button" onClick={() => setIsCreateOpen(true)}>
+        <button className="users-primary-action" type="button" onClick={openCreateModal}>
           <span>+</span>
           Add User
         </button>
@@ -262,6 +277,236 @@ export const UserManagement = () => {
           </table>
         </div>
       </div>
+
+      {isCreateOpen && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-label="Crear usuario"
+          style={{
+            position: "fixed",
+            inset: 0,
+            background: "rgba(15, 23, 42, 0.45)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            padding: "1rem",
+            zIndex: 1000,
+          }}
+        >
+          <div
+            style={{
+              width: "100%",
+              maxWidth: "520px",
+              background: "#ffffff",
+              borderRadius: "12px",
+              boxShadow: "0 20px 40px rgba(15, 23, 42, 0.2)",
+              padding: "1.25rem",
+            }}
+          >
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1rem" }}>
+              <div>
+                <h3 style={{ margin: 0 }}>Crear usuario</h3>
+                <p style={{ margin: "0.35rem 0 0", color: "#64748b", fontSize: "0.9rem" }}>
+                  Agrega un nuevo miembro para {restaurantName}.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={closeCreateModal}
+                style={{ border: "none", background: "transparent", fontSize: "1.2rem", cursor: "pointer" }}
+                aria-label="Cerrar"
+              >
+                x
+              </button>
+            </div>
+
+            <form onSubmit={handleSubmit} autoComplete="off">
+              <div style={{ display: "grid", gap: "0.8rem" }}>
+                <label style={{ display: "grid", gap: "0.35rem" }}>
+                  <span>Nombre completo</span>
+                  <input
+                    name="tenant-user-name"
+                    type="text"
+                    value={form.name}
+                    onChange={(event) => updateField("name", event.target.value)}
+                    required
+                    autoComplete="off"
+                    autoFocus
+                    style={{ border: "1px solid #cbd5e1", borderRadius: "10px", padding: "0.6rem 0.75rem" }}
+                  />
+                </label>
+
+                <label style={{ display: "grid", gap: "0.35rem" }}>
+                  <span>Correo</span>
+                  <input
+                    name="tenant-user-email"
+                    type="email"
+                    value={form.email}
+                    onChange={(event) => updateField("email", event.target.value)}
+                    required
+                    autoComplete="off"
+                    style={{ border: "1px solid #cbd5e1", borderRadius: "10px", padding: "0.6rem 0.75rem" }}
+                  />
+                </label>
+
+                <label style={{ display: "grid", gap: "0.35rem" }}>
+                  <span>Contrasena temporal</span>
+                  <div style={{ position: "relative" }}>
+                    <input
+                      name="tenant-user-password"
+                      type={showCreatePassword ? "text" : "password"}
+                      value={form.password}
+                      onChange={(event) => updateField("password", event.target.value)}
+                      minLength={8}
+                      required
+                      autoComplete="new-password"
+                      style={{ width: "100%", border: "1px solid #cbd5e1", borderRadius: "10px", padding: "0.6rem 2.9rem 0.6rem 0.75rem" }}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowCreatePassword((current) => !current)}
+                      style={{
+                        position: "absolute",
+                        right: "0.5rem",
+                        top: "50%",
+                        transform: "translateY(-50%)",
+                        border: "none",
+                        background: "transparent",
+                        color: "#475569",
+                        fontWeight: 600,
+                        cursor: "pointer",
+                      }}
+                      aria-label={showCreatePassword ? "Ocultar contraseña" : "Mostrar contraseña"}
+                    >
+                      {showCreatePassword ? "Ocultar" : "Ver"}
+                    </button>
+                  </div>
+                </label>
+
+                <label style={{ display: "grid", gap: "0.35rem" }}>
+                  <span>Rol</span>
+                  <select
+                    value={form.role}
+                    onChange={(event) => updateField("role", event.target.value)}
+                    required
+                    style={{ border: "1px solid #cbd5e1", borderRadius: "10px", padding: "0.6rem 0.75rem" }}
+                  >
+                    {ROLE_OPTIONS.map((role) => (
+                      <option key={role.value} value={role.value}>
+                        {role.label}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              </div>
+
+              <div style={{ display: "flex", justifyContent: "flex-end", gap: "0.6rem", marginTop: "1rem" }}>
+                <button
+                  type="button"
+                  onClick={closeCreateModal}
+                  disabled={isSaving}
+                  style={{ borderRadius: "10px", border: "1px solid #cbd5e1", background: "#fff", padding: "0.55rem 0.9rem", cursor: "pointer" }}
+                >
+                  Cancelar
+                </button>
+                <button type="submit" disabled={isSaving} style={{ borderRadius: "10px", border: "1px solid #ea580c", background: "#ea580c", color: "#fff", padding: "0.55rem 1rem", fontWeight: 600, cursor: "pointer" }}>
+                  {isSaving ? "Guardando..." : "Crear usuario"}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {editingUser && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-label="Editar usuario"
+          style={{
+            position: "fixed",
+            inset: 0,
+            background: "rgba(15, 23, 42, 0.45)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            padding: "1rem",
+            zIndex: 1000,
+          }}
+        >
+          <div
+            style={{
+              width: "100%",
+              maxWidth: "520px",
+              background: "#ffffff",
+              borderRadius: "12px",
+              boxShadow: "0 20px 40px rgba(15, 23, 42, 0.2)",
+              padding: "1.25rem",
+            }}
+          >
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1rem" }}>
+              <h3 style={{ margin: 0 }}>Editar usuario</h3>
+              <button
+                type="button"
+                onClick={() => setEditingUser(null)}
+                style={{ border: "none", background: "transparent", fontSize: "1.2rem", cursor: "pointer" }}
+                aria-label="Cerrar"
+              >
+                x
+              </button>
+            </div>
+
+            <form onSubmit={handleEditSubmit}>
+              <div style={{ display: "grid", gap: "0.8rem" }}>
+                <label style={{ display: "grid", gap: "0.35rem" }}>
+                  <span>Nombre completo</span>
+                  <input
+                    type="text"
+                    value={editingUser.name}
+                    onChange={(event) => setEditingUser((current) => ({ ...current, name: event.target.value }))}
+                    required
+                  />
+                </label>
+
+                <label style={{ display: "grid", gap: "0.35rem" }}>
+                  <span>Rol</span>
+                  <select
+                    value={editingUser.tenantRole}
+                    onChange={(event) => setEditingUser((current) => ({ ...current, tenantRole: event.target.value }))}
+                    required
+                  >
+                    {ROLE_OPTIONS.map((role) => (
+                      <option key={role.value} value={role.value}>
+                        {role.label}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+
+                <label style={{ display: "grid", gap: "0.35rem" }}>
+                  <span>Estado</span>
+                  <select
+                    value={editingUser.status}
+                    onChange={(event) => setEditingUser((current) => ({ ...current, status: event.target.value }))}
+                    required
+                  >
+                    <option value="active">Activo</option>
+                    <option value="inactive">Inactivo</option>
+                  </select>
+                </label>
+              </div>
+
+              <div style={{ display: "flex", justifyContent: "flex-end", gap: "0.6rem", marginTop: "1rem" }}>
+                <button type="button" onClick={() => setEditingUser(null)}>
+                  Cancelar
+                </button>
+                <button type="submit">Guardar cambios</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </section>
   );
 };

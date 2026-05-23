@@ -1,19 +1,21 @@
 import { useEffect, useMemo, useState } from "react";
 import { createOrder, getErrorMessage, getMenuCatalog } from "../../lib/auth";
 import { listActivePromotions } from "../../lib/promotions";
+import { getSalonStatus } from "../../lib/salon"; // <-- Nueva importación
 
 const toMoney = (value) => Number(value || 0).toFixed(2);
 
 export const CashierCatalog = () => {
   const [catalog, setCatalog] = useState({ products: [], combos: [] });
   const [activePromotions, setActivePromotions] = useState([]);
+  const [salonZones, setSalonZones] = useState([]); // <-- Nuevo estado para las zonas
   const [cart, setCart] = useState([]);
   const [ticket, setTicket] = useState(null);
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [fulfillmentType, setFulfillmentType] = useState("");
-  const [tableIdentifier, setTableIdentifier] = useState("");
+  const [tableId, setTableId] = useState(""); // <-- Cambiado de tableIdentifier a tableId
   const [promoCodeInput, setPromoCodeInput] = useState("");
   const [appliedPromo, setAppliedPromo] = useState(null);
   const [promoError, setPromoError] = useState("");
@@ -22,13 +24,16 @@ export const CashierCatalog = () => {
   useEffect(() => {
     const loadInitialData = async () => {
       try {
-        const [catalogData, promosData] = await Promise.all([
+        // Agregamos getSalonStatus a la carga paralela
+        const [catalogData, promosData, salonData] = await Promise.all([
           getMenuCatalog(),
           listActivePromotions(),
+          getSalonStatus(),
         ]);
 
         setCatalog(catalogData);
         setActivePromotions(promosData.promotions || []);
+        setSalonZones(salonData.salon || []);
       } catch (requestError) {
         setError(getErrorMessage(requestError));
       } finally {
@@ -129,7 +134,6 @@ export const CashierCatalog = () => {
 
     const normalizedInput = promoCodeInput.trim().toUpperCase();
     
-    // Buscamos si existe entre las promociones activas bajadas del backend
     const foundPromo = activePromotions.find(p => p.code === normalizedInput);
 
     if (foundPromo) {
@@ -196,8 +200,8 @@ export const CashierCatalog = () => {
       return;
     }
 
-    if (fulfillmentType === "dine_in" && !tableIdentifier.trim()) {
-      setError("Debes ingresar el numero de mesa o identificador antes de cerrar el pedido.");
+    if (fulfillmentType === "dine_in" && !tableId) {
+      setError("Debes seleccionar una mesa antes de enviar el pedido.");
       return;
     }
 
@@ -215,14 +219,14 @@ export const CashierCatalog = () => {
       };
 
       if (fulfillmentType === "dine_in") {
-        orderPayload.tableIdentifier = tableIdentifier.trim();
+        orderPayload.tableId = tableId;
       }
 
       const result = await createOrder(orderPayload);
       setTicket(result.ticket);
       setCart([]);
       setFulfillmentType("");
-      setTableIdentifier("");
+      setTableId("");
       setPromoCodeInput("");
       setAppliedPromo(null);
       setPromoError("");
@@ -233,6 +237,15 @@ export const CashierCatalog = () => {
     }
   };
 
+  // Helper para buscar el nombre de la mesa generada en el ticket
+  const getTableName = (tId) => {
+    for (const zone of salonZones) {
+      const table = zone.tables?.find((t) => t.id === tId);
+      if (table) return `${zone.name} - ${table.identifier}`;
+    }
+    return "Mesa no identificada";
+  };
+
   return (
     <section className="container-fluid py-4">
       <div className="d-flex flex-column flex-xl-row justify-content-between align-items-xl-end gap-3 mb-4 border-bottom pb-3">
@@ -241,7 +254,7 @@ export const CashierCatalog = () => {
           <h2 className="h3 mb-1">Nuevo pedido</h2>
           <p className="text-muted mb-0">Agrega productos o combos, aplica una promocion y genera el ticket antes del pago.</p>
         </div>
-        {isLoading && <span className="badge text-bg-light border">Cargando catalogo...</span>}
+        {isLoading && <span className="badge text-bg-light border">Cargando catálogo...</span>}
       </div>
 
       {error && <div className="alert alert-danger">{error}</div>}
@@ -390,7 +403,7 @@ export const CashierCatalog = () => {
                   className={`btn ${fulfillmentType === "takeaway" ? "btn-primary" : "btn-outline-primary"}`}
                   onClick={() => {
                     setFulfillmentType("takeaway");
-                    setTableIdentifier("");
+                    setTableId("");
                   }}
                 >
                   Para llevar
@@ -404,15 +417,36 @@ export const CashierCatalog = () => {
                 </button>
               </div>
 
+              {/* NUEVO SELECTOR DE MESAS ORDENADO POR ZONAS */}
               {fulfillmentType === "dine_in" && (
                 <div>
-                  <label className="form-label fw-semibold">Mesa o identificador</label>
-                  <input
-                    className="form-control"
-                    value={tableIdentifier}
-                    onChange={(event) => setTableIdentifier(event.target.value)}
-                    placeholder="Ej. Mesa 8, Cliente 42, A17"
-                  />
+                  <label className="form-label fw-semibold">Asignar Mesa</label>
+                  {salonZones.length === 0 ? (
+                    <div className="alert alert-warning py-2 small mb-0">
+                      El gerente no ha configurado mesas en el salón.
+                    </div>
+                  ) : (
+                    <select
+                      className="form-select"
+                      value={tableId}
+                      onChange={(event) => setTableId(event.target.value)}
+                    >
+                      <option value="">-- Selecciona una mesa --</option>
+                      {salonZones.map((zone) => (
+                        <optgroup key={zone.id} label={zone.name}>
+                          {zone.tables.map((table) => (
+                            <option 
+                              key={table.id} 
+                              value={table.id}
+                              disabled={table.status === "inactive"}
+                            >
+                              {table.identifier} {table.status === "occupied" ? "(Ocupada)" : `(${table.capacity} pax)`}
+                            </option>
+                          ))}
+                        </optgroup>
+                      ))}
+                    </select>
+                  )}
                 </div>
               )}
 
@@ -515,7 +549,7 @@ export const CashierCatalog = () => {
                   <strong className="fs-5">{ticket.code}</strong>
                   <span className="text-muted small">
                     {ticket.fulfillmentType === "dine_in"
-                      ? `Consumir en el lugar - ${ticket.tableIdentifier}`
+                      ? `Consumir en el lugar - ${getTableName(ticket.tableId)}`
                       : "Para llevar"}
                   </span>
                   <small className="text-muted">{new Date(ticket.createdAt).toLocaleString()}</small>

@@ -125,6 +125,7 @@ export const initializeTenantDatabase = async (tenantDb) => {
             FOREIGN KEY (supplier_id) REFERENCES suppliers(id) ON DELETE CASCADE
         )
     `);
+
     await tenantDb.execute(sql`
         CREATE TABLE IF NOT EXISTS promotions (
             id varchar(36) PRIMARY KEY,
@@ -148,38 +149,6 @@ export const initializeTenantDatabase = async (tenantDb) => {
             target_type varchar(20) NOT NULL,
             target_id varchar(36),
             FOREIGN KEY (promotion_id) REFERENCES promotions(id) ON DELETE CASCADE
-        )
-    `);
-
-    await tenantDb.execute(sql`
-        CREATE TABLE IF NOT EXISTS orders (
-            id varchar(36) PRIMARY KEY,
-            ticket_code varchar(30) NOT NULL UNIQUE,
-            status varchar(30) NOT NULL DEFAULT 'open',
-            fulfillment_type varchar(30) NOT NULL DEFAULT 'takeaway',
-            table_identifier varchar(60),
-            subtotal decimal(10,2) NOT NULL,
-            discount_total decimal(10,2) NOT NULL DEFAULT 0.00,
-            promotion_id varchar(36),
-            total decimal(10,2) NOT NULL,
-            cashier_user_id varchar(36) NOT NULL,
-            cashier_name varchar(120) NOT NULL,
-            created_at timestamp DEFAULT CURRENT_TIMESTAMP,
-            updated_at timestamp DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
-        )
-    `);
-
-    await tenantDb.execute(sql`
-        CREATE TABLE IF NOT EXISTS order_items (
-            id varchar(36) PRIMARY KEY,
-            order_id varchar(36) NOT NULL,
-            item_type varchar(20) NOT NULL,
-            item_id varchar(36) NOT NULL,
-            name varchar(120) NOT NULL,
-            unit_price decimal(10,2) NOT NULL,
-            quantity int NOT NULL,
-            line_total decimal(10,2) NOT NULL,
-            FOREIGN KEY (order_id) REFERENCES orders(id) ON DELETE CASCADE
         )
     `);
     await tenantDb.execute(sql`
@@ -206,6 +175,39 @@ export const initializeTenantDatabase = async (tenantDb) => {
     `);
 
     await tenantDb.execute(sql`
+        CREATE TABLE IF NOT EXISTS orders (
+            id varchar(36) PRIMARY KEY,
+            ticket_code varchar(30) NOT NULL UNIQUE,
+            status varchar(30) NOT NULL DEFAULT 'open',
+            fulfillment_type varchar(30) NOT NULL DEFAULT 'takeaway',
+            table_id varchar(36), -- Reemplazado
+            subtotal decimal(10,2) NOT NULL,
+            discount_total decimal(10,2) NOT NULL DEFAULT 0.00,
+            promotion_id varchar(36),
+            total decimal(10,2) NOT NULL,
+            cashier_user_id varchar(36) NOT NULL,
+            cashier_name varchar(120) NOT NULL,
+            created_at timestamp DEFAULT CURRENT_TIMESTAMP,
+            updated_at timestamp DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+            FOREIGN KEY (table_id) REFERENCES tables(id) ON DELETE SET NULL
+        )
+    `);
+
+    await tenantDb.execute(sql`
+        CREATE TABLE IF NOT EXISTS order_items (
+            id varchar(36) PRIMARY KEY,
+            order_id varchar(36) NOT NULL,
+            item_type varchar(20) NOT NULL,
+            item_id varchar(36) NOT NULL,
+            name varchar(120) NOT NULL,
+            unit_price decimal(10,2) NOT NULL,
+            quantity int NOT NULL,
+            line_total decimal(10,2) NOT NULL,
+            FOREIGN KEY (order_id) REFERENCES orders(id) ON DELETE CASCADE
+        )
+    `);
+
+    await tenantDb.execute(sql`
         CREATE TABLE IF NOT EXISTS reservations (
             id varchar(36) PRIMARY KEY,
             table_id varchar(36),
@@ -219,5 +221,6 @@ export const initializeTenantDatabase = async (tenantDb) => {
             FOREIGN KEY (table_id) REFERENCES tables(id) ON DELETE SET NULL
         )
     `);
+
     console.log("¡Base de datos del inquilino inicializada correctamente!");
 };

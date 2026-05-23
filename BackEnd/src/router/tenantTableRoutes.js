@@ -8,7 +8,7 @@ const router = Router();
 
 router.get("/salon", tenantContext, requireTenantRoles(ROLES.GERENTE, ROLES.CAJERO), getSalon);
 router.post("/zones", tenantContext, requireTenantRoles(ROLES.GERENTE), addZone);
-router.post("/tables", tenantContext, requireTenantRoles(ROLES.GERENTE), addTable);
-router.patch("/tables/:tableId/status", tenantContext, requireTenantRoles(ROLES.GERENTE, ROLES.CAJERO), changeTableStatus);
+router.post("/", tenantContext, requireTenantRoles(ROLES.GERENTE), addTable);
+router.patch("/:tableId/status", tenantContext, requireTenantRoles(ROLES.GERENTE, ROLES.CAJERO), changeTableStatus);
 
 export default router;

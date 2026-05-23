@@ -9,6 +9,7 @@ import { InventoryManagement } from "./views/manager/InventoryManagement";
 import { MenuManagement } from "./views/manager/MenuManagement";
 import { UserManagement } from "./views/manager/UserManagement";
 import { PromotionsManagement } from "./views/manager/PromotionsManagement";
+import { SalonManagement } from "./views/manager/SalonManagement";
 import { CashierCatalog } from "./views/cashier/CashierCatalog";
 import { DispatchOrders } from "./views/dispatch/DispatchOrders";
 import { KitchenDisplay } from "./views/kitchen/KitchenDisplay";
@@ -61,6 +62,11 @@ const ROUTES = {
     title: "Inventario",
     description: "Control de insumos, existencias y registro de merma.",
   },
+  "/gerente/salon": {
+    roles: [ROLES.GERENTE],
+    title: "Salon",
+    description: "Configuracion de zonas y mesas del restaurante.",
+  },
   "/gerente/promotions": {
     roles: [ROLES.GERENTE],
     title: "Promociones",
@@ -89,6 +95,11 @@ const ROUTES = {
     roles: [ROLES.COCINA],
     title: "KDS cocina",
     description: "Pedidos entrantes, preparación y estados de cocina.",
+  },
+  "/cocina/orders": {
+    roles: [ROLES.COCINA, ROLES.GERENTE],
+    title: "Órdenes cocina",
+    description: "Lista de órdenes para la cocina.",
   },
   "/despacho": {
     roles: [ROLES.DESPACHO],
@@ -280,6 +291,7 @@ function App() {
         {/* VISTAS DEL GERENTE */}
         {path === "/gerente/users" ? <UserManagement /> : null}
         {path === "/gerente/menu" ? <MenuManagement /> : null}
+        {path === "/gerente/salon" ? <SalonManagement /> : null}
         {path === "/gerente/inventory" ? <InventoryManagement /> : null}
         {path === "/gerente/promotions" ? <PromotionsManagement /> : null}
         {path === "/gerente/orders" ? <OrdersList /> : null}
@@ -288,6 +300,7 @@ function App() {
         {path === "/cajero/orders" ? <OrdersList /> : null}
         {path === "/cajero" ? <CashierCatalog /> : null}
         {path === "/cocina" ? <KitchenDisplay /> : null}
+        {path === "/cocina/orders" ? <OrdersList /> : null}
         {path === "/despacho" ? <DispatchOrders /> : null}
       </RoleDashboard>
     </ProtectedRoute>
