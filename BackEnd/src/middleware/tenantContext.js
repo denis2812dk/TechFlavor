@@ -4,6 +4,7 @@ import { auth } from "../config/auth.js";
 import { db } from "../config/db.js";
 import { restaurantUsers, restaurants } from "../models/schema.js";
 import { getTenantDb } from "../config/tenantDb.js";
+import { ROLES } from "../constants/roles.js";
 
 export const tenantContext = async (req, res, next) => {
     try {
@@ -17,7 +18,11 @@ export const tenantContext = async (req, res, next) => {
                 message: "Debes iniciar sesion.",
             });
         }
-
+        req.user = session.user;
+        req.session = session.session;
+        if (session.user.role === ROLES.ADMIN) {
+            return next();
+        }
         const [membership] = await db
             .select({
                 restaurantId: restaurants.id,
@@ -39,9 +44,6 @@ export const tenantContext = async (req, res, next) => {
                 message: "No tienes un restaurante activo asignado.",
             });
         }
-
-        req.user = session.user;
-        req.session = session.session;
         req.restaurant = membership;
         req.tenantDb = getTenantDb(membership.databaseName);
 

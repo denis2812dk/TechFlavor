@@ -121,3 +121,27 @@ export const approveTenantRequest = async (requestId) => {
         slug: slug
     };
 };
+export const rejectTenantRequest = async (requestId, reason) => {
+    const [request] = await db
+        .select()
+        .from(tenantRequests)
+        .where(eq(tenantRequests.id, requestId))
+        .limit(1);
+    if (!request) throw new Error("REQUEST_NOT_FOUND");
+    if (request.status !== "pending") throw new Error("REQUEST_ALREADY_PROCESSED");
+    let updatedNotes = request.notes;
+    if (reason) {
+        const rejectionNote = `[Rechazado]: ${reason.trim()}`;
+        updatedNotes = request.notes ? `${request.notes}\n${rejectionNote}` : rejectionNote;
+    }
+
+    await db.update(tenantRequests)
+        .set({ 
+            status: "rejected", 
+            notes: updatedNotes,
+            updatedAt: new Date() 
+        })
+        .where(eq(tenantRequests.id, requestId));
+
+    return true;
+};

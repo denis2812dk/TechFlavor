@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { approveSubscription } from "../controllers/saasController.js";
+import { approveSubscription,rejectSubscription } from "../controllers/saasController.js";
 import { tenantContext } from "../middleware/tenantContext.js";
 import { ROLES } from "../constants/roles.js";
 
@@ -14,5 +14,5 @@ const requireSuperAdmin = (req, res, next) => {
     next();
 };
 router.post("/requests/:requestId/approve", tenantContext, requireSuperAdmin, approveSubscription);
-
+router.post("/requests/:requestId/reject", tenantContext, requireSuperAdmin, rejectSubscription);
 export default router;
