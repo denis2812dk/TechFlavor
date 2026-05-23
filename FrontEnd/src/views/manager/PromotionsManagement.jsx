@@ -95,7 +95,11 @@ export const PromotionsManagement = () => {
   };
 
   useEffect(() => {
-    loadData();
+    const fetchData = async () => {
+      await loadData();
+    };
+
+    fetchData();
   }, []);
 
   const clearMessages = () => {
@@ -228,321 +232,295 @@ export const PromotionsManagement = () => {
   const activeCount = currentPromos.length;
 
   return (
-    <div className="container-fluid py-4 px-3 px-lg-4">
-      <div className="d-flex flex-column flex-xl-row justify-content-between align-items-xl-end gap-3 mb-4 border-bottom pb-3">
+    <section className="menu-catalog-page">
+      <header className="menu-catalog-head">
         <div>
-          <p className="text-uppercase text-muted fw-semibold small mb-1">Promociones</p>
-          <h2 className="h3 mb-1">Gestor de descuentos</h2>
-          <p className="text-muted mb-0">Crea promociones con codigo, vigencia y alcance por producto o categoria.</p>
+          <p className="admin-users-kicker">Promociones</p>
+          <h2>Gestor de descuentos</h2>
+          <p>Crea promociones con codigo, vigencia y alcance por producto o categoria.</p>
         </div>
-        <div className="d-flex flex-wrap align-items-center gap-2">
-          <span className="badge text-bg-light border rounded-pill px-3 py-2">
-            {activeCount} vigentes o programadas
-          </span>
-          <button
-            type="button"
-            className="btn btn-primary"
-            onClick={() => {
-              setShowCreate(!showCreate);
-              clearMessages();
-              if(showCreate) { setForm(emptyPromo); setEditingId(null); }
-            }}
-          >
-            {showCreate ? "Ocultar formulario" : "Nueva promocion"}
-          </button>
-        </div>
+      </header>
+
+      <div className="menu-catalog-toolbar">
+        <p>{activeCount} vigentes o programadas</p>
+        <button
+          type="button"
+          className="menu-catalog-action"
+          onClick={() => {
+            setShowCreate(!showCreate);
+            clearMessages();
+            if(showCreate) { setForm(emptyPromo); setEditingId(null); }
+          }}
+        >
+          <span>{showCreate ? "−" : "+"}</span>
+          {showCreate ? "Ocultar formulario" : "Nueva promocion"}
+        </button>
       </div>
 
-      {status && <div className="alert alert-success">{status}</div>}
-      {error && <div className="alert alert-danger">{error}</div>}
+      {status && <p className="admin-users-success">{status}</p>}
+      {error && <p className="admin-users-error">{error}</p>}
 
       {/* PESTAÑAS DE NAVEGACIÓN */}
       {!showCreate && (
-        <ul className="nav nav-pills mb-4">
-          <li className="nav-item">
-            <button 
-              className={`nav-link ${activeTab === "current" ? "active" : ""}`} 
-              onClick={() => setActiveTab("current")}
-              type="button"
-            >
-              Vigentes y Programadas
-            </button>
-          </li>
-          <li className="nav-item">
-            <button 
-              className={`nav-link ${activeTab === "past" ? "active" : ""}`} 
-              onClick={() => setActiveTab("past")}
-              type="button"
-            >
-              Historial (Inactivas)
-            </button>
-          </li>
-        </ul>
+        <nav className="menu-catalog-tabs" aria-label="Secciones de promociones">
+          <button 
+            className={activeTab === "current" ? "is-active" : ""} 
+            onClick={() => setActiveTab("current")}
+            type="button"
+          >
+            Vigentes y Programadas
+          </button>
+          <button 
+            className={activeTab === "past" ? "is-active" : ""} 
+            onClick={() => setActiveTab("past")}
+            type="button"
+          >
+            Historial (Inactivas)
+          </button>
+        </nav>
       )}
 
       {showCreate && (
-        <div className="card border-0 shadow-sm mb-4">
-          <div className="card-body p-4 p-lg-5">
-            <div className="d-flex flex-column flex-md-row justify-content-between gap-2 mb-4">
-              <div>
-                <h3 className="h5 mb-1">{editingId ? "Editar promocion" : "Nueva promocion"}</h3>
-                <p className="text-muted mb-0">Registra el codigo que luego validaran los cajeros al aplicar el descuento.</p>
-              </div>
-              <span className="badge text-bg-primary align-self-start">Codigo promocional</span>
+        <form onSubmit={handleCreateOrUpdate} className="menu-create-panel">
+          <div className="is-wide" style={{ gridColumn: "1 / -1", display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "16px" }}>
+            <div>
+              <h3 style={{ margin: "0 0 4px", fontSize: "18px", color: "var(--color-text)" }}>{editingId ? "Editar promocion" : "Nueva promocion"}</h3>
+              <p style={{ margin: 0, fontSize: "13px", color: "var(--color-muted)" }}>Registra el codigo que luego validaran los cajeros al aplicar el descuento.</p>
             </div>
-
-            <form onSubmit={handleCreateOrUpdate} className="row g-3">
-              <div className="col-12 col-md-6">
-                <label className="form-label fw-semibold">Codigo de promocion</label>
-                <input
-                  type="text"
-                  className="form-control"
-                  required
-                  maxLength={30}
-                  value={form.code}
-                  onChange={(event) => setForm({ ...form, code: normalizeCode(event.target.value) })}
-                  placeholder="Ej. HAPPY10"
-                />
-                <div className="form-text">Solo letras y numeros, de 3 a 30 caracteres.</div>
-              </div>
-
-              <div className="col-12 col-md-6">
-                <label className="form-label fw-semibold">Nombre de la promocion</label>
-                <input
-                  type="text"
-                  className="form-control"
-                  required
-                  value={form.name}
-                  onChange={(event) => setForm({ ...form, name: event.target.value })}
-                  placeholder="Ej. Hora Feliz"
-                />
-              </div>
-
-              <div className="col-12">
-                <label className="form-label fw-semibold">Descripcion breve</label>
-                <input
-                  type="text"
-                  className="form-control"
-                  value={form.description}
-                  onChange={(event) => setForm({ ...form, description: event.target.value })}
-                  placeholder="Describe brevemente la promocion"
-                />
-              </div>
-
-              <div className="col-12 col-md-6">
-                <label className="form-label fw-semibold">Tipo de descuento</label>
-                <select
-                  className="form-select"
-                  value={form.discountType}
-                  onChange={(event) => setForm({ ...form, discountType: event.target.value })}
-                >
-                  <option value="percentage">Porcentaje (%)</option>
-                  <option value="fixed_amount">Monto fijo ($)</option>
-                </select>
-              </div>
-
-              <div className="col-12 col-md-6">
-                <label className="form-label fw-semibold">
-                  {form.discountType === "percentage" ? "Porcentaje de descuento" : "Monto del descuento"}
-                </label>
-                <input
-                  type="number"
-                  step="0.01"
-                  min="0.01"
-                  className="form-control"
-                  required
-                  value={form.discountValue}
-                  onChange={(event) => setForm({ ...form, discountValue: event.target.value })}
-                  placeholder={form.discountType === "percentage" ? "Ej. 15" : "Ej. 2.50"}
-                />
-              </div>
-
-              <div className="col-12 col-md-6">
-                <label className="form-label fw-semibold">Fecha y hora de inicio</label>
-                <input
-                  type="datetime-local"
-                  className="form-control"
-                  required
-                  min={editingId ? "" : getNowMin()}
-                  value={form.startDate}
-                  onChange={(event) => setForm({ ...form, startDate: event.target.value })}
-                />
-              </div>
-
-              <div className="col-12 col-md-6">
-                <label className="form-label fw-semibold">Fecha y hora de fin</label>
-                <input
-                  type="datetime-local"
-                  className="form-control"
-                  required
-                  min={form.startDate || getNowMin()}
-                  value={form.endDate}
-                  onChange={(event) => setForm({ ...form, endDate: event.target.value })}
-                />
-              </div>
-
-              <div className="col-12 col-md-6">
-                <label className="form-label fw-semibold">Alcance de la promocion</label>
-                <select
-                  className="form-select"
-                  value={form.targetType}
-                  onChange={(event) => setForm({ ...form, targetType: event.target.value, targetId: "" })}
-                >
-                  <option value="all">Todo el menu</option>
-                  <option value="category">Una categoria especifica</option>
-                  <option value="product">Un producto especifico</option>
-                </select>
-              </div>
-
-              {form.targetType === "category" && (
-                <div className="col-12 col-md-6">
-                  <label className="form-label fw-semibold">Selecciona la categoria</label>
-                  <select
-                    className="form-select"
-                    required
-                    value={form.targetId}
-                    onChange={(event) => setForm({ ...form, targetId: event.target.value })}
-                  >
-                    <option value="">Seleccionar...</option>
-                    {catalog.categories.map((category) => (
-                      <option key={category.id} value={category.id}>{category.name}</option>
-                    ))}
-                  </select>
-                </div>
-              )}
-
-              {form.targetType === "product" && (
-                <div className="col-12 col-md-6">
-                  <label className="form-label fw-semibold">Selecciona el producto</label>
-                  <select
-                    className="form-select"
-                    required
-                    value={form.targetId}
-                    onChange={(event) => setForm({ ...form, targetId: event.target.value })}
-                  >
-                    <option value="">Seleccionar...</option>
-                    {catalog.products.map((product) => (
-                      <option key={product.id} value={product.id}>{product.name}</option>
-                    ))}
-                  </select>
-                </div>
-              )}
-
-              <div className="col-12 d-flex flex-column flex-sm-row justify-content-end gap-2 pt-2">
-                <button
-                  type="button"
-                  className="btn btn-outline-secondary"
-                  onClick={() => {
-                    setShowCreate(false);
-                    clearMessages();
-                    setForm(emptyPromo);
-                    setEditingId(null);
-                  }}
-                >
-                  Cancelar
-                </button>
-                <button type="submit" className="btn btn-success">
-                  {editingId ? "Actualizar promocion" : "Guardar promocion"}
-                </button>
-              </div>
-            </form>
+            <span className="inventory-pill is-ok">Codigo promocional</span>
           </div>
-        </div>
+
+          <label>
+            <span>Codigo de promocion</span>
+            <input
+              type="text"
+              required
+              maxLength={30}
+              value={form.code}
+              onChange={(event) => setForm({ ...form, code: normalizeCode(event.target.value) })}
+              placeholder="Ej. HAPPY10"
+            />
+            <small style={{ color: "var(--color-muted)", fontSize: "11px", marginTop: "4px" }}>Solo letras y numeros, de 3 a 30 caracteres.</small>
+          </label>
+
+          <label>
+            <span>Nombre de la promocion</span>
+            <input
+              type="text"
+              required
+              value={form.name}
+              onChange={(event) => setForm({ ...form, name: event.target.value })}
+              placeholder="Ej. Hora Feliz"
+            />
+          </label>
+
+          <label className="is-wide">
+            <span>Descripcion breve</span>
+            <input
+              type="text"
+              value={form.description}
+              onChange={(event) => setForm({ ...form, description: event.target.value })}
+              placeholder="Describe brevemente la promocion"
+            />
+          </label>
+
+          <label>
+            <span>Tipo de descuento</span>
+            <select
+              value={form.discountType}
+              onChange={(event) => setForm({ ...form, discountType: event.target.value })}
+            >
+              <option value="percentage">Porcentaje (%)</option>
+              <option value="fixed_amount">Monto fijo ($)</option>
+            </select>
+          </label>
+
+          <label>
+            <span>{form.discountType === "percentage" ? "Porcentaje de descuento" : "Monto del descuento"}</span>
+            <input
+              type="number"
+              step="0.01"
+              min="0.01"
+              required
+              value={form.discountValue}
+              onChange={(event) => setForm({ ...form, discountValue: event.target.value })}
+              placeholder={form.discountType === "percentage" ? "Ej. 15" : "Ej. 2.50"}
+            />
+          </label>
+
+          <label>
+            <span>Fecha y hora de inicio</span>
+            <input
+              type="datetime-local"
+              required
+              min={editingId ? "" : getNowMin()}
+              value={form.startDate}
+              onChange={(event) => setForm({ ...form, startDate: event.target.value })}
+            />
+          </label>
+
+          <label>
+            <span>Fecha y hora de fin</span>
+            <input
+              type="datetime-local"
+              required
+              min={form.startDate || getNowMin()}
+              value={form.endDate}
+              onChange={(event) => setForm({ ...form, endDate: event.target.value })}
+            />
+          </label>
+
+          <label>
+            <span>Alcance de la promocion</span>
+            <select
+              value={form.targetType}
+              onChange={(event) => setForm({ ...form, targetType: event.target.value, targetId: "" })}
+            >
+              <option value="all">Todo el menu</option>
+              <option value="category">Una categoria especifica</option>
+              <option value="product">Un producto especifico</option>
+            </select>
+          </label>
+
+          {form.targetType === "category" && (
+            <label>
+              <span>Selecciona la categoria</span>
+              <select
+                required
+                value={form.targetId}
+                onChange={(event) => setForm({ ...form, targetId: event.target.value })}
+              >
+                <option value="">Seleccionar...</option>
+                {catalog.categories.map((category) => (
+                  <option key={category.id} value={category.id}>{category.name}</option>
+                ))}
+              </select>
+            </label>
+          )}
+
+          {form.targetType === "product" && (
+            <label>
+              <span>Selecciona el producto</span>
+              <select
+                required
+                value={form.targetId}
+                onChange={(event) => setForm({ ...form, targetId: event.target.value })}
+              >
+                <option value="">Seleccionar...</option>
+                {catalog.products.map((product) => (
+                  <option key={product.id} value={product.id}>{product.name}</option>
+                ))}
+              </select>
+            </label>
+          )}
+
+          <div style={{ gridColumn: "1 / -1", display: "flex", justifyContent: "flex-end", gap: "10px", marginTop: "16px" }}>
+            <button
+              type="button"
+              onClick={() => {
+                setShowCreate(false);
+                clearMessages();
+                setForm(emptyPromo);
+                setEditingId(null);
+              }}
+              style={{ background: "rgba(255,255,255,.72)", color: "var(--color-text)", border: "1px solid rgba(45,24,16,.08)", height: "40px", borderRadius: "10px", padding: "0 16px", fontWeight: "760" }}
+            >
+              Cancelar
+            </button>
+            <button type="submit">
+              {editingId ? "Actualizar promocion" : "Guardar promocion"}
+            </button>
+          </div>
+        </form>
       )}
 
       {!showCreate && (
         isLoading ? (
-          <div className="text-center text-muted py-5">Cargando promociones...</div>
+          <p className="menu-loading" style={{ textAlign: "center", padding: "40px" }}>Cargando promociones...</p>
         ) : (
-          <div className="row g-3">
-            {(activeTab === "current" ? currentPromos : pastPromos).map((promotion) => {
-              const now = new Date();
-              const startDate = new Date(promotion.startDate);
-              const endDate = new Date(promotion.endDate);
-              
-              const isFuture = startDate > now && promotion.isActive;
-              const isInProgress = startDate <= now && endDate >= now && promotion.isActive;
+          <>
+            <div className="menu-card-grid">
+              {(activeTab === "current" ? currentPromos : pastPromos).map((promotion) => {
+                const now = new Date();
+                const startDate = new Date(promotion.startDate);
+                const endDate = new Date(promotion.endDate);
+                
+                const isFuture = startDate > now && promotion.isActive;
+                const isInProgress = startDate <= now && endDate >= now && promotion.isActive;
 
-              return (
-                <div className="col-12 col-md-6 col-xl-4" key={promotion.id}>
-                  <div className={`card h-100 shadow-sm border-0 ${!promotion.isActive ? "opacity-75 bg-light" : ""}`}>
-                    <div className="card-body d-flex flex-column gap-3">
-                      <div className="d-flex align-items-start justify-content-between gap-3">
-                        <div>
-                          <div className="d-flex flex-wrap gap-2 align-items-center mb-2">
-                            <span className="badge text-bg-dark">{promotion.code}</span>
-                            <span className={`badge ${isInProgress ? "text-bg-success" : isFuture ? "text-bg-primary" : "text-bg-secondary"}`}>
-                              {isInProgress ? "En curso" : isFuture ? "Programada" : "Inactiva / Expirada"}
-                            </span>
-                          </div>
-                          <h3 className="h5 mb-1">{promotion.name}</h3>
-                          <p className="text-muted mb-0">{promotion.description || "Sin descripcion"}</p>
-                        </div>
-                        <span className="badge rounded-pill text-bg-primary fs-6">
-                          {promotion.discountType === "percentage" ? "%" : "$"}
-                        </span>
-                      </div>
-
-                      <div className="border-top pt-3 small text-muted d-grid gap-2">
-                        <div className="d-flex justify-content-between gap-3">
-                          <span>Descuento</span>
-                          <strong className="text-dark">
-                            {promotion.discountType === "percentage"
-                              ? `${promotion.discountValue}%`
-                              : `$${promotion.discountValue}`}
-                          </strong>
-                        </div>
-                        <div className="d-flex justify-content-between gap-3">
-                          <span>Aplica a</span>
-                          <strong className="text-dark text-end">{formatTarget(promotion)}</strong>
-                        </div>
-                        <div className="d-flex justify-content-between gap-3">
-                          <span>Inicio</span>
-                          <strong className="text-dark text-end">{formatDateTime(promotion.startDate)}</strong>
-                        </div>
-                        <div className="d-flex justify-content-between gap-3">
-                          <span>Fin</span>
-                          <strong className="text-dark text-end">{formatDateTime(promotion.endDate)}</strong>
-                        </div>
-                      </div>
-
-                      {/* BOTONES DE ACCIÓN (Respetando Inmutabilidad) */}
-                      {(isFuture || isInProgress) && (
-                        <div className="d-flex gap-2 pt-2 border-top mt-auto">
-                          {isFuture && (
-                            <button 
-                              className="btn btn-sm btn-outline-secondary flex-grow-1"
-                              onClick={() => handleEditClick(promotion)}
-                            >
-                              Editar
-                            </button>
-                          )}
-                          <button 
-                            className="btn btn-sm btn-outline-danger flex-grow-1"
-                            onClick={() => handleDeleteClick(promotion.id)}
-                          >
-                            Desactivar
-                          </button>
-                        </div>
-                      )}
+                return (
+                  <article className={`menu-catalog-card ${!promotion.isActive ? "opacity-75" : ""}`} key={promotion.id} style={{ minHeight: "auto" }}>
+                    <div className="menu-card-icon" style={{ backgroundColor: isInProgress ? "var(--color-accent)" : isFuture ? "var(--color-olive)" : "var(--color-line)" }}>
+                      {promotion.discountType === "percentage" ? "%" : "$"}
                     </div>
-                  </div>
-                </div>
-              );
-            })}
+                    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginTop: "4px" }}>
+                      <span className="menu-category-badge" style={{ backgroundColor: "var(--color-text)", color: "#fff" }}>{promotion.code}</span>
+                      <span className={`menu-status-pill ${isInProgress ? "is-on" : ""}`}>
+                        {isInProgress ? "En curso" : isFuture ? "Programada" : "Inactiva / Expirada"}
+                      </span>
+                    </div>
+                    <h3 style={{ alignSelf: "start", marginTop: "8px" }}>{promotion.name}</h3>
+                    <p>{promotion.description || "Sin descripcion"}</p>
+                    
+                    <div className="menu-card-foot" style={{ flexDirection: "column", alignItems: "stretch", gap: "8px", paddingTop: "20px" }}>
+                      <div style={{ display: "flex", justifyContent: "space-between" }}>
+                        <span style={{ border: "none", padding: 0, background: "transparent", color: "var(--color-muted)" }}>Descuento</span>
+                        <strong style={{ color: "var(--color-text)" }}>
+                          {promotion.discountType === "percentage"
+                            ? `${promotion.discountValue}%`
+                            : `$${promotion.discountValue}`}
+                        </strong>
+                      </div>
+                      <div style={{ display: "flex", justifyContent: "space-between" }}>
+                        <span style={{ border: "none", padding: 0, background: "transparent", color: "var(--color-muted)" }}>Aplica a</span>
+                        <strong style={{ color: "var(--color-text)" }}>{formatTarget(promotion)}</strong>
+                      </div>
+                      <div style={{ display: "flex", justifyContent: "space-between" }}>
+                        <span style={{ border: "none", padding: 0, background: "transparent", color: "var(--color-muted)" }}>Inicio</span>
+                        <strong style={{ color: "var(--color-text)" }}>{formatDateTime(promotion.startDate)}</strong>
+                      </div>
+                      <div style={{ display: "flex", justifyContent: "space-between" }}>
+                        <span style={{ border: "none", padding: 0, background: "transparent", color: "var(--color-muted)" }}>Fin</span>
+                        <strong style={{ color: "var(--color-text)" }}>{formatDateTime(promotion.endDate)}</strong>
+                      </div>
+                    </div>
 
-            {(activeTab === "current" ? currentPromos : pastPromos).length === 0 && (
-              <div className="col-12">
-                <div className="alert alert-light border text-center mb-0">
-                  {activeTab === "current" 
-                    ? "No hay promociones vigentes ni programadas." 
-                    : "No hay historial de promociones pasadas."}
-                </div>
+                    {/* BOTONES DE ACCIÓN */}
+                    {(isFuture || isInProgress) && (
+                      <div className="menu-card-actions" style={{ justifyContent: "flex-end", marginTop: "16px", borderTop: "1px solid rgba(45,24,16,.055)", paddingTop: "16px" }}>
+                        {isFuture && (
+                          <button 
+                            type="button"
+                            onClick={() => handleEditClick(promotion)}
+                          >
+                            Editar
+                          </button>
+                        )}
+                        <button 
+                          type="button"
+                          style={{ color: "#dc2626", borderColor: "rgba(220,38,38,.2)", background: "rgba(220,38,38,.05)" }}
+                          onClick={() => handleDeleteClick(promotion.id)}
+                        >
+                          Desactivar
+                        </button>
+                      </div>
+                    )}
+                  </article>
+                );
+              })}
+            </div>
+
+            {!isLoading && (activeTab === "current" ? currentPromos : pastPromos).length === 0 && (
+              <div className="inventory-empty" style={{ border: "1px dashed rgba(45,24,16,.15)", borderRadius: "20px" }}>
+                <strong>No hay promociones.</strong>
+                <p>{activeTab === "current" 
+                  ? "No hay promociones vigentes ni programadas." 
+                  : "No hay historial de promociones pasadas."}</p>
               </div>
             )}
-          </div>
+          </>
         )
       )}
-    </div>
+    </section>
   );
 };

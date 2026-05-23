@@ -499,10 +499,14 @@ input {
   color: #fff;
   cursor: pointer;
   font-weight: 720;
-  box-shadow: 0 8px 18px rgba(45,37,32,.08)
+  box-shadow: 0 8px 18px rgba(45,37,32,.08);
+  transition: transform 140ms, filter 140ms, box-shadow 140ms, background-color 140ms;
 }
 .users-primary-action:hover {
-  background: color-mix(in oklab,var(--color-text) 88%,#fff)
+  background: color-mix(in oklab,var(--color-text) 88%,#fff);
+  transform: translateY(-2px);
+  box-shadow: 0 12px 24px rgba(45,37,32,.15);
+  filter: brightness(1.15);
 }
 .users-management-shell {
   overflow: hidden;
@@ -647,11 +651,13 @@ input {
   cursor: pointer;
   font-weight: 760;
   white-space: nowrap;
-  transition: transform 140ms,background-color 140ms
+  transition: transform 140ms,background-color 140ms,box-shadow 140ms,filter 140ms
 }
 .users-create-panel button:hover {
-  transform: translateY(-1px);
-  background: var(--color-accent)
+  transform: translateY(-2px);
+  background: var(--color-accent);
+  box-shadow: 0 12px 24px color-mix(in oklab,var(--color-accent) 30%,transparent);
+  filter: brightness(1.15);
 }
 .users-create-panel button:disabled {
   opacity: .6;
@@ -1256,11 +1262,12 @@ input {
   cursor: pointer;
   font-weight: 820;
   box-shadow: 0 12px 26px rgba(39,28,24,.12);
-  transition: transform 140ms,box-shadow 140ms
+  transition: transform 140ms,box-shadow 140ms,filter 140ms
 }
 .menu-primary-action:hover {
-  transform: translateY(-1px);
-  box-shadow: 0 16px 32px rgba(39,28,24,.14)
+  transform: translateY(-2px);
+  box-shadow: 0 16px 32px rgba(39,28,24,.2);
+  filter: brightness(1.15);
 }
 .menu-inline-row {
   display: grid;
@@ -2689,6 +2696,32 @@ input {
 .orders-empty p {
   margin: 0;
   color: var(--color-muted)
+}
+.inventory-form button[type=submit],
+.inventory-head button,
+.menu-create-panel button[type=submit],
+.cashier-checkout,
+.kitchen-head button,
+.kitchen-ticket footer button,
+.dispatch-order > button,
+.orders-head button,
+.admin-users-form button,
+.menu-catalog-action {
+  transition: transform 140ms, filter 140ms, box-shadow 140ms, background-color 140ms;
+}
+.inventory-form button[type=submit]:hover:not(:disabled),
+.inventory-head button:hover:not(:disabled),
+.menu-create-panel button[type=submit]:hover:not(:disabled),
+.cashier-checkout:hover:not(:disabled),
+.kitchen-head button:hover:not(:disabled),
+.kitchen-ticket footer button:hover:not(:disabled),
+.dispatch-order > button:hover:not(:disabled),
+.orders-head button:hover:not(:disabled),
+.admin-users-form button:hover:not(:disabled),
+.menu-catalog-action:hover:not(:disabled) {
+  transform: translateY(-2px);
+  filter: brightness(1.15);
+  box-shadow: 0 12px 24px rgba(45,37,32,.15);
 }
 @media (max-width:1180px) {
   .top-header {

@@ -27,7 +27,10 @@ export const SalonManagement = () => {
   };
 
   useEffect(() => {
-    loadSalon();
+    const fetchSalon = async () => {
+      await loadSalon();
+    };
+    fetchSalon();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -69,138 +72,160 @@ export const SalonManagement = () => {
   };
 
   if (isLoading && zones.length === 0) {
-    return <div className="p-5 text-center text-muted">Cargando configuración del salón...</div>;
+    return <p className="menu-loading" style={{ padding: "40px", textAlign: "center" }}>Cargando configuración del salón...</p>;
   }
 
   const activeZoneData = zones.find(z => z.id === activeTab) || zones[0];
 
   return (
-    <div className="container-fluid py-4 px-3 px-lg-4">
-      <div className="mb-4 border-bottom pb-3">
-        <h2 className="h3 mb-1">Configuración de Salón</h2>
-        <p className="text-muted mb-0">Define las zonas de tu restaurante y agrega las mesas físicas.</p>
-      </div>
-
-      {error && <div className="alert alert-danger shadow-sm border-0">{error}</div>}
-
-      <div className="row mb-4 g-4">
-        {/* Crear Zona */}
-        <div className="col-md-5">
-          <div className="card shadow-sm border-0 h-100">
-            <div className="card-body">
-              <h5 className="card-title fw-bold mb-3">1. Crear Nueva Zona</h5>
-              <form onSubmit={handleCreateZone} className="d-flex gap-2">
-                <input 
-                  type="text" 
-                  className="form-control" 
-                  placeholder="Ej. Terraza, Piso 1..." 
-                  value={newZoneName}
-                  onChange={(e) => setNewZoneName(e.target.value)}
-                  required 
-                />
-                <button type="submit" className="btn btn-primary fw-semibold" style={{ backgroundColor: "#ea580c", borderColor: "#ea580c" }}>Agregar</button>
-              </form>
-            </div>
-          </div>
+    <section className="users-console">
+      <header className="users-console-head">
+        <div>
+          <p className="admin-users-kicker">Configuración</p>
+          <h2>Salón y Mesas</h2>
+          <p>Define las zonas de tu restaurante y agrega las mesas físicas.</p>
         </div>
+      </header>
+
+      {error && <p className="admin-users-error">{error}</p>}
+
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(340px, 1fr))", gap: "24px", marginBottom: "32px", alignItems: "start" }}>
+        {/* Crear Zona */}
+        <form className="inventory-form" onSubmit={handleCreateZone}>
+          <div style={{ marginBottom: "8px" }}>
+            <h3 style={{ margin: 0, fontSize: "18px" }}>1. Crear Nueva Zona</h3>
+          </div>
+          <label>
+            <span>Nombre de zona</span>
+            <input 
+              type="text" 
+              placeholder="Ej. Terraza, Piso 1..." 
+              value={newZoneName}
+              onChange={(e) => setNewZoneName(e.target.value)}
+              required 
+            />
+          </label>
+          <div style={{ display: "flex", justifyContent: "flex-end", marginTop: "4px" }}>
+            <button type="submit" style={{ background: "var(--color-accent)", color: "#fff" }}>Agregar zona</button>
+          </div>
+        </form>
 
         {/* Crear Mesa */}
-        <div className="col-md-7">
-          <div className="card shadow-sm border-0 h-100">
-            <div className="card-body">
-              <h5 className="card-title fw-bold mb-3">2. Agregar Mesa</h5>
-              <form onSubmit={handleCreateTable} className="row g-2">
-                <div className="col-sm-4">
-                  <select 
-                    className="form-select" 
-                    value={newTable.zoneId}
-                    onChange={(e) => setNewTable({ ...newTable, zoneId: e.target.value })}
-                    required
-                  >
-                    <option value="">Seleccionar Zona...</option>
-                    {zones.map(z => <option key={z.id} value={z.id}>{z.name}</option>)}
-                  </select>
-                </div>
-                <div className="col-sm-3">
-                  <input 
-                    type="text" 
-                    className="form-control" 
-                    placeholder="ID (Ej. T-1)" 
-                    value={newTable.identifier}
-                    onChange={(e) => setNewTable({ ...newTable, identifier: e.target.value })}
-                    required 
-                  />
-                </div>
-                <div className="col-sm-3">
-                  <input 
-                    type="number" 
-                    className="form-control" 
-                    placeholder="Sillas" 
-                    min="1"
-                    value={newTable.capacity}
-                    onChange={(e) => setNewTable({ ...newTable, capacity: e.target.value })}
-                    required 
-                  />
-                </div>
-                <div className="col-sm-2">
-                  <button type="submit" className="btn btn-dark w-100 fw-semibold" disabled={zones.length === 0}>Crear</button>
-                </div>
-              </form>
-            </div>
-          </div>
-        </div>
+        <form className="menu-create-panel" onSubmit={handleCreateTable}>
+          <h3 style={{ gridColumn: "1 / -1", margin: "0 0 8px 0", color: "var(--color-text)", fontSize: "18px", fontWeight: "760" }}>
+            2. Agregar Mesa
+          </h3>
+          <label>
+            <span>Zona</span>
+            <select 
+              value={newTable.zoneId}
+              onChange={(e) => setNewTable({ ...newTable, zoneId: e.target.value })}
+              required
+            >
+              <option value="">Seleccionar...</option>
+              {zones.map(z => <option key={z.id} value={z.id}>{z.name}</option>)}
+            </select>
+          </label>
+          <label>
+            <span>ID</span>
+            <input 
+              type="text" 
+              placeholder="Ej. T-1" 
+              value={newTable.identifier}
+              onChange={(e) => setNewTable({ ...newTable, identifier: e.target.value })}
+              required 
+            />
+          </label>
+          <label>
+            <span>Sillas</span>
+            <input 
+              type="number" 
+              placeholder="4" 
+              min="1"
+              value={newTable.capacity}
+              onChange={(e) => setNewTable({ ...newTable, capacity: e.target.value })}
+              required 
+            />
+          </label>
+          <button type="submit" disabled={zones.length === 0}>Crear mesa</button>
+        </form>
       </div>
 
       {/* Mapa del Salón (Tabs) */}
       {zones.length > 0 ? (
-        <div className="card shadow-sm border-0">
-          <div className="card-header bg-white border-bottom-0 pt-3 pb-0">
-            <ul className="nav nav-tabs">
-              {zones.map((zone) => (
-                <li className="nav-item" key={zone.id}>
-                  <button 
-                    className={`nav-link fw-semibold text-dark ${activeTab === zone.id ? 'active' : ''}`}
-                    onClick={() => setActiveTab(zone.id)}
-                    style={activeTab === zone.id ? { borderTop: "3px solid #ea580c" } : {}}
-                  >
-                    {zone.name} <span className="badge bg-secondary ms-2">{zone.tables?.length || 0}</span>
-                  </button>
-                </li>
-              ))}
-            </ul>
+        <div className="users-management-shell" style={{ padding: "24px" }}>
+          <div className="users-tabs" style={{ marginBottom: "24px", overflowX: "auto", paddingBottom: "8px" }}>
+            {zones.map((zone) => (
+              <span 
+                key={zone.id}
+                className={activeTab === zone.id ? "is-active" : ""}
+                onClick={() => setActiveTab(zone.id)}
+                style={{ cursor: "pointer", whiteSpace: "nowrap" }}
+              >
+                {zone.name}
+                <strong style={{ 
+                  background: activeTab === zone.id ? "rgba(0,0,0,0.06)" : "rgba(0,0,0,0.04)", 
+                  padding: "2px 8px", 
+                  borderRadius: "12px", 
+                  fontSize: "11px",
+                  marginLeft: "4px" 
+                }}>
+                  {zone.tables?.length || 0}
+                </strong>
+              </span>
+            ))}
           </div>
           
-          <div className="card-body bg-light rounded-bottom p-4">
+          <div style={{ minHeight: "200px" }}>
             {activeZoneData?.tables?.length > 0 ? (
-              <div className="row row-cols-2 row-cols-md-4 row-cols-lg-6 g-3">
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(150px, 1fr))", gap: "16px" }}>
                 {activeZoneData.tables.map((table) => (
-                  <div className="col" key={table.id}>
-                    <div 
-                      className={`card text-center h-100 border-0 shadow-sm cursor-pointer ${table.status === 'inactive' ? 'opacity-50 bg-secondary text-white' : 'bg-white'}`}
-                      onClick={() => toggleTableStatus(table)}
-                      style={{ cursor: "pointer", transition: "all 0.2s" }}
-                      title="Clic para Activar/Desactivar"
-                    >
-                      <div className="card-body p-3">
-                        <h5 className="fw-bold mb-1">{table.identifier}</h5>
-                        <p className="small mb-0 opacity-75">{table.capacity} sillas</p>
-                      </div>
-                    </div>
-                  </div>
+                  <button 
+                    key={table.id}
+                    type="button"
+                    onClick={() => toggleTableStatus(table)}
+                    title="Clic para Activar/Desactivar"
+                    style={{
+                      background: table.status === 'inactive' ? "rgba(45,24,16,.04)" : "#fff",
+                      border: "1px solid rgba(45,24,16,.08)",
+                      borderRadius: "16px",
+                      padding: "24px 16px",
+                      textAlign: "center",
+                      cursor: "pointer",
+                      opacity: table.status === 'inactive' ? 0.65 : 1,
+                      transition: "transform 140ms, box-shadow 140ms, border-color 140ms",
+                      boxShadow: "0 8px 18px rgba(45,24,16,.03)"
+                    }}
+                    onMouseEnter={(e) => { 
+                      e.currentTarget.style.transform = "translateY(-2px)"; 
+                      e.currentTarget.style.boxShadow = "0 12px 24px rgba(45,24,16,.06)";
+                      e.currentTarget.style.borderColor = "var(--color-accent)";
+                    }}
+                    onMouseLeave={(e) => { 
+                      e.currentTarget.style.transform = "none"; 
+                      e.currentTarget.style.boxShadow = "0 8px 18px rgba(45,24,16,.03)";
+                      e.currentTarget.style.borderColor = "rgba(45,24,16,.08)";
+                    }}
+                  >
+                    <h5 style={{ margin: "0 0 6px", fontSize: "22px", color: "var(--color-text)", fontWeight: "820" }}>{table.identifier}</h5>
+                    <p style={{ margin: 0, fontSize: "13px", color: "var(--color-muted)", fontWeight: "650" }}>{table.capacity} sillas</p>
+                  </button>
                 ))}
               </div>
             ) : (
-              <div className="text-center py-5 text-muted">
-                No hay mesas en esta zona. Usa el formulario de arriba para agregarlas.
+              <div className="inventory-empty">
+                <strong>No hay mesas en esta zona.</strong>
+                <p>Usa el formulario de arriba para agregarlas.</p>
               </div>
             )}
           </div>
         </div>
       ) : (
-        <div className="text-center py-5 text-muted border border-dashed rounded bg-light">
-          Aún no has creado ninguna zona. Empieza creando la primera (Ej. "Salón Principal").
+        <div className="inventory-empty" style={{ border: "1px dashed rgba(45,24,16,.15)", borderRadius: "20px" }}>
+          <strong>Aún no has creado ninguna zona.</strong>
+          <p>Empieza creando la primera (Ej. "Salón Principal").</p>
         </div>
       )}
-    </div>
+    </section>
   );
 };

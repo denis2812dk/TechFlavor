@@ -23,7 +23,25 @@ export const SaaSManagement = () => {
   };
 
   useEffect(() => {
-    loadRequests();
+    let isMounted = true;
+
+    const fetchInitialRequests = async () => {
+      try {
+        const data = await getPendingRequests();
+        if (!isMounted) return;
+        setRequests(data.requests || []);
+      } catch (err) {
+        if (isMounted) setError(err.message);
+      } finally {
+        if (isMounted) setIsLoading(false);
+      }
+    };
+
+    fetchInitialRequests();
+
+    return () => {
+      isMounted = false;
+    };
   }, []);
 
   const handleApprove = async (request) => {

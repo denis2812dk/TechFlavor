@@ -156,10 +156,13 @@
   font: inherit;
   font-weight: 800;
   cursor: pointer;
-  transition: background 140ms
+  transition: background 140ms, transform 140ms, box-shadow 140ms, filter 140ms
 }
 .login-submit:hover:not(:disabled) {
-  background: #c2410c
+  background: #c2410c;
+  transform: translateY(-2px);
+  box-shadow: 0 12px 24px rgba(234,88,12,.25);
+  filter: brightness(1.1);
 }
 .login-submit:disabled {
   cursor: wait;

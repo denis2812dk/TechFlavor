@@ -1,4 +1,5 @@
 import { useState } from "react";
+import "./shared.css";
 
 export const ProfileEdit = ({ session, onRefresh }) => {
   const [name, setName] = useState(session?.user?.name || "");
@@ -75,99 +76,93 @@ export const ProfileEdit = ({ session, onRefresh }) => {
   };
 
   return (
-    <div className="container py-4">
-      <div className="row justify-content-center">
-        <div className="col-12 col-lg-8 col-xl-7">
-          <div className="card border-0 shadow-sm">
-            <div className="card-body p-4 p-md-5">
-              <div className="mb-4">
-                <p className="text-uppercase text-muted fw-semibold small mb-1">Configuración</p>
-                <h2 className="h3 fw-bold mb-1">Mi Perfil</h2>
-                <p className="text-muted">Personaliza tu información y asegura tu cuenta.</p>
-              </div>
-
-              {status && <div className="alert alert-success border-0 shadow-sm">{status}</div>}
-              {error && <div className="alert alert-danger border-0 shadow-sm">{error}</div>}
-
-              <form onSubmit={handleUpdateProfile} className="row g-4">
-                <div className="col-12">
-                  <label className="form-label fw-semibold">Nombre Completo</label>
-                  <input
-                    type="text"
-                    className="form-control form-control-lg fs-6"
-                    value={name}
-                    onChange={(e) => setName(e.target.value)}
-                    placeholder="Tu nombre"
-                    required
-                  />
-                </div>
-
-                <div className="col-12">
-                  <label className="form-label fw-semibold">Correo Electrónico</label>
-                  <input
-                    type="email"
-                    className="form-control form-control-lg fs-6 bg-light"
-                    value={email}
-                    disabled
-                  />
-                  <div className="form-text">El correo está vinculado a tu cuenta global y no puede cambiarse aquí.</div>
-                </div>
-
-                <div className="col-12 border-top pt-4">
-                  <h4 className="h6 fw-bold mb-3">Cambiar Contraseña</h4>
-                  <div className="row g-3">
-                    <div className="col-12">
-                      <label className="form-label small text-muted">Contraseña Actual</label>
-                      <input
-                        type="password"
-                        className="form-control"
-                        value={currentPassword}
-                        onChange={(e) => setCurrentPassword(e.target.value)}
-                        placeholder="Requerido para cambios"
-                      />
-                    </div>
-                    <div className="col-md-6">
-                      <label className="form-label small text-muted">Nueva Contraseña</label>
-                      <input
-                        type="password"
-                        className="form-control"
-                        value={newPassword}
-                        onChange={(e) => setNewPassword(e.target.value)}
-                        placeholder="Dejar vacío para no cambiar"
-                      />
-                    </div>
-                    <div className="col-md-6">
-                      <label className="form-label small text-muted">Confirmar Nueva Contraseña</label>
-                      <input
-                        type="password"
-                        className="form-control"
-                        value={confirmPassword}
-                        onChange={(e) => setConfirmPassword(e.target.value)}
-                        placeholder="Repite la contraseña"
-                      />
-                    </div>
-                  </div>
-                </div>
-
-                <div className="col-12 d-flex justify-content-end gap-2 mt-4">
-                  <button
-                    type="submit"
-                    className="btn btn-primary btn-lg px-4 fs-6"
-                    disabled={isUpdating}
-                  >
-                    {isUpdating ? (
-                      <>
-                        <span className="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
-                        Guardando...
-                      </>
-                    ) : "Guardar cambios"}
-                  </button>
-                </div>
-              </form>
-            </div>
-          </div>
+    <div className="users-console" style={{ padding: "32px", maxWidth: "800px", margin: "0 auto" }}>
+      <div className="users-console-head">
+        <div>
+          <p className="users-breadcrumb">Configuración</p>
+          <h2>Mi Perfil</h2>
+          <p>Personaliza tu información y asegura tu cuenta.</p>
         </div>
       </div>
+
+      {status && <div className="admin-users-success">{status}</div>}
+      {error && <div className="admin-users-error">{error}</div>}
+
+      <form onSubmit={handleUpdateProfile} className="menu-saas-form">
+        <div className="menu-two-columns">
+          <label>
+            <span>Nombre Completo</span>
+            <input
+              type="text"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              placeholder="Tu nombre"
+              required
+            />
+          </label>
+
+          <label>
+            <span>Correo Electrónico</span>
+            <input
+              type="email"
+              value={email}
+              disabled
+            />
+            <small style={{ color: "var(--color-muted)", fontSize: "11px", marginTop: "4px" }}>
+              El correo está vinculado a tu cuenta global.
+            </small>
+          </label>
+        </div>
+
+        <div className="menu-section-heading" style={{ marginTop: "12px" }}>
+          <span>🔒</span>
+          <div>
+            <h3>Cambiar Contraseña</h3>
+            <p>Déjalo en blanco si no deseas hacer cambios de seguridad.</p>
+          </div>
+        </div>
+
+        <label>
+          <span>Contraseña Actual</span>
+          <input
+            type="password"
+            value={currentPassword}
+            onChange={(e) => setCurrentPassword(e.target.value)}
+            placeholder="Requerido para cambios"
+          />
+        </label>
+
+        <div className="menu-two-columns">
+          <label>
+            <span>Nueva Contraseña</span>
+            <input
+              type="password"
+              value={newPassword}
+              onChange={(e) => setNewPassword(e.target.value)}
+              placeholder="Dejar vacío para no cambiar"
+            />
+          </label>
+          <label>
+            <span>Confirmar Nueva Contraseña</span>
+            <input
+              type="password"
+              value={confirmPassword}
+              onChange={(e) => setConfirmPassword(e.target.value)}
+              placeholder="Repite la contraseña"
+            />
+          </label>
+        </div>
+
+        <div style={{ display: "flex", justifyContent: "flex-end", marginTop: "16px" }}>
+          <button
+            type="submit"
+            className="menu-primary-action"
+            disabled={isUpdating}
+          >
+            {isUpdating ? "Guardando..." : "Guardar cambios"}
+          </button>
+        </div>
+      </form>
     </div>
   );
 };
