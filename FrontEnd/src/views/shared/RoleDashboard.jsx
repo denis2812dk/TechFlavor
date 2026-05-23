@@ -1,5 +1,5 @@
 import { signOut } from "../../lib/auth";
-import "./RoleDashboard.css";
+import "./shared.css";
 
 const iconMap = {
   dashboard: (

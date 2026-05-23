@@ -17,6 +17,7 @@ export const CashierCatalog = () => {
   const [promoCodeInput, setPromoCodeInput] = useState("");
   const [appliedPromo, setAppliedPromo] = useState(null);
   const [promoError, setPromoError] = useState("");
+  const [prevCart, setPrevCart] = useState([]);
 
   useEffect(() => {
     const loadInitialData = async () => {
@@ -145,14 +146,13 @@ export const CashierCatalog = () => {
     }
   };
 
-  useEffect(() => {
-    if (!appliedPromo) return;
-
-    if (!promoAppliesToCart(appliedPromo, cart)) {
+  if (cart !== prevCart) {
+    setPrevCart(cart);
+    if (appliedPromo && !promoAppliesToCart(appliedPromo, cart)) {
       setAppliedPromo(null);
       setPromoError("No Aplicable");
     }
-  }, [cart, appliedPromo]);
+  }
 
   const { subtotal, discount, total } = useMemo(() => {
     let sub = 0;

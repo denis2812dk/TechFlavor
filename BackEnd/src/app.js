@@ -4,12 +4,13 @@ import express from "express";
 import { auth } from "./config/auth.js";
 import { errorHandler } from "./middleware/errorHandler.js";
 import tenantRoutes from "./router/tenantRoutes.js";
+import "dotenv/config";
 
 const app = express();
 
 const allowedOrigins = process.env.APP_ALLOWED_ORIGINS
-    ? process.env.APP_ALLOWED_ORIGINS.split(',')
-    : ["http://localhost:5173"];
+    ? process.env.APP_ALLOWED_ORIGINS.split(',').map(origin => origin.trim())
+    : ["http://localhost:5173", "http://127.0.0.1:5173"];
 
     
 app.use(cors({
@@ -19,7 +20,7 @@ app.use(cors({
         allowedHeaders: ["Content-Type", "Authorization"]
 }));
 
-app.all("/api/auth/*splat", toNodeHandler(auth));
+app.use("/api/auth", toNodeHandler(auth));
 
 app.use(express.json());
 app.use("/api/tenant", tenantRoutes);
