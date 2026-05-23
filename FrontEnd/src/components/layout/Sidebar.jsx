@@ -60,7 +60,6 @@ const getSidebarItems = (role) => {
       { label: "Inventario", icon: "inventory", path: "/gerente/inventory" },
       { label: "Promociones", icon: "promotions", path: "/gerente/promotions" },
       { label: "Órdenes", icon: "orders", path: "/gerente/orders" },
-      { label: "Mi Perfil", icon: "profile", path: "/perfil" },
     ];
   }
 
@@ -68,28 +67,23 @@ const getSidebarItems = (role) => {
     return [
       { label: "Caja", icon: "dashboard", path: "/cajero" },
       { label: "Órdenes Activas", icon: "orders", path: "/cajero/orders" },
-      { label: "Mi Perfil", icon: "profile", path: "/perfil" },
     ];
   }
 
   if (role === "cocina") {
     return [
       { label: "KDS Cocina", icon: "orders", path: "/cocina" },
-      { label: "Órdenes", icon: "orders", path: "/cocina/orders" },
-      { label: "Mi Perfil", icon: "profile", path: "/perfil" },
     ];
   }
 
   if (role === "despacho") {
     return [
       { label: "Despacho", icon: "orders", path: "/despacho" },
-      { label: "Mi Perfil", icon: "profile", path: "/perfil" },
     ];
   }
 
   return [
     { label: "Dashboard", icon: "dashboard", path: "/operador" },
-    { label: "Mi Perfil", icon: "profile", path: "/perfil" },
   ];
 };
 

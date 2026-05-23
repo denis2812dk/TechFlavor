@@ -6,7 +6,8 @@ import {
     orderItems,
     orders,
     promotions, 
-    promotionTargets 
+    promotionTargets,
+    tables
 } from "../models/tenantSchema.js";
 import { deductInventoryForOrder } from "../services/tenantInventoryService.js";
 
@@ -61,7 +62,7 @@ const findSaleItem = async (tenantDb, item) => {
 
 export const createTenantOrder = async (req, res, next) => {
     try {
-        const { items, fulfillmentType, tableIdentifier, promoCode } = req.body;
+        const { items, fulfillmentType, tableId, promoCode } = req.body;
 
         const saleItems = [];
         for (const item of items) {
@@ -158,14 +159,13 @@ export const createTenantOrder = async (req, res, next) => {
             ticketCode,
             status: "in_preparation",
             fulfillmentType,
-            tableId: fulfillmentType === "dine_in" ? tableIdentifier : null,
+            tableId: fulfillmentType === "dine_in" ? tableId : null,
             subtotal: money(subtotal),
             discountTotal: money(discountTotal), 
             promotionId: activePromotion ? activePromotion.id : null,
             total: money(total),
             cashierUserId: req.user.id,
             cashierName: req.user.name || req.user.email || "Usuario de caja",
-            createdAt: new Date(),
         };
 
         await req.tenantDb.insert(orders).values(order);
@@ -190,7 +190,7 @@ export const createTenantOrder = async (req, res, next) => {
                 code: ticketCode,
                 status: order.status,
                 fulfillmentType: order.fulfillmentType,
-                tableIdentifier: order.tableId,
+                tableId: order.tableId,
                 cashierName: order.cashierName,
                 createdAt: new Date().toISOString(),
                 items: saleItems.map((item) => ({
@@ -215,13 +215,18 @@ export const createTenantOrder = async (req, res, next) => {
 export const listTenantOrders = async (req, res, next) => {
     try {
         const tenantOrders = await req.tenantDb
-            .select()
+            .select({
+                order: orders,
+                tableName: tables.identifier
+            })
             .from(orders)
+            .leftJoin(tables, eq(orders.tableId, tables.id))
             .orderBy(desc(orders.createdAt));
 
         const orderPayload = [];
 
-        for (const order of tenantOrders) {
+        for (const row of tenantOrders) {
+            const order = row.order;
             const items = await req.tenantDb
                 .select()
                 .from(orderItems)
@@ -232,13 +237,14 @@ export const listTenantOrders = async (req, res, next) => {
                 code: order.ticketCode,
                 status: order.status,
                 fulfillmentType: order.fulfillmentType,
-                tableIdentifier: order.tableId,
+                tableId: order.tableId,
+                tableName: row.tableName,
                 subtotal: order.subtotal,
                 total: order.total,
                 cashierUserId: order.cashierUserId,
                 cashierName: order.cashierName,
-                createdAt: order.createdAt,
-                updatedAt: order.updatedAt,
+                createdAt: order.updatedAt?.toISOString() || order.createdAt?.toISOString(),
+                updatedAt: order.updatedAt?.toISOString(),
                 items: items.map((item) => ({
                     id: item.id,
                     type: item.itemType,
@@ -262,14 +268,19 @@ export const listTenantOrders = async (req, res, next) => {
 export const listKitchenOrders = async (req, res, next) => {
     try {
         const kitchenOrders = await req.tenantDb
-            .select()
+            .select({
+                order: orders,
+                tableName: tables.identifier
+            })
             .from(orders)
+            .leftJoin(tables, eq(orders.tableId, tables.id))
             .where(eq(orders.status, "in_preparation"))
             .orderBy(desc(orders.createdAt));
 
         const orderPayload = [];
 
-        for (const order of kitchenOrders) {
+        for (const row of kitchenOrders) {
+            const order = row.order;
             const items = await req.tenantDb
                 .select()
                 .from(orderItems)
@@ -280,9 +291,11 @@ export const listKitchenOrders = async (req, res, next) => {
                 code: order.ticketCode,
                 status: order.status,
                 fulfillmentType: order.fulfillmentType,
-                tableIdentifier: order.tableId,
+                tableId: order.tableId,
+                tableName: row.tableName,
                 cashierName: order.cashierName,
-                createdAt: order.createdAt,
+                createdAt: order.updatedAt?.toISOString() || order.createdAt?.toISOString(),
+                updatedAt: order.updatedAt?.toISOString(),
                 items: items.map((item) => ({
                     id: item.id,
                     type: item.itemType,
@@ -345,14 +358,19 @@ export const finishKitchenOrder = async (req, res, next) => {
 export const listDispatchOrders = async (req, res, next) => {
     try {
         const dispatchOrders = await req.tenantDb
-            .select()
+            .select({
+                order: orders,
+                tableName: tables.identifier
+            })
             .from(orders)
+            .leftJoin(tables, eq(orders.tableId, tables.id))
             .where(eq(orders.status, "finished"))
             .orderBy(desc(orders.updatedAt));
 
         const orderPayload = [];
 
-        for (const order of dispatchOrders) {
+        for (const row of dispatchOrders) {
+            const order = row.order;
             const items = await req.tenantDb
                 .select()
                 .from(orderItems)
@@ -363,10 +381,11 @@ export const listDispatchOrders = async (req, res, next) => {
                 code: order.ticketCode,
                 status: order.status,
                 fulfillmentType: order.fulfillmentType,
-                tableIdentifier: order.tableId,
+                tableId: order.tableId,
+                tableName: row.tableName,
                 cashierName: order.cashierName,
-                createdAt: order.createdAt,
-                updatedAt: order.updatedAt,
+                createdAt: order.updatedAt?.toISOString() || order.createdAt?.toISOString(),
+                updatedAt: order.updatedAt?.toISOString(),
                 items: items.map((item) => ({
                     id: item.id,
                     type: item.itemType,
@@ -378,6 +397,7 @@ export const listDispatchOrders = async (req, res, next) => {
 
         res.json({
             success: true,
+            serverTime: new Date().toISOString(),
             orders: orderPayload,
         });
     } catch (error) {

@@ -3,22 +3,27 @@ import { deliverDispatchOrder, getErrorMessage, listDispatchOrders } from "../..
 
 const deliveryLabel = (order) => {
   if (order.fulfillmentType === "dine_in") {
-    return `Mesa/ID: ${order.tableIdentifier}`;
+    return `Comer aquí - Mesa: ${order.tableName || order.tableId || "Sin asignar"}`;
   }
 
   return "Pedido para llevar";
 };
 
-const elapsedMinutes = (value) => {
-  if (!value) return "Ahora";
-  const diff = Date.now() - new Date(value).getTime();
+const elapsedMinutes = (value, referenceTime) => {
+  if (!value) return "Recién listo";
+  const dateValue = new Date(value).getTime();
+  if (isNaN(dateValue)) return "Recién listo";
+  
+  const refTime = referenceTime ? new Date(referenceTime).getTime() : Date.now();
+  const diff = Math.max(0, refTime - dateValue);
   const minutes = Math.max(0, Math.floor(diff / 60000));
-  if (minutes < 1) return "Ahora";
+  if (minutes < 1) return "Menos de 1 min listo";
   return `${minutes} min listo`;
 };
 
 export const DispatchOrders = () => {
   const [orders, setOrders] = useState([]);
+  const [serverTime, setServerTime] = useState(null);
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(true);
   const [deliveringId, setDeliveringId] = useState("");
@@ -27,6 +32,7 @@ export const DispatchOrders = () => {
     try {
       const data = await listDispatchOrders();
       setOrders(data.orders || []);
+      setServerTime(data.serverTime);
       setError("");
     } catch (requestError) {
       setError(getErrorMessage(requestError));
@@ -84,7 +90,7 @@ export const DispatchOrders = () => {
                 <div>
                   <span>{order.code}</span>
                   <h3>{deliveryLabel(order)}</h3>
-                  <p>Terminado por cocina - {elapsedMinutes(order.updatedAt)}</p>
+                  <p>Terminado por cocina - {elapsedMinutes(order.updatedAt, serverTime)}</p>
                 </div>
                 <strong>{order.items.reduce((sum, item) => sum + item.quantity, 0)} items</strong>
               </div>

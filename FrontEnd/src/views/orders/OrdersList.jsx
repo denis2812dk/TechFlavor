@@ -107,7 +107,7 @@ export const OrdersList = () => {
                 </td>
                 <td>
                   {fulfillmentLabels[order.fulfillmentType] || order.fulfillmentType}
-                  {order.tableIdentifier ? <small>{order.tableIdentifier}</small> : null}
+                  {order.tableName || order.tableId ? <small className="d-block text-muted">Mesa: {order.tableName || order.tableId}</small> : null}
                 </td>
                 <td>{order.cashierName}</td>
                 <td>
@@ -120,7 +120,7 @@ export const OrdersList = () => {
                 <td>
                   <b>${order.total}</b>
                 </td>
-                <td>{formatDate(order.createdAt)}</td>
+                <td>{formatDate(order.updatedAt || order.createdAt)}</td>
               </tr>
             ))}
           </tbody>
