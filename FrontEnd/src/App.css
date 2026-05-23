@@ -1,109 +1,94 @@
-.tf-empty-page,
-.tf-dashboard {
+.tf-dashboard,
+.tf-empty-page {
   min-height: 100vh;
   padding: 40px;
   color: #1f2937;
-  background: #f8fafc;
+  background: #f8fafc
 }
-
 .tf-empty-page {
   display: grid;
-  place-items: center;
+  place-items: center
 }
-
-.tf-empty-card,
+.tf-dashboard-grid article,
 .tf-dashboard-header,
-.tf-dashboard-grid article {
+.tf-empty-card {
   border: 1px solid #e5e7eb;
   border-radius: 12px;
-  background: #ffffff;
-  box-shadow: 0 12px 36px rgba(15, 23, 42, 0.07);
+  background: #fff;
+  box-shadow: 0 12px 36px rgba(15,23,42,.07)
 }
-
 .tf-empty-card {
-  width: min(520px, 100%);
+  width: min(520px,100%);
   padding: 28px;
-  text-align: center;
+  text-align: center
 }
-
 .tf-kicker {
   margin: 0 0 8px;
   color: #ea580c;
   font-size: 13px;
   font-weight: 800;
   letter-spacing: 0;
-  text-transform: uppercase;
+  text-transform: uppercase
 }
-
-.tf-empty-card h1,
-.tf-dashboard-header h1 {
+.tf-dashboard-header h1,
+.tf-empty-card h1 {
   margin: 0;
-  color: #111827;
+  color: #111827
 }
-
-.tf-empty-card p,
+.tf-dashboard-grid p,
 .tf-dashboard-header p,
-.tf-dashboard-grid p {
+.tf-empty-card p {
   color: #64748b;
-  line-height: 1.5;
+  line-height: 1.5
 }
-
-.tf-empty-card button,
-.tf-dashboard-header button {
+.tf-dashboard-header button,
+.tf-empty-card button {
   border: 0;
   border-radius: 8px;
   padding: 12px 16px;
-  color: white;
+  color: #fff;
   background: #ea580c;
   font: inherit;
   font-weight: 800;
-  cursor: pointer;
+  cursor: pointer
 }
-
 .tf-dashboard {
   display: grid;
   align-content: start;
-  gap: 22px;
+  gap: 22px
 }
-
 .tf-dashboard-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 24px;
-  width: min(1100px, 100%);
+  width: min(1100px,100%);
   margin: 0 auto;
-  padding: 26px;
+  padding: 26px
 }
-
 .tf-dashboard-grid {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(3,minmax(0,1fr));
   gap: 18px;
-  width: min(1100px, 100%);
-  margin: 0 auto;
+  width: min(1100px,100%);
+  margin: 0 auto
 }
-
 .tf-dashboard-grid article {
-  padding: 22px;
+  padding: 22px
 }
-
 .tf-dashboard-grid h2 {
   margin: 0 0 8px;
-  font-size: 18px;
+  font-size: 18px
 }
-
 .tf-dashboard-grid p {
-  margin: 0;
+  margin: 0
 }
-
-@media (max-width: 760px) {
+@media (max-width:760px) {
   .tf-dashboard-header {
     align-items: flex-start;
-    flex-direction: column;
+    flex-direction: column
   }
-
   .tf-dashboard-grid {
-    grid-template-columns: 1fr;
+    grid-template-columns: 1fr
   }
 }

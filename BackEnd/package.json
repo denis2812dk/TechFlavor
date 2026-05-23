@@ -7,7 +7,7 @@
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "start": "node src/config/index.js",
-    "dev": "nodemon src/config/index.js", 
+    "dev": "nodemon src/config/index.js",
     "seed": "node src/seed.js",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate",
