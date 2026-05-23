@@ -37,32 +37,32 @@ const router = Router();
 router.get("/settings", tenantContext, getTenantSettings);
 router.patch("/settings", tenantContext, updateTenantSettings);
 // Usuarios
-router.get("/users", tenantContext, requireTenantRoles(ROLES.ADMIN, ROLES.GERENTE), listTenantUsers);
-router.post("/users", tenantContext, requireTenantRoles(ROLES.ADMIN), createTenantUser);
+router.get("/users", tenantContext, requireTenantRoles( ROLES.GERENTE), listTenantUsers);
+router.post("/users", tenantContext, requireTenantRoles(ROLES.GERENTE), createTenantUser);
 // Catálogo / Menú
-router.get("/menu", tenantContext, requireTenantRoles(ROLES.ADMIN, ROLES.GERENTE, ROLES.CAJERO), listMenuCatalog);
-router.post("/menu/categories", tenantContext, requireTenantRoles(ROLES.ADMIN, ROLES.GERENTE), createMenuCategory);
-router.post("/menu/products", tenantContext, requireTenantRoles(ROLES.ADMIN, ROLES.GERENTE), validateSchema(createProductSchema), createMenuProduct);
-router.patch("/menu/products/:productId", tenantContext, requireTenantRoles(ROLES.ADMIN, ROLES.GERENTE), updateMenuProduct);
-router.put("/menu/products/:productId/recipe", tenantContext, requireTenantRoles(ROLES.ADMIN, ROLES.GERENTE), validateSchema(updateRecipeSchema), setProductRecipe);
-router.delete("/menu/products/:productId", tenantContext, requireTenantRoles(ROLES.ADMIN, ROLES.GERENTE), deleteProduct);
-router.post("/menu/combos", tenantContext, requireTenantRoles(ROLES.ADMIN, ROLES.GERENTE), validateSchema(createComboSchema), createMenuCombo);
-router.patch("/menu/combos/:comboId", tenantContext, requireTenantRoles(ROLES.ADMIN, ROLES.GERENTE), updateMenuCombo);
+router.get("/menu", tenantContext, requireTenantRoles( ROLES.GERENTE, ROLES.CAJERO), listMenuCatalog);
+router.post("/menu/categories", tenantContext, requireTenantRoles( ROLES.GERENTE), createMenuCategory);
+router.post("/menu/products", tenantContext, requireTenantRoles(ROLES.GERENTE), validateSchema(createProductSchema), createMenuProduct);
+router.patch("/menu/products/:productId", tenantContext, requireTenantRoles(ROLES.GERENTE), updateMenuProduct);
+router.put("/menu/products/:productId/recipe", tenantContext, requireTenantRoles(ROLES.GERENTE), validateSchema(updateRecipeSchema), setProductRecipe);
+router.delete("/menu/products/:productId", tenantContext, requireTenantRoles(ROLES.GERENTE), deleteProduct);
+router.post("/menu/combos", tenantContext, requireTenantRoles(ROLES.GERENTE), validateSchema(createComboSchema), createMenuCombo);
+router.patch("/menu/combos/:comboId", tenantContext, requireTenantRoles(ROLES.GERENTE), updateMenuCombo);
 // Pedidos
-router.post("/orders", tenantContext, requireTenantRoles(ROLES.CAJERO, ROLES.ADMIN), validateSchema(createOrderSchema), createTenantOrder);
-router.get("/orders", tenantContext, requireTenantRoles(ROLES.ADMIN, ROLES.GERENTE, ROLES.CAJERO), listTenantOrders);
-router.get("/orders/kitchen", tenantContext, requireTenantRoles(ROLES.COCINA, ROLES.ADMIN), listKitchenOrders);
-router.patch("/orders/:orderId/finish", tenantContext, requireTenantRoles(ROLES.COCINA, ROLES.ADMIN), finishKitchenOrder);
-router.get("/orders/dispatch", tenantContext, requireTenantRoles(ROLES.DESPACHO, ROLES.ADMIN), listDispatchOrders);
-router.patch("/orders/:orderId/deliver", tenantContext, requireTenantRoles(ROLES.DESPACHO, ROLES.ADMIN), deliverDispatchOrder);
+router.post("/orders", tenantContext, requireTenantRoles(ROLES.CAJERO), validateSchema(createOrderSchema), createTenantOrder);
+router.get("/orders", tenantContext, requireTenantRoles( ROLES.GERENTE, ROLES.CAJERO), listTenantOrders);
+router.get("/orders/kitchen", tenantContext, requireTenantRoles(ROLES.COCINA), listKitchenOrders);
+router.patch("/orders/:orderId/finish", tenantContext, requireTenantRoles(ROLES.COCINA), finishKitchenOrder);
+router.get("/orders/dispatch", tenantContext, requireTenantRoles(ROLES.DESPACHO), listDispatchOrders);
+router.patch("/orders/:orderId/deliver", tenantContext, requireTenantRoles(ROLES.DESPACHO), deliverDispatchOrder);
 
 // RUTAS DE INVENTARIO Y PROVEEDORES
-router.get("/inventory/ingredients", tenantContext, requireTenantRoles(ROLES.ADMIN, ROLES.GERENTE), listIngredients);
-router.post("/inventory/ingredients", tenantContext, requireTenantRoles(ROLES.ADMIN, ROLES.GERENTE), createIngredient);
-router.patch("/inventory/ingredients/:ingredientId", tenantContext, requireTenantRoles(ROLES.ADMIN, ROLES.GERENTE), updateIngredient);
-router.delete("/inventory/ingredients/:ingredientId", tenantContext, requireTenantRoles(ROLES.ADMIN, ROLES.GERENTE), deleteIngredient);
-router.post("/inventory/shrinkage", tenantContext, requireTenantRoles(ROLES.ADMIN, ROLES.GERENTE), validateSchema(createShrinkageSchema),registerShrinkage);
-router.post("/inventory/suppliers/incidences", tenantContext, requireTenantRoles(ROLES.ADMIN, ROLES.GERENTE), registerSupplierIncidence);
+router.get("/inventory/ingredients", tenantContext, requireTenantRoles( ROLES.GERENTE), listIngredients);
+router.post("/inventory/ingredients", tenantContext, requireTenantRoles(ROLES.GERENTE), createIngredient);
+router.patch("/inventory/ingredients/:ingredientId", tenantContext, requireTenantRoles(ROLES.GERENTE), updateIngredient);
+router.delete("/inventory/ingredients/:ingredientId", tenantContext, requireTenantRoles(ROLES.GERENTE), deleteIngredient);
+router.post("/inventory/shrinkage", tenantContext, requireTenantRoles(ROLES.GERENTE), validateSchema(createShrinkageSchema),registerShrinkage);
+router.post("/inventory/suppliers/incidences", tenantContext, requireTenantRoles(ROLES.GERENTE), registerSupplierIncidence);
 
 //Rutas de promociones
 router.post("/promotions", tenantContext, requireTenantRoles(ROLES.GERENTE), validateSchema(createPromotionSchema), createTenantPromotion);

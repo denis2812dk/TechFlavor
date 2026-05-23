@@ -1,5 +1,5 @@
 import { randomUUID } from "crypto";
-import { and, desc, eq, gte, lte, sql } from "drizzle-orm";
+import { and, desc, eq, gte, lte } from "drizzle-orm";
 import {
     menuCombos,
     menuProducts,
@@ -23,35 +23,6 @@ const createTicketCode = () => {
     return `TF-${stamp}-${randomPart}`;
 };
 
-const ignoreDuplicateColumn = (error) => {
-    if (error?.cause?.code === "ER_DUP_FIELDNAME" || error?.code === "ER_DUP_FIELDNAME") return;
-    throw error;
-};
-
-const ensureOrderColumns = async (tenantDb) => {
-    try {
-        await tenantDb.execute(sql`ALTER TABLE orders ADD COLUMN fulfillment_type varchar(30) NOT NULL DEFAULT 'takeaway' AFTER status`);
-    } catch (error) { ignoreDuplicateColumn(error); }
-
-    try {
-        await tenantDb.execute(sql`ALTER TABLE orders ADD COLUMN table_identifier varchar(60) NULL AFTER fulfillment_type`);
-    } catch (error) { ignoreDuplicateColumn(error); }
-
-    try {
-        await tenantDb.execute(sql`ALTER TABLE orders ADD COLUMN cashier_user_id varchar(36) NOT NULL DEFAULT 'legacy' AFTER total`);
-    } catch (error) { ignoreDuplicateColumn(error); }
-
-    try {
-        await tenantDb.execute(sql`ALTER TABLE orders ADD COLUMN cashier_name varchar(120) NOT NULL DEFAULT 'Sin responsable' AFTER cashier_user_id`);
-    } catch (error) { ignoreDuplicateColumn(error); }
-    try {
-        await tenantDb.execute(sql`ALTER TABLE orders ADD COLUMN discount_total decimal(10,2) NOT NULL DEFAULT 0.00 AFTER subtotal`);
-    } catch (error) { ignoreDuplicateColumn(error); }
-
-    try {
-        await tenantDb.execute(sql`ALTER TABLE orders ADD COLUMN promotion_id varchar(36) NULL AFTER discount_total`);
-    } catch (error) { ignoreDuplicateColumn(error); }
-};
 const findSaleItem = async (tenantDb, item) => {
     if (item.itemType === "product") {
         const [product] = await tenantDb
@@ -90,7 +61,7 @@ const findSaleItem = async (tenantDb, item) => {
 
 export const createTenantOrder = async (req, res, next) => {
     try {
-        const { items, fulfillmentType, tableIdentifier, promotionId, promoCode } = req.body;
+        const { items, fulfillmentType, tableIdentifier, promoCode } = req.body;
 
         const saleItems = [];
         for (const item of items) {
@@ -103,10 +74,12 @@ export const createTenantOrder = async (req, res, next) => {
             }
             saleItems.push(saleItem);
         }
+        
         let subtotal = 0;
         let discountTotal = 0;
         let activePromotion = null;
         let promoTargets = [];
+        
         if (promoCode) {
             const normalizedCode = promoCode.trim().toUpperCase();
             
@@ -138,6 +111,7 @@ export const createTenantOrder = async (req, res, next) => {
                 });
             }
         }
+        
         for (const item of saleItems) {
             const lineSubtotal = item.unitPrice * item.quantity;
             let lineDiscount = 0;
@@ -158,7 +132,6 @@ export const createTenantOrder = async (req, res, next) => {
                 }
             }
 
-            // Un descuento nunca puede ser mayor al precio del producto
             if (lineDiscount > lineSubtotal) lineDiscount = lineSubtotal;
 
             item.lineSubtotal = lineSubtotal;
@@ -194,7 +167,6 @@ export const createTenantOrder = async (req, res, next) => {
             cashierName: req.user.name || req.user.email || "Usuario de caja",
         };
 
-        await ensureOrderColumns(req.tenantDb);
         await req.tenantDb.insert(orders).values(order);
         
         await req.tenantDb.insert(orderItems).values(saleItems.map((item) => ({
@@ -207,6 +179,7 @@ export const createTenantOrder = async (req, res, next) => {
             quantity: item.quantity,
             lineTotal: money(item.lineNetTotal),
         })));
+        
         await deductInventoryForOrder(req.tenantDb, orderId, saleItems);
 
         res.status(201).json({
@@ -240,8 +213,6 @@ export const createTenantOrder = async (req, res, next) => {
 
 export const listTenantOrders = async (req, res, next) => {
     try {
-        await ensureOrderColumns(req.tenantDb);
-
         const tenantOrders = await req.tenantDb
             .select()
             .from(orders)
@@ -289,8 +260,6 @@ export const listTenantOrders = async (req, res, next) => {
 
 export const listKitchenOrders = async (req, res, next) => {
     try {
-        await ensureOrderColumns(req.tenantDb);
-
         const kitchenOrders = await req.tenantDb
             .select()
             .from(orders)
@@ -335,8 +304,6 @@ export const finishKitchenOrder = async (req, res, next) => {
     try {
         const { orderId } = req.params;
 
-        await ensureOrderColumns(req.tenantDb);
-
         const [existingOrder] = await req.tenantDb
             .select()
             .from(orders)
@@ -376,8 +343,6 @@ export const finishKitchenOrder = async (req, res, next) => {
 
 export const listDispatchOrders = async (req, res, next) => {
     try {
-        await ensureOrderColumns(req.tenantDb);
-
         const dispatchOrders = await req.tenantDb
             .select()
             .from(orders)
@@ -422,8 +387,6 @@ export const listDispatchOrders = async (req, res, next) => {
 export const deliverDispatchOrder = async (req, res, next) => {
     try {
         const { orderId } = req.params;
-
-        await ensureOrderColumns(req.tenantDb);
 
         const [existingOrder] = await req.tenantDb
             .select()

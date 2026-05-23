@@ -1,57 +1,12 @@
 import { randomUUID } from "crypto";
-import { and, eq, gte, lte, sql,desc } from "drizzle-orm";
+import { and, eq, gte, lte, desc } from "drizzle-orm";
 import { promotions, promotionTargets } from "../models/tenantSchema.js";
 
-const ignoreDuplicateColumn = (error) => {
-    if (error?.cause?.code === "ER_DUP_FIELDNAME" || error?.code === "ER_DUP_FIELDNAME") return;
-    if (error?.cause?.code === "ER_DUP_KEYNAME" || error?.code === "ER_DUP_KEYNAME") return; 
-    throw error;
-};
-
-export const ensurePromotionTables = async (tenantDb) => {
-    await tenantDb.execute(sql`
-        CREATE TABLE IF NOT EXISTS promotions (
-            id varchar(36) NOT NULL,
-            codes varchar(30) NOT NULL UNIQUE,
-            name varchar(120) NOT NULL,
-            description text,
-            discount_type varchar(20) NOT NULL,
-            discount_value decimal(10,2) NOT NULL,
-            start_date timestamp NOT NULL,
-            end_date timestamp NOT NULL,
-            is_active boolean NOT NULL DEFAULT true,
-            created_at timestamp DEFAULT CURRENT_TIMESTAMP,
-            updated_at timestamp DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-            PRIMARY KEY (id)
-        )
-    `);
-
-    await tenantDb.execute(sql`
-        CREATE TABLE IF NOT EXISTS promotion_targets (
-            id varchar(36) NOT NULL,
-            promotion_id varchar(36) NOT NULL,
-            target_type varchar(20) NOT NULL,
-            target_id varchar(36),
-            PRIMARY KEY (id),
-            CONSTRAINT promotion_targets_promotion_id_fk
-                FOREIGN KEY (promotion_id) REFERENCES promotions(id) ON DELETE CASCADE
-        )
-    `);
-    try {
-        await tenantDb.execute(sql`
-            ALTER TABLE promotions 
-            ADD COLUMN codes varchar(30) NOT NULL UNIQUE AFTER id
-        `);
-    } catch (error) { 
-        ignoreDuplicateColumn(error); 
-    }
-};
 // ==========================================
 // SERVICIOS DE PROMOCIÓN
 // ==========================================
-export const createPromotion = async (tenantDb, data) => {
-    await ensurePromotionTables(tenantDb);
 
+export const createPromotion = async (tenantDb, data) => {
     const promotionId = randomUUID();
 
     await tenantDb.transaction(async (tx) => {
@@ -82,8 +37,6 @@ export const createPromotion = async (tenantDb, data) => {
 };
 
 export const getActivePromotions = async (tenantDb) => {
-    await ensurePromotionTables(tenantDb);
-
     const now = new Date();
 
     const activePromos = await tenantDb
@@ -109,9 +62,8 @@ export const getActivePromotions = async (tenantDb) => {
 
     return promosWithTargets;
 };
-export const getAllPromotions = async (tenantDb) => {
-    await ensurePromotionTables(tenantDb);
 
+export const getAllPromotions = async (tenantDb) => {
     const allPromos = await tenantDb
         .select()
         .from(promotions)
@@ -129,8 +81,8 @@ export const getAllPromotions = async (tenantDb) => {
 
     return promosWithTargets;
 };
+
 export const updatePromotion = async (tenantDb, promotionId, data) => {
-    await ensurePromotionTables(tenantDb);
     const [currentPromo] = await tenantDb.select()
         .from(promotions)
         .where(eq(promotions.id, promotionId))
@@ -144,6 +96,7 @@ export const updatePromotion = async (tenantDb, promotionId, data) => {
     if (new Date(currentPromo.startDate) <= now) {
         throw new Error("PROMOTION_ALREADY_STARTED");
     }
+    
     await tenantDb.transaction(async (tx) => {
         await tx.update(promotions).set({
             code: data.code,
@@ -172,7 +125,6 @@ export const updatePromotion = async (tenantDb, promotionId, data) => {
 };
 
 export const softDeletePromotion = async (tenantDb, promotionId) => {
-    await ensurePromotionTables(tenantDb);
     const [currentPromo] = await tenantDb.select()
         .from(promotions)
         .where(eq(promotions.id, promotionId))

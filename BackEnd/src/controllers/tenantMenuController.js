@@ -10,14 +10,13 @@ import {
     productIngredients,
 } from "../models/tenantSchema.js";
 import * as menuService from "../services/tenantMenuService.js";
-import * as inventoryService from "../services/tenantInventoryService.js";
+
 const canManageMenu = (role) => [ROLES.ADMIN, ROLES.GERENTE].includes(role);
 
 const parseActiveFilter = (req) => {
     if (canManageMenu(req.restaurant.tenantRole)) {
         return req.query.includeInactive !== "true";
     }
-
     return true;
 };
 
@@ -40,14 +39,11 @@ const parseComboItems = (items) => {
     if (parsedItems.some((item) => !requiredText(item.productId) || !Number.isInteger(item.quantity) || item.quantity < 1)) {
         return null;
     }
-
     return parsedItems;
 };
 
 export const listMenuCatalog = async (req, res, next) => {
     try {
-        await inventoryService.ensureInventoryTables(req.tenantDb);
-
         const activeOnly = parseActiveFilter(req);
         const productWhere = activeOnly ? eq(menuProducts.isActive, true) : undefined;
         const comboWhere = activeOnly ? eq(menuCombos.isActive, true) : undefined;
@@ -71,6 +67,7 @@ export const listMenuCatalog = async (req, res, next) => {
 
         const products = productWhere ? await productsQuery.where(productWhere) : await productsQuery;
         const combos = comboWhere ? await combosQuery.where(comboWhere) : await combosQuery;
+        
         const comboItems = await req.tenantDb
             .select({
                 id: menuComboItems.id,
@@ -300,11 +297,12 @@ export const updateMenuCombo = async (req, res, next) => {
         next(error);
     }
 };
+
 export const setProductRecipe = async (req, res, next) => {
     try {
         const { productId } = req.params;
         const { ingredients } = req.body; 
-        await inventoryService.ensureInventoryTables(req.tenantDb);
+        
         await menuService.updateProductRecipe(req.tenantDb, productId, ingredients);
 
         res.json({

@@ -76,3 +76,15 @@ export const rateLimit = mysqlTable("rate_limit", {
     count: int("count").notNull(),
     lastRequest: bigint("last_request", { mode: "number" }).notNull(),
 });
+export const tenantRequests = mysqlTable("tenant_requests", {
+    id: varchar("id", { length: 36 }).primaryKey(),
+    restaurantName: varchar("restaurant_name", { length: 120 }).notNull(),
+    ownerName: varchar("owner_name", { length: 80 }).notNull(),
+    email: varchar("email", { length: 100 }).notNull().unique(),
+    phone: varchar("phone", { length: 20 }),
+    status: varchar("status", { length: 30 }).notNull().default("pending"), // pending, approved, rejected
+    planRequested: varchar("plan_requested", { length: 30 }).notNull().default("starter"),
+    notes: text("notes"),
+    createdAt: timestamp("created_at").defaultNow(),
+    updatedAt: timestamp("updated_at").defaultNow().onUpdateNow(),
+});
