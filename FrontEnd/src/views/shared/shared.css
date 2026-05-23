@@ -1,24 +1,24 @@
     :root {
-    --color-bg: #F7F3F1;
-    --color-bg-tint: #F7F3F1;
-    --color-surface: #FDFCFB;
-    --color-surface-2: #FDFCFC;
-    --color-text: #2D1810;
-    --color-muted: #6B5D56;
-    --color-line: rgba(45, 24, 16, 0.08);
-    --color-primary: #2D1810;
-    --color-card: #FDFCFB;
-    --color-input-background: #FDFCFC;
-    --color-accent: #E89B8F;
-    --color-accent-soft: rgba(232, 155, 143, 0.14);
+    --color-bg: var(--bg);
+    --color-bg-tint: var(--bg);
+    --color-surface: var(--bg);
+    --color-surface-2: var(--bg);
+    --color-text: var(--text-h);
+    --color-muted: var(--text);
+    --color-line: var(--border);
+    --color-primary: var(--text-h);
+    --color-card: var(--bg);
+    --color-input-background: var(--code-bg);
+    --color-accent: var(--accent);
+    --color-accent-soft: var(--accent-bg);
     --color-olive: #8B9A7A;
     --color-lavender: #B8A8C8;
     --radius-base: 12px;
     --radius-lg: 16px;
-    --shadow-soft: 0 8px 24px rgba(45, 37, 32, 0.025);
-    --shadow-main: 0 18px 42px rgba(45, 37, 32, 0.035);
-    --font-sans: Inter, 'Plus Jakarta Sans', system-ui, sans-serif;
-    --font-display: Inter, 'Plus Jakarta Sans', system-ui, sans-serif;
+    --shadow-soft: var(--shadow);
+    --shadow-main: var(--shadow);
+    --font-sans: var(--sans);
+    --font-display: var(--heading);
     --header-height: 64px;
     }
 

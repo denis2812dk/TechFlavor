@@ -165,6 +165,7 @@ export const createTenantOrder = async (req, res, next) => {
             total: money(total),
             cashierUserId: req.user.id,
             cashierName: req.user.name || req.user.email || "Usuario de caja",
+            createdAt: new Date(),
         };
 
         await req.tenantDb.insert(orders).values(order);
