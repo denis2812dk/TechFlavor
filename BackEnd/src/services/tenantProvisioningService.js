@@ -1,7 +1,6 @@
 import { sql } from "drizzle-orm";
 
 export const initializeTenantDatabase = async (tenantDb) => {
-    // 1. Configuraciones
     await tenantDb.execute(sql`
         CREATE TABLE IF NOT EXISTS restaurant_settings (
             id varchar(36) PRIMARY KEY,
@@ -18,7 +17,6 @@ export const initializeTenantDatabase = async (tenantDb) => {
         )
     `);
 
-    // 2. Menú
     await tenantDb.execute(sql`
         CREATE TABLE IF NOT EXISTS menu_categories (
             id varchar(36) PRIMARY KEY,
@@ -67,7 +65,6 @@ export const initializeTenantDatabase = async (tenantDb) => {
         )
     `);
 
-    // 3. Inventario y Proveedores
     await tenantDb.execute(sql`
         CREATE TABLE IF NOT EXISTS ingredients (
             id varchar(36) PRIMARY KEY,
@@ -128,8 +125,6 @@ export const initializeTenantDatabase = async (tenantDb) => {
             FOREIGN KEY (supplier_id) REFERENCES suppliers(id) ON DELETE CASCADE
         )
     `);
-
-    // 4. Promociones
     await tenantDb.execute(sql`
         CREATE TABLE IF NOT EXISTS promotions (
             id varchar(36) PRIMARY KEY,
@@ -156,7 +151,6 @@ export const initializeTenantDatabase = async (tenantDb) => {
         )
     `);
 
-    // 5. Órdenes (Ahora con todas sus columnas actualizadas)
     await tenantDb.execute(sql`
         CREATE TABLE IF NOT EXISTS orders (
             id varchar(36) PRIMARY KEY,
@@ -188,6 +182,42 @@ export const initializeTenantDatabase = async (tenantDb) => {
             FOREIGN KEY (order_id) REFERENCES orders(id) ON DELETE CASCADE
         )
     `);
+    await tenantDb.execute(sql`
+        CREATE TABLE IF NOT EXISTS restaurant_zones (
+            id varchar(36) PRIMARY KEY,
+            name varchar(80) NOT NULL,
+            is_active boolean NOT NULL DEFAULT true,
+            created_at timestamp DEFAULT CURRENT_TIMESTAMP,
+            updated_at timestamp DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+        )
+    `);
 
+    await tenantDb.execute(sql`
+        CREATE TABLE IF NOT EXISTS tables (
+            id varchar(36) PRIMARY KEY,
+            zone_id varchar(36) NOT NULL,
+            identifier varchar(30) NOT NULL,
+            capacity int NOT NULL DEFAULT 4,
+            status varchar(20) NOT NULL DEFAULT 'available',
+            created_at timestamp DEFAULT CURRENT_TIMESTAMP,
+            updated_at timestamp DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+            FOREIGN KEY (zone_id) REFERENCES restaurant_zones(id) ON DELETE RESTRICT
+        )
+    `);
+
+    await tenantDb.execute(sql`
+        CREATE TABLE IF NOT EXISTS reservations (
+            id varchar(36) PRIMARY KEY,
+            table_id varchar(36),
+            customer_name varchar(120) NOT NULL,
+            customer_phone varchar(20),
+            reservation_time timestamp NOT NULL,
+            guest_count int NOT NULL DEFAULT 1,
+            status varchar(20) NOT NULL DEFAULT 'pending',
+            created_at timestamp DEFAULT CURRENT_TIMESTAMP,
+            updated_at timestamp DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+            FOREIGN KEY (table_id) REFERENCES tables(id) ON DELETE SET NULL
+        )
+    `);
     console.log("¡Base de datos del inquilino inicializada correctamente!");
 };

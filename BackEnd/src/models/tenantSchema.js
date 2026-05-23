@@ -57,12 +57,44 @@ export const menuComboItems = mysqlTable("menu_combo_items", {
     quantity: int("quantity").notNull().default(1),
 });
 
+export const restaurantZones = mysqlTable("restaurant_zones", {
+    id: varchar("id", { length: 36 }).primaryKey(),
+    name: varchar("name", { length: 80 }).notNull(), 
+    isActive: boolean("is_active").notNull().default(true),
+    createdAt: timestamp("created_at").defaultNow(),
+    updatedAt: timestamp("updated_at").defaultNow().onUpdateNow(),
+});
+
+export const tables = mysqlTable("tables", {
+    id: varchar("id", { length: 36 }).primaryKey(),
+    zoneId: varchar("zone_id", { length: 36 })
+        .notNull()
+        .references(() => restaurantZones.id, { onDelete: "restrict" }),
+    identifier: varchar("identifier", { length: 30 }).notNull(), 
+    capacity: int("capacity").notNull().default(4),
+    status: varchar("status", { length: 20 }).notNull().default("available"),
+    createdAt: timestamp("created_at").defaultNow(),
+    updatedAt: timestamp("updated_at").defaultNow().onUpdateNow(),
+});
+
+export const reservations = mysqlTable("reservations", {
+    id: varchar("id", { length: 36 }).primaryKey(),
+    tableId: varchar("table_id", { length: 36 })
+        .references(() => tables.id, { onDelete: "set null" }), 
+    customerName: varchar("customer_name", { length: 120 }).notNull(),
+    customerPhone: varchar("customer_phone", { length: 20 }),
+    reservationTime: timestamp("reservation_time").notNull(),
+    guestCount: int("guest_count").notNull().default(1),
+    status: varchar("status", { length: 20 }).notNull().default("pending"), 
+    createdAt: timestamp("created_at").defaultNow(),
+    updatedAt: timestamp("updated_at").defaultNow().onUpdateNow(),
+});
 export const orders = mysqlTable("orders", {
     id: varchar("id", { length: 36 }).primaryKey(),
     ticketCode: varchar("ticket_code", { length: 30 }).notNull().unique(),
     status: varchar("status", { length: 30 }).notNull().default("open"),
     fulfillmentType: varchar("fulfillment_type", { length: 30 }).notNull().default("takeaway"),
-    tableIdentifier: varchar("table_identifier", { length: 60 }),
+    tableId: varchar("table_id", { length: 36 }).references(() => tables.id, { onDelete: "set null" }), 
     subtotal: decimal("subtotal", { precision: 10, scale: 2 }).notNull(),
     total: decimal("total", { precision: 10, scale: 2 }).notNull(),
     cashierUserId: varchar("cashier_user_id", { length: 36 }).notNull(),
@@ -85,6 +117,7 @@ export const orderItems = mysqlTable("order_items", {
     quantity: int("quantity").notNull(),
     lineTotal: decimal("line_total", { precision: 10, scale: 2 }).notNull(),
 });
+
 export const ingredients = mysqlTable("ingredients", {
     id: varchar("id", { length: 36 }).primaryKey(),
     name: varchar("name", { length: 150 }).notNull(),
@@ -122,6 +155,7 @@ export const inventoryMovements = mysqlTable("inventory_movements", {
         .references(() => ingredients.id, { onDelete: "cascade" }),
     orderId: varchar("order_id", { length: 36 }), 
 });
+
 export const suppliers = mysqlTable("suppliers", {
     id: varchar("id", { length: 36 }).primaryKey(),
     name: varchar("name", { length: 150 }).notNull(),
@@ -138,6 +172,7 @@ export const supplierIncidences = mysqlTable("supplier_incidences", {
     status: varchar("status", { length: 20 }).notNull().default("ABIERTA"), 
     resolutionDate: timestamp("resolution_date"),
 });
+
 export const promotions = mysqlTable("promotions", {
     id: varchar("id", { length: 36 }).primaryKey(),
     code: varchar("codes", { length: 30 }).notNull().unique(),

@@ -6,6 +6,7 @@ import { errorHandler } from "./middleware/errorHandler.js";
 import tenantRoutes from "./router/tenantRoutes.js";
 import publicRoutes from "./router/publicRoutes.js";
 import saasRoutes from "./router/saasRoutes.js";
+import tenantTableRoutes from "./router/tenantTableRoutes.js";
 import "dotenv/config";
 const app = express();
 
@@ -27,6 +28,7 @@ app.use("/api/saas", saasRoutes);
 app.use("/api/auth", toNodeHandler(auth));
 
 app.use("/api/tenant", tenantRoutes);
+app.use("/api/tenant/tables", tenantTableRoutes);
 
 app.get("/status", (req, res) => {
     res.json({
