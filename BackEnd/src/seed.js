@@ -6,6 +6,8 @@ import { auth } from "./config/auth.js";
 import { connectDB, db } from "./config/db.js";
 import { ROLES } from "./constants/roles.js";
 import { accounts, restaurantUsers, restaurants, users } from "./models/schema.js";
+import { getTenantDb } from "./config/tenantDb.js";
+import { initializeTenantDatabase } from "./services/tenantProvisioningService.js";
 
 const DEMO_RESTAURANT = {
   id: "restaurant_brasa_norte",
@@ -21,7 +23,7 @@ const USERS_TO_CREATE = [
     email: "admin@techflavor.com",
     password: "AdminPassword123!",
     name: "Administrador General",
-    role: ROLES.ADMIN,
+    role: ROLES.ADMIN, // Este será tu Super Admin del SaaS
   },
   {
     email: "operador@techflavor.com",
@@ -128,23 +130,11 @@ const provisionTenantDatabase = async (restaurant) => {
   await serverConnection.query(`CREATE DATABASE IF NOT EXISTS \`${restaurant.databaseName}\``);
   await serverConnection.end();
 
+  // Usamos el Molde Maestro de Drizzle
+  const tenantDb = getTenantDb(restaurant.databaseName);
+  await initializeTenantDatabase(tenantDb);
+
   const tenantConnection = await getMysqlConnection(restaurant.databaseName);
-  await tenantConnection.query(`
-    CREATE TABLE IF NOT EXISTS restaurant_settings (
-      id varchar(36) NOT NULL,
-      restaurant_name varchar(120) NOT NULL,
-      currency varchar(10) NOT NULL DEFAULT 'USD',
-      timezone varchar(80) NOT NULL DEFAULT 'America/El_Salvador',
-      tax_rate decimal(5,2) NOT NULL DEFAULT 0.00,
-      primary_color varchar(30) NOT NULL DEFAULT '#ea580c',
-      allow_delivery boolean NOT NULL DEFAULT true,
-      allow_inventory boolean NOT NULL DEFAULT false,
-      notes text,
-      created_at timestamp DEFAULT CURRENT_TIMESTAMP,
-      updated_at timestamp DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-      PRIMARY KEY (id)
-    )
-  `);
 
   const [settings] = await tenantConnection.query("SELECT id FROM restaurant_settings LIMIT 1");
   if (settings.length === 0) {
@@ -164,202 +154,9 @@ const provisionTenantDatabase = async (restaurant) => {
         "Tenant demo creado desde seed inicial.",
       ],
     );
+  } else {
+    await tenantConnection.query(`UPDATE restaurant_settings SET allow_inventory = true`);
   }
-
-  await tenantConnection.query(`
-    UPDATE restaurant_settings
-    SET allow_inventory = true
-  `);
-
-  await tenantConnection.query(`
-    CREATE TABLE IF NOT EXISTS menu_categories (
-      id varchar(36) NOT NULL,
-      name varchar(80) NOT NULL,
-      description text,
-      is_active boolean NOT NULL DEFAULT true,
-      created_at timestamp DEFAULT CURRENT_TIMESTAMP,
-      updated_at timestamp DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-      PRIMARY KEY (id)
-    )
-  `);
-
-  await tenantConnection.query(`
-    CREATE TABLE IF NOT EXISTS menu_products (
-      id varchar(36) NOT NULL,
-      category_id varchar(36) NOT NULL,
-      name varchar(120) NOT NULL,
-      description text NOT NULL,
-      price decimal(10,2) NOT NULL,
-      is_active boolean NOT NULL DEFAULT true,
-      created_at timestamp DEFAULT CURRENT_TIMESTAMP,
-      updated_at timestamp DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-      PRIMARY KEY (id),
-      CONSTRAINT menu_products_category_id_fk
-        FOREIGN KEY (category_id) REFERENCES menu_categories(id)
-    )
-  `);
-
-  await tenantConnection.query(`
-    CREATE TABLE IF NOT EXISTS menu_combos (
-      id varchar(36) NOT NULL,
-      name varchar(120) NOT NULL,
-      description text NOT NULL,
-      price decimal(10,2) NOT NULL,
-      is_active boolean NOT NULL DEFAULT true,
-      created_at timestamp DEFAULT CURRENT_TIMESTAMP,
-      updated_at timestamp DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-      PRIMARY KEY (id)
-    )
-  `);
-
-  await tenantConnection.query(`
-    CREATE TABLE IF NOT EXISTS menu_combo_items (
-      id varchar(36) NOT NULL,
-      combo_id varchar(36) NOT NULL,
-      product_id varchar(36) NOT NULL,
-      quantity int NOT NULL DEFAULT 1,
-      PRIMARY KEY (id),
-      CONSTRAINT menu_combo_items_combo_id_fk
-        FOREIGN KEY (combo_id) REFERENCES menu_combos(id) ON DELETE CASCADE,
-      CONSTRAINT menu_combo_items_product_id_fk
-        FOREIGN KEY (product_id) REFERENCES menu_products(id)
-    )
-  `);
-
-  await tenantConnection.query(`
-    CREATE TABLE IF NOT EXISTS orders (
-      id varchar(36) NOT NULL,
-      ticket_code varchar(30) NOT NULL,
-      status varchar(30) NOT NULL DEFAULT 'open',
-      fulfillment_type varchar(30) NOT NULL DEFAULT 'takeaway',
-      table_identifier varchar(60),
-      subtotal decimal(10,2) NOT NULL,
-      total decimal(10,2) NOT NULL,
-      cashier_user_id varchar(36) NOT NULL,
-      cashier_name varchar(120) NOT NULL,
-      created_at timestamp DEFAULT CURRENT_TIMESTAMP,
-      updated_at timestamp DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-      PRIMARY KEY (id),
-      UNIQUE KEY orders_ticket_code_unique (ticket_code)
-    )
-  `);
-
-  await tenantConnection.query(`
-    CREATE TABLE IF NOT EXISTS order_items (
-      id varchar(36) NOT NULL,
-      order_id varchar(36) NOT NULL,
-      item_type varchar(20) NOT NULL,
-      item_id varchar(36) NOT NULL,
-      name varchar(120) NOT NULL,
-      unit_price decimal(10,2) NOT NULL,
-      quantity int NOT NULL,
-      line_total decimal(10,2) NOT NULL,
-      PRIMARY KEY (id),
-      CONSTRAINT order_items_order_id_fk
-        FOREIGN KEY (order_id) REFERENCES orders(id) ON DELETE CASCADE
-    )
-  `);
-
-  await tenantConnection.query(`
-    CREATE TABLE IF NOT EXISTS ingredients (
-      id varchar(36) NOT NULL,
-      name varchar(150) NOT NULL,
-      unit_measure varchar(50) NOT NULL,
-      PRIMARY KEY (id)
-    )
-  `);
-
-  await tenantConnection.query(`
-    CREATE TABLE IF NOT EXISTS inventory (
-      id varchar(36) NOT NULL,
-      ingredient_id varchar(36) NOT NULL,
-      current_stock decimal(10,2) NOT NULL DEFAULT 0.00,
-      PRIMARY KEY (id),
-      UNIQUE KEY inventory_ingredient_id_unique (ingredient_id),
-      CONSTRAINT inventory_ingredient_id_fk
-        FOREIGN KEY (ingredient_id) REFERENCES ingredients(id) ON DELETE CASCADE
-    )
-  `);
-
-  await tenantConnection.query(`
-    CREATE TABLE IF NOT EXISTS product_ingredients (
-      id varchar(36) NOT NULL,
-      product_id varchar(36) NOT NULL,
-      ingredient_id varchar(36) NOT NULL,
-      quantity decimal(10,2) NOT NULL,
-      PRIMARY KEY (id),
-      CONSTRAINT product_ingredients_product_id_fk
-        FOREIGN KEY (product_id) REFERENCES menu_products(id) ON DELETE CASCADE,
-      CONSTRAINT product_ingredients_ingredient_id_fk
-        FOREIGN KEY (ingredient_id) REFERENCES ingredients(id)
-    )
-  `);
-
-  await tenantConnection.query(`
-    CREATE TABLE IF NOT EXISTS inventory_movements (
-      id varchar(36) NOT NULL,
-      type varchar(20) NOT NULL,
-      quantity decimal(10,2) NOT NULL,
-      date timestamp DEFAULT CURRENT_TIMESTAMP,
-      reason varchar(255),
-      ingredient_id varchar(36) NOT NULL,
-      order_id varchar(36),
-      PRIMARY KEY (id),
-      CONSTRAINT inventory_movements_ingredient_id_fk
-        FOREIGN KEY (ingredient_id) REFERENCES ingredients(id) ON DELETE CASCADE
-    )
-  `);
-
-  await tenantConnection.query(`
-    CREATE TABLE IF NOT EXISTS suppliers (
-      id varchar(36) NOT NULL,
-      name varchar(150) NOT NULL,
-      contact varchar(150),
-      PRIMARY KEY (id)
-    )
-  `);
-
-  await tenantConnection.query(`
-    CREATE TABLE IF NOT EXISTS supplier_incidences (
-      id varchar(36) NOT NULL,
-      supplier_id varchar(36) NOT NULL,
-      description text NOT NULL,
-      date timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
-      status varchar(20) NOT NULL DEFAULT 'ABIERTA',
-      resolution_date timestamp NULL,
-      PRIMARY KEY (id),
-      CONSTRAINT supplier_incidences_supplier_id_fk
-        FOREIGN KEY (supplier_id) REFERENCES suppliers(id) ON DELETE CASCADE
-    )
-  `);
-
-  await tenantConnection.query(`
-    ALTER TABLE orders
-    ADD COLUMN fulfillment_type varchar(30) NOT NULL DEFAULT 'takeaway' AFTER status
-  `).catch((error) => {
-    if (error.code !== "ER_DUP_FIELDNAME") throw error;
-  });
-
-  await tenantConnection.query(`
-    ALTER TABLE orders
-    ADD COLUMN table_identifier varchar(60) NULL AFTER fulfillment_type
-  `).catch((error) => {
-    if (error.code !== "ER_DUP_FIELDNAME") throw error;
-  });
-
-  await tenantConnection.query(`
-    ALTER TABLE orders
-    ADD COLUMN cashier_user_id varchar(36) NOT NULL DEFAULT 'legacy' AFTER total
-  `).catch((error) => {
-    if (error.code !== "ER_DUP_FIELDNAME") throw error;
-  });
-
-  await tenantConnection.query(`
-    ALTER TABLE orders
-    ADD COLUMN cashier_name varchar(120) NOT NULL DEFAULT 'Sin responsable' AFTER cashier_user_id
-  `).catch((error) => {
-    if (error.code !== "ER_DUP_FIELDNAME") throw error;
-  });
 
   for (const category of DEMO_CATEGORIES) {
     await tenantConnection.query(
@@ -504,7 +301,12 @@ const seed = async () => {
     for (const userData of USERS_TO_CREATE) {
       console.log(`Ensuring user: ${userData.email}`);
       const user = await ensureUser(userData);
-      await ensureMembership({ restaurant, user });
+      
+      // NOTA: El Super Admin del SaaS NO debe tener una membresía de restaurante.
+      // Así que no lo insertamos en restaurant_users.
+      if (userData.role !== ROLES.ADMIN) {
+        await ensureMembership({ restaurant, user });
+      }
     }
 
     console.log("Seed completed.");
