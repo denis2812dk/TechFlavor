@@ -16,6 +16,7 @@ import { OrdersList } from "./views/orders/OrdersList";
 import Login from "./views/shared/Login.jsx";
 import { RoleDashboard } from "./views/shared/RoleDashboard";
 import { SaaSManagement } from "./views/admin/SaaSManagement";
+import { SaaSRestaurants } from "./views/admin/SaaSRestaurants";
 
 const ROUTES = {
   // ==========================================
@@ -30,6 +31,11 @@ const ROUTES = {
     roles: [ROLES.ADMIN],
     title: "Solicitudes SaaS",
     description: "Aprobación y rechazo de nuevos restaurantes.",
+  },
+  "/admin/restaurants": {
+    roles: [ROLES.ADMIN],
+    title: "Restaurantes activos",
+    description: "Listado de clientes activos de la plataforma.",
   },
 
   // ==========================================
@@ -126,7 +132,7 @@ function App() {
   const handleLogin = async () => {
     const currentSession = await loadSession();
     const nextPath = currentSession?.user?.role === ROLES.ADMIN
-      ? "/admin/saas"
+      ? "/admin/restaurants"
       : ROLE_HOME_PATHS[currentSession?.user?.role] || "/operador";
     navigate(nextPath);
   };
@@ -156,7 +162,7 @@ function App() {
     if (isLoading || !session?.user) return;
     // Si la ruta es pública o la raíz, redirigir según el rol
     if (path === "/" || path === "/login" || path === "/register") {
-        navigate(session.user.role === ROLES.ADMIN ? "/admin/saas" : ROLE_HOME_PATHS[session.user.role] || "/operador");
+      navigate(session.user.role === ROLES.ADMIN ? "/admin/restaurants" : ROLE_HOME_PATHS[session.user.role] || "/operador");
     }
   }, [isLoading, navigate, path, session]);
 
@@ -269,6 +275,7 @@ function App() {
           </div>
         ) : null}
         {path === "/admin/saas" ? <SaaSManagement /> : null}
+        {path === "/admin/restaurants" ? <SaaSRestaurants /> : null}
 
         {/* VISTAS DEL GERENTE */}
         {path === "/gerente/users" ? <UserManagement /> : null}

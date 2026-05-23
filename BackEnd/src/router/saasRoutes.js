@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { approveSubscription,rejectSubscription,listPendingRequests } from "../controllers/saasController.js";
+import { approveSubscription,rejectSubscription,listPendingRequests, listRegisteredRestaurants } from "../controllers/saasController.js";
 import { tenantContext } from "../middleware/tenantContext.js";
 import { ROLES } from "../constants/roles.js";
 
@@ -14,6 +14,7 @@ const requireSuperAdmin = (req, res, next) => {
     next();
 };
 router.get("/requests", tenantContext, requireSuperAdmin, listPendingRequests);
+router.get("/restaurants", tenantContext, requireSuperAdmin, listRegisteredRestaurants);
 router.post("/requests/:requestId/approve", tenantContext, requireSuperAdmin, approveSubscription);
 router.post("/requests/:requestId/reject", tenantContext, requireSuperAdmin, rejectSubscription);
 export default router;

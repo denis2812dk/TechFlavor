@@ -34,3 +34,11 @@ export const rejectRequest = async (requestId, reason = "") => {
   if (!response.ok) throw new Error(getErrorMessage(data));
   return data;
 };
+export const getRegisteredRestaurants = async () => {
+  const response = await fetch(`${API_URL}/api/saas/restaurants`, {
+    credentials: "include",
+  });
+  const data = await parseJson(response);
+  if (!response.ok) throw new Error(getErrorMessage(data));
+  return data;
+};

@@ -57,3 +57,15 @@ export const listPendingRequests = async (req, res, next) => {
         next(error);
     }
 };
+export const listRegisteredRestaurants = async (req, res, next) => {
+    try {
+        const clients = await saasService.getRegisteredRestaurants();
+        
+        res.json({ 
+            success: true, 
+            restaurants: clients 
+        });
+    } catch (error) {
+        next(error);
+    }
+};
