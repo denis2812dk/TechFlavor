@@ -69,6 +69,11 @@ const ROUTES = {
     title: "Inventario",
     description: "Control de insumos, existencias y registro de merma.",
   },
+  "/gerente/ingredients": {
+    roles: [ROLES.GERENTE],
+    title: "Ingredientes",
+    description: "Alta, edición y control de insumos del restaurante.",
+  },
   "/gerente/salon": {
     roles: [ROLES.GERENTE],
     title: "Salon",
@@ -309,6 +314,7 @@ function App() {
         {path === "/gerente" ? <OperationalOverview /> : null}
         {path === "/gerente/users" ? <UserManagement /> : null}
         {path === "/gerente/menu" ? <MenuManagement /> : null}
+        {path === "/gerente/ingredients" ? <InventoryManagement /> : null}
         {path === "/gerente/salon" ? <SalonManagement /> : null}
         {path === "/gerente/inventory" ? <InventoryManagement /> : null}
         {path === "/gerente/promotions" ? <PromotionsManagement /> : null}
