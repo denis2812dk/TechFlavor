@@ -1,6 +1,6 @@
 import { randomUUID } from "crypto";
 import mysql from "mysql2/promise";
-import { eq } from "drizzle-orm";
+import { eq, desc } from "drizzle-orm";
 import { auth } from "../config/auth.js";
 import { db } from "../config/db.js";
 import { getTenantDb } from "../config/tenantDb.js";
@@ -144,4 +144,10 @@ export const rejectTenantRequest = async (requestId, reason) => {
         .where(eq(tenantRequests.id, requestId));
 
     return true;
+};
+export const getPendingRequests = async () => {
+    return await db.select()
+        .from(tenantRequests)
+        .where(eq(tenantRequests.status, "pending"))
+        .orderBy(desc(tenantRequests.createdAt));
 };

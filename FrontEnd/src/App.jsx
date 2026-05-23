@@ -3,92 +3,96 @@ import "./App.css";
 import { ProtectedRoute } from "./components/ProtectedRoute";
 import { getSession, signOut } from "./lib/auth";
 import { ROLE_HOME_PATHS, ROLES } from "./lib/constants/roles";
+import { RegisterRestaurant } from "./views/public/RegisterRestaurant";
+// Vistas del Restaurante
 import { InventoryManagement } from "./views/manager/InventoryManagement";
 import { MenuManagement } from "./views/manager/MenuManagement";
 import { UserManagement } from "./views/manager/UserManagement";
+import { PromotionsManagement } from "./views/manager/PromotionsManagement";
 import { CashierCatalog } from "./views/cashier/CashierCatalog";
 import { DispatchOrders } from "./views/dispatch/DispatchOrders";
 import { KitchenDisplay } from "./views/kitchen/KitchenDisplay";
 import { OrdersList } from "./views/orders/OrdersList";
 import Login from "./views/shared/Login.jsx";
-import { PromotionsManagement } from "./views/manager/PromotionsManagement";
 import { RoleDashboard } from "./views/shared/RoleDashboard";
+import { SaaSManagement } from "./views/admin/SaaSManagement";
 
 const ROUTES = {
-  "/manager": {
+  // ==========================================
+  // RUTAS DEL CEREBRO CENTRAL (SaaS)
+  // ==========================================
+  "/admin": {
     roles: [ROLES.ADMIN],
-    title: "Panel manager",
-    description: "Gestion de usuarios, configuracion general y control del restaurante.",
+    title: "SaaS Dashboard",
+    description: "Gestión de suscripciones, nuevos clientes y estado de la plataforma.",
   },
-  "/manager/users": {
+  "/admin/saas": {
     roles: [ROLES.ADMIN],
+    title: "Solicitudes SaaS",
+    description: "Aprobación y rechazo de nuevos restaurantes.",
+  },
+
+  // ==========================================
+  // RUTAS DEL GERENTE (Antes "Manager")
+  // ==========================================
+  "/gerente": {
+    roles: [ROLES.GERENTE],
+    title: "Panel gerente",
+    description: "Supervisión operativa, equipo y reportes del restaurante.",
+  },
+  "/gerente/users": {
+    roles: [ROLES.GERENTE],
     title: "Usuarios",
-    description: "Creacion de empleados y asignacion de roles por restaurante.",
+    description: "Creación de empleados y asignación de roles.",
   },
-  "/manager/menu": {
-    roles: [ROLES.ADMIN],
-    title: "Menu",
-    description: "Categorias, productos y combos disponibles para caja.",
+  "/gerente/menu": {
+    roles: [ROLES.GERENTE],
+    title: "Menú",
+    description: "Categorías, productos y combos disponibles para caja.",
   },
-  "/manager/orders": {
-    roles: [ROLES.ADMIN],
-    title: "Ordenes",
-    description: "Historial de pedidos, tickets y estados operativos.",
-  },
-  "/manager/inventory": {
-    roles: [ROLES.ADMIN],
+  "/gerente/inventory": {
+    roles: [ROLES.GERENTE],
     title: "Inventario",
     description: "Control de insumos, existencias y registro de merma.",
   },
-  "/manager/promotions": {
-    roles: [ROLES.ADMIN],
+  "/gerente/promotions": {
+    roles: [ROLES.GERENTE],
     title: "Promociones",
     description: "Descuentos temporales y reglas especiales.",
   },
+  "/gerente/orders": {
+    roles: [ROLES.GERENTE],
+    title: "Órdenes",
+    description: "Historial de pedidos, tickets y estados operativos.",
+  },
+
+  // ==========================================
+  // RUTAS OPERATIVAS (Restaurante)
+  // ==========================================
   "/cajero": {
-    roles: [ROLES.CAJERO, ROLES.ADMIN],
+    roles: [ROLES.CAJERO],
     title: "Panel caja",
     description: "Cobros, cuentas abiertas, cierres de turno y pagos.",
   },
   "/cajero/orders": {
-    roles: [ROLES.CAJERO, ROLES.ADMIN],
-    title: "Ordenes",
+    roles: [ROLES.CAJERO],
+    title: "Órdenes Activas",
     description: "Pedidos generados desde caja y seguimiento del ticket.",
   },
   "/cocina": {
-    roles: [ROLES.COCINA, ROLES.ADMIN],
+    roles: [ROLES.COCINA],
     title: "KDS cocina",
-    description: "Pedidos entrantes, preparacion y estados de cocina.",
+    description: "Pedidos entrantes, preparación y estados de cocina.",
   },
   "/despacho": {
-    roles: [ROLES.DESPACHO, ROLES.ADMIN],
+    roles: [ROLES.DESPACHO],
     title: "Panel despacho",
-    description: "Ordenes listas, entregas y seguimiento de salida.",
+    description: "Órdenes listas, entregas y seguimiento de salida.",
   },
   "/operador": {
-    roles: [ROLES.OPERADOR, ROLES.ADMIN],
+    roles: [ROLES.OPERADOR],
     title: "Panel operador",
-    description: "Operacion diaria del restaurante y atencion de pedidos.",
-  },
-  "/gerente": {
-    roles: [ROLES.GERENTE, ROLES.ADMIN],
-    title: "Panel gerente",
-    description: "Supervision operativa, equipo y reportes del restaurante.",
-  },
-  "/gerente/promotions": {
-    roles: [ROLES.GERENTE, ROLES.ADMIN],
-    title: "Promociones",
-    description: "Descuentos temporales y reglas especiales.",
-  },
-  "/gerente/menu": {
-    roles: [ROLES.GERENTE, ROLES.ADMIN],
-    title: "Menu",
-    description: "Categorias, productos y combos disponibles para caja.",
-  },
-  "/gerente/inventory": {
-    roles: [ROLES.GERENTE, ROLES.ADMIN],
-    title: "Inventario",
-    description: "Control de insumos, existencias y registro de merma.",
+    description: "Operación diaria del restaurante y atención de pedidos.",
   },
 };
 
@@ -121,7 +125,9 @@ function App() {
 
   const handleLogin = async () => {
     const currentSession = await loadSession();
-    const nextPath = ROLE_HOME_PATHS[currentSession?.user?.role] || "/operador";
+    const nextPath = currentSession?.user?.role === ROLES.ADMIN
+      ? "/admin/saas"
+      : ROLE_HOME_PATHS[currentSession?.user?.role] || "/operador";
     navigate(nextPath);
   };
 
@@ -137,7 +143,6 @@ function App() {
   }, [navigate]);
 
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
     loadSession();
   }, []);
 
@@ -149,14 +154,14 @@ function App() {
 
   useEffect(() => {
     if (isLoading || !session?.user) return;
-    if (path !== "/" && path !== "/login") return;
-
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    navigate(ROLE_HOME_PATHS[session.user.role] || "/operador");
+    // Si la ruta es pública o la raíz, redirigir según el rol
+    if (path === "/" || path === "/login" || path === "/register") {
+        navigate(session.user.role === ROLES.ADMIN ? "/admin/saas" : ROLE_HOME_PATHS[session.user.role] || "/operador");
+    }
   }, [isLoading, navigate, path, session]);
 
   useEffect(() => {
-    if (!session?.user || path === "/login" || path === "/") return undefined;
+    if (!session?.user || path === "/login" || path === "/" || path === "/register") return undefined;
 
     let timeoutId;
     const resetInactivityTimer = () => {
@@ -190,14 +195,23 @@ function App() {
     );
   }
 
-  if (path === "/" || path === "/login") {
-    if (session?.user) {
-      return null;
-    }
-
-    return <Login onLogin={handleLogin} />;
+  // ==========================================
+  // RUTAS PÚBLICAS (No requieren sesión)
+  // ==========================================
+  if (path === "/register") {
+      if (session?.user) return null; // El useEffect lo redirigirá
+        return <RegisterRestaurant onNavigate={navigate} />;
+      return <div style={{padding: '2rem'}}>Aquí irá el formulario público de registro SaaS...</div>;
   }
 
+  if (path === "/" || path === "/login") {
+    if (session?.user) return null;
+    return <Login onLogin={handleLogin} onRegister={() => navigate("/register")} />;
+  }
+
+  // ==========================================
+  // RUTAS PROTEGIDAS
+  // ==========================================
   const route = ROUTES[path];
 
   if (!route) {
@@ -215,7 +229,12 @@ function App() {
   }
 
   return (
-    <ProtectedRoute allowedRoles={route.roles} session={session} onLogin={handleLogin}>
+    <ProtectedRoute
+      allowedRoles={route.roles}
+      session={session}
+      onLogin={handleLogin}
+      onRegister={() => navigate("/register")}
+    >
       <RoleDashboard
         title={route.title}
         description={route.description}
@@ -224,11 +243,42 @@ function App() {
         currentPath={path}
         onNavigate={navigate}
       >
-        {path === "/manager/users" ? <UserManagement /> : null}
-        {path === "/manager/menu" || path === "/gerente/menu" ? <MenuManagement /> : null}
-        {path === "/manager/inventory" || path === "/gerente/inventory" ? <InventoryManagement /> : null}
-        {path === "/manager/promotions" || path === "/gerente/promotions" ? <PromotionsManagement /> : null}
-        {path === "/manager/orders" || path === "/cajero/orders" ? <OrdersList /> : null}
+        {/* VISTAS DEL SAAS ADMIN */}
+        {path === "/admin" ? (
+          <div className="container py-4">
+            <div className="row justify-content-center">
+              <div className="col-12 col-lg-10 col-xl-8">
+                <div className="card border-0 shadow-sm">
+                  <div className="card-body p-4 p-md-5">
+                    <p className="text-uppercase text-muted fw-semibold small mb-2">Panel admin</p>
+                    <h2 className="h3 fw-bold mb-3">Bienvenido al centro de control SaaS</h2>
+                    <p className="text-muted mb-4">
+                      Desde aquí puedes revisar las solicitudes de nuevos restaurantes y avanzar a la vista de gestión.
+                    </p>
+                    <button
+                      type="button"
+                      className="btn btn-primary btn-lg"
+                      onClick={() => navigate("/admin/saas")}
+                    >
+                      Abrir vista SaaSManagement
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        ) : null}
+        {path === "/admin/saas" ? <SaaSManagement /> : null}
+
+        {/* VISTAS DEL GERENTE */}
+        {path === "/gerente/users" ? <UserManagement /> : null}
+        {path === "/gerente/menu" ? <MenuManagement /> : null}
+        {path === "/gerente/inventory" ? <InventoryManagement /> : null}
+        {path === "/gerente/promotions" ? <PromotionsManagement /> : null}
+        {path === "/gerente/orders" ? <OrdersList /> : null}
+
+        {/* VISTAS OPERATIVAS */}
+        {path === "/cajero/orders" ? <OrdersList /> : null}
         {path === "/cajero" ? <CashierCatalog /> : null}
         {path === "/cocina" ? <KitchenDisplay /> : null}
         {path === "/despacho" ? <DispatchOrders /> : null}

@@ -47,9 +47,12 @@ export const rejectSubscription = async (req, res, next) => {
 
 export const listPendingRequests = async (req, res, next) => {
     try {
-        // En un futuro cercano puedes importar `db` y `tenantRequests` aquí para listar
-        // const pending = await db.select().from(tenantRequests).orderBy(desc(tenantRequests.createdAt));
-        // res.json({ success: true, requests: pending });
+        const pending = await saasService.getPendingRequests();
+        
+        res.json({ 
+            success: true, 
+            requests: pending 
+        });
     } catch (error) {
         next(error);
     }

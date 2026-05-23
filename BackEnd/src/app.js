@@ -9,6 +9,8 @@ import saasRoutes from "./router/saasRoutes.js";
 import "dotenv/config";
 const app = express();
 
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
 const allowedOrigins = process.env.APP_ALLOWED_ORIGINS
     ? process.env.APP_ALLOWED_ORIGINS.split(',').map(origin => origin.trim())
     : ["http://localhost:5173", "http://127.0.0.1:5173"];
@@ -24,7 +26,6 @@ app.use("/api/public", publicRoutes);
 app.use("/api/saas", saasRoutes);
 app.use("/api/auth", toNodeHandler(auth));
 
-app.use(express.json());
 app.use("/api/tenant", tenantRoutes);
 
 app.get("/status", (req, res) => {

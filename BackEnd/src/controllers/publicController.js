@@ -10,7 +10,7 @@ export const registerRestaurantRequest = async (req, res, next) => {
             return res.status(400).json({
                 success: false,
                 message: "El nombre del restaurante, tu nombre y tu correo son obligatorios.",
-            });
+            }); 
         }
 
         if (!isValidEmail(email)) {

@@ -8,7 +8,7 @@ export const ROLES = Object.freeze({
 });
 
 export const ROLE_HOME_PATHS = Object.freeze({
-    [ROLES.ADMIN]: "/manager",
+    [ROLES.ADMIN]: "/admin",
     [ROLES.CAJERO]: "/cajero",
     [ROLES.COCINA]: "/cocina",
     [ROLES.DESPACHO]: "/despacho",

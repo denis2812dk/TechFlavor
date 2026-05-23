@@ -1,6 +1,7 @@
 import { signOut } from "../../lib/auth";
 import "./shared.css";
 import { Sidebar } from "../../components/layout/Sidebar";
+import { AdminSidebar } from "../../components/layout/AdminSidebar";
 import { Navbar } from "../../components/layout/Navbar";
 import { OperationalOverview } from "./OperationalOverview";
 
@@ -23,13 +24,23 @@ export const RoleDashboard = ({ title, description, session, onLogout, children,
     <div className="app-shell">
       <div className="app-frame">
         <div className="dashboard-layout">
-          <Sidebar
-            currentPath={currentPath}
-            onNavigate={onNavigate}
-            userName={userName}
-            userRole={userRole}
-            initials={initials}
-          />
+          {userRole === "admin" ? (
+            <AdminSidebar
+              currentPath={currentPath}
+              onNavigate={onNavigate}
+              userName={userName}
+              userRole={userRole}
+              initials={initials}
+            />
+          ) : (
+            <Sidebar
+              currentPath={currentPath}
+              onNavigate={onNavigate}
+              userName={userName}
+              userRole={userRole}
+              initials={initials}
+            />
+          )}
 
           <main className="dashboard-main">
             <Navbar

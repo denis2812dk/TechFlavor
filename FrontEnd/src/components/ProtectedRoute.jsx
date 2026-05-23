@@ -1,8 +1,8 @@
 import Login from "../views/shared/Login";
 
-export const ProtectedRoute = ({ allowedRoles, children, session, onLogin }) => {
+export const ProtectedRoute = ({ allowedRoles, children, session, onLogin, onRegister, onAdminNavigate }) => {
   if (!session?.user) {
-    return <Login onLogin={onLogin} />;
+    return <Login onLogin={onLogin} onRegister={onRegister} onAdminNavigate={onAdminNavigate} />;
   }
 
   if (allowedRoles?.length && !allowedRoles.includes(session.user.role)) {
