@@ -4,7 +4,7 @@ import express from "express";
 import { auth } from "./config/auth.js";
 import { errorHandler } from "./middleware/errorHandler.js";
 import tenantRoutes from "./router/tenantRoutes.js";
-
+import publicRoutes from "./router/publicRoutes.js";
 const app = express();
 
 const allowedOrigins = process.env.APP_ALLOWED_ORIGINS
@@ -18,7 +18,7 @@ app.use(cors({
         methods: ["GET", "POST", "PUT", "PATCH","DELETE", "OPTIONS"],
         allowedHeaders: ["Content-Type", "Authorization"]
 }));
-
+app.use("/api/public", publicRoutes);
 app.all("/api/auth/*splat", toNodeHandler(auth));
 
 app.use(express.json());
