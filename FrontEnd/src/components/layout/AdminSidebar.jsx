@@ -2,6 +2,7 @@ const adminItems = [
   { label: "Dashboard", path: "/admin", icon: "dashboard" },
   { label: "Restaurantes", path: "/admin/restaurants", icon: "users" },
   { label: "Solicitudes SaaS", path: "/admin/saas", icon: "orders" },
+  { label: "Mi Perfil", path: "/perfil", icon: "profile" },
 ];
 
 const iconMap = {
@@ -11,6 +12,12 @@ const iconMap = {
   orders: (
     <path d="M7 5h10m-9 4h8m-8 4h6m-7 6h10a2 2 0 0 0 2-2V7l-3-3H7a2 2 0 0 0-2 2v11a2 2 0 0 0 2 2Z" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
   ),
+  users: (
+    <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2m12-10a4 4 0 1 1-8 0 4 4 0 0 1 8 0Z" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+  ),
+  profile: (
+    <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2M12 3a4 4 0 1 0 0 8 4 4 0 0 0 0-8z" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+  )
 };
 
 const AdminSidebarItem = ({ label, active, icon, onClick }) => (
@@ -57,7 +64,13 @@ export const AdminSidebar = ({ currentPath, onNavigate, userName, userRole, init
         ))}
       </nav>
 
-      <div className="sidebar-footer">
+      <div 
+        className="sidebar-footer" 
+        onClick={() => onNavigate("/perfil")} 
+        style={{ cursor: "pointer" }}
+        role="button"
+        title="Configuración de perfil"
+      >
         <div className="avatar">{initials || "TF"}</div>
         <div className="user-meta">
           <span className="user-name">{userName}</span>

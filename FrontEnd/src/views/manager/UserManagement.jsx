@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { createTenantUser, getErrorMessage, listTenantUsers } from "../../lib/auth";
+import { createTenantUser, deleteTenantUser, getErrorMessage, listTenantUsers, updateTenantUser } from "../../lib/auth";
 import { ROLES } from "../../lib/constants/roles";
 
 const ROLE_OPTIONS = [
@@ -119,31 +119,38 @@ export const UserManagement = () => {
     }
   };
 
-  // Mockup: Funciones solo visuales
   const handleEditClick = (employee) => {
     setEditingUser({ ...employee });
     setActiveMenu(null);
   };
 
-  const handleDeleteClick = (employee) => {
+  const handleDeleteClick = async (employee) => {
     if (window.confirm(`¿Estás seguro de que deseas eliminar a ${employee.name}?`)) {
-      setEmployees((current) => current.filter((e) => e.id !== employee.id));
-      setStatus(`${employee.name} fue eliminado (Mockup).`);
+      try {
+        await deleteTenantUser(employee.id);
+        setStatus(`${employee.name} fue eliminado.`);
+        await loadUsers();
+      } catch (requestError) {
+        setError(getErrorMessage(requestError));
+      }
     }
     setActiveMenu(null);
   };
 
-  const handleEditSubmit = (event) => {
+  const handleEditSubmit = async (event) => {
     event.preventDefault();
-    setEmployees((current) =>
-      current.map((e) =>
-        e.id === editingUser.id
-          ? { ...e, name: editingUser.name, tenantRole: editingUser.tenantRole, status: editingUser.status }
-          : e
-      )
-    );
-    setStatus(`${editingUser.name} fue actualizado (Mockup).`);
-    setEditingUser(null);
+    try {
+      await updateTenantUser(editingUser.id, {
+        name: editingUser.name,
+        role: editingUser.tenantRole,
+        status: editingUser.status
+      });
+      setStatus(`${editingUser.name} fue actualizado.`);
+      setEditingUser(null);
+      await loadUsers();
+    } catch (requestError) {
+      setError(getErrorMessage(requestError));
+    }
   };
 
   return (

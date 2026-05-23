@@ -325,3 +325,37 @@ export const registerShrinkage = async (payload) => {
 
   return data;
 };
+
+export const updateTenantUser = async (userId, payload) => {
+  const response = await fetch(`${API_URL}/api/tenant/users/${userId}`, {
+    method: "PATCH",
+    credentials: "include",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(payload),
+  });
+
+  const data = await parseJson(response);
+
+  if (!response.ok) {
+    throw new Error(getErrorMessage(data));
+  }
+
+  return data;
+};
+
+export const deleteTenantUser = async (userId) => {
+  const response = await fetch(`${API_URL}/api/tenant/users/${userId}`, {
+    method: "DELETE",
+    credentials: "include",
+  });
+
+  const data = await parseJson(response);
+
+  if (!response.ok) {
+    throw new Error(getErrorMessage(data));
+  }
+
+  return data;
+};

@@ -45,6 +45,9 @@ const iconMap = {
       <path d="M3.5 19.5c.7-3 2.4-4.5 5-4.5s4.3 1.5 5 4.5M14.5 15.5c2.5.2 4.1 1.6 4.7 4" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
     </>
   ),
+  profile: (
+    <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2M12 3a4 4 0 1 0 0 8 4 4 0 0 0 0-8z" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+  )
 };
 
 const getSidebarItems = (role) => {
@@ -58,6 +61,7 @@ const getSidebarItems = (role) => {
       { label: "Promotions", icon: "promotions", path: "/manager/promotions" },
       { label: "Reports", icon: "reports", path: "/manager/reports", disabled: true },
       { label: "Users", icon: "users", path: "/manager/users" },
+      { label: "Mi Perfil", icon: "profile", path: "/perfil" },
       { label: "Settings", icon: "settings", path: "/manager/settings", disabled: true },
     ];
   }
@@ -71,6 +75,7 @@ const getSidebarItems = (role) => {
       { label: "Cocina", icon: "orders", path: "/cocina" },
       { label: "Inventory", icon: "inventory", path: "/gerente/inventory" },
       { label: "Promotions", icon: "promotions", path: "/gerente/promotions" },
+      { label: "Mi Perfil", icon: "profile", path: "/perfil" },
       { label: "Reports", icon: "reports", path: "/gerente/reports", disabled: true },
     ];
   }
@@ -79,6 +84,7 @@ const getSidebarItems = (role) => {
     return [
       { label: "Caja", icon: "dashboard", path: "/cajero" },
       { label: "Ordenes", icon: "orders", path: "/cajero/orders" },
+      { label: "Mi Perfil", icon: "profile", path: "/perfil" },
     ];
   }
 
@@ -86,17 +92,20 @@ const getSidebarItems = (role) => {
     return [
       { label: "KDS", icon: "orders", path: "/cocina" },
       { label: "Órdenes", icon: "orders", path: "/cocina/orders" },
+      { label: "Mi Perfil", icon: "profile", path: "/perfil" },
     ];
   }
 
   if (role === "despacho") {
     return [
       { label: "Despacho", icon: "orders", path: "/despacho" },
+      { label: "Mi Perfil", icon: "profile", path: "/perfil" },
     ];
   }
 
   return [
     { label: "Dashboard", icon: "dashboard", path: "/operador" },
+    { label: "Mi Perfil", icon: "profile", path: "/perfil" },
   ];
 };
 
@@ -154,7 +163,13 @@ export const Sidebar = ({ currentPath, onNavigate, userName, userRole, initials 
         ))}
       </nav>
 
-      <div className="sidebar-footer">
+      <div 
+        className="sidebar-footer" 
+        onClick={() => onNavigate("/perfil")} 
+        style={{ cursor: "pointer" }}
+        role="button"
+        title="Configuración de perfil"
+      >
         <div className="avatar">{initials || "TF"}</div>
         <div className="user-meta">
           <span className="user-name">{userName}</span>

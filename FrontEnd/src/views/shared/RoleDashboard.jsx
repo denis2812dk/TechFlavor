@@ -50,6 +50,7 @@ export const RoleDashboard = ({ title, description, session, onLogout, children,
               userRole={userRole}
               initials={initials}
               onLogout={handleLogout}
+              onNavigate={onNavigate}
             />
 
             <section className="content-panel" aria-label="Contenido futuro del dashboard">

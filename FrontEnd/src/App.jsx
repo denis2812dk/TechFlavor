@@ -18,6 +18,7 @@ import Login from "./views/shared/Login.jsx";
 import { RoleDashboard } from "./views/shared/RoleDashboard";
 import { SaaSManagement } from "./views/admin/SaaSManagement";
 import { SaaSRestaurants } from "./views/admin/SaaSRestaurants";
+import { ProfileEdit } from "./views/shared/ProfileEdit";
 
 const ROUTES = {
   // ==========================================
@@ -37,6 +38,11 @@ const ROUTES = {
     roles: [ROLES.ADMIN],
     title: "Restaurantes activos",
     description: "Listado de clientes activos de la plataforma.",
+  },
+  "/perfil": {
+    roles: Object.values(ROLES),
+    title: "Mi Perfil",
+    description: "Actualiza tu información personal y configuración de cuenta.",
   },
 
   // ==========================================
@@ -160,7 +166,11 @@ function App() {
   }, [navigate]);
 
   useEffect(() => {
-    loadSession();
+    // Call loadSession inside an async IIFE to avoid setting state
+    // synchronously during render/effect initialization.
+    (async () => {
+      await loadSession();
+    })();
   }, []);
 
   useEffect(() => {
@@ -173,7 +183,11 @@ function App() {
     if (isLoading || !session?.user) return;
     // Si la ruta es pública o la raíz, redirigir según el rol
     if (path === "/" || path === "/login" || path === "/register") {
-      navigate(session.user.role === ROLES.ADMIN ? "/admin/restaurants" : ROLE_HOME_PATHS[session.user.role] || "/operador");
+      const nextPath = session.user.role === ROLES.ADMIN ? "/admin/restaurants" : ROLE_HOME_PATHS[session.user.role] || "/operador";
+      const redirectTimeout = window.setTimeout(() => {
+        navigate(nextPath);
+      }, 0);
+      return () => window.clearTimeout(redirectTimeout);
     }
   }, [isLoading, navigate, path, session]);
 
@@ -216,9 +230,8 @@ function App() {
   // RUTAS PÚBLICAS (No requieren sesión)
   // ==========================================
   if (path === "/register") {
-      if (session?.user) return null; // El useEffect lo redirigirá
-        return <RegisterRestaurant onNavigate={navigate} />;
-      return <div style={{padding: '2rem'}}>Aquí irá el formulario público de registro SaaS...</div>;
+    if (session?.user) return null; // El useEffect lo redirigirá
+    return <RegisterRestaurant onNavigate={navigate} />;
   }
 
   if (path === "/" || path === "/login") {
@@ -287,6 +300,9 @@ function App() {
         ) : null}
         {path === "/admin/saas" ? <SaaSManagement /> : null}
         {path === "/admin/restaurants" ? <SaaSRestaurants /> : null}
+
+        {/* VISTAS COMPARTIDAS */}
+        {path === "/perfil" ? <ProfileEdit session={session} onRefresh={loadSession} /> : null}
 
         {/* VISTAS DEL GERENTE */}
         {path === "/gerente/users" ? <UserManagement /> : null}

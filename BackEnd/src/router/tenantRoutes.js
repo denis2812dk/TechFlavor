@@ -9,6 +9,8 @@ import { createTenantOrder, deliverDispatchOrder, finishKitchenOrder, listDispat
 import {
     createTenantUser,
     listTenantUsers,
+    updateTenantUser,
+    deleteTenantUser,
 } from "../controllers/tenantUsersController.js";
 import {
     createIngredient,
@@ -39,6 +41,8 @@ router.patch("/settings", tenantContext, updateTenantSettings);
 // Usuarios
 router.get("/users", tenantContext, requireTenantRoles( ROLES.GERENTE), listTenantUsers);
 router.post("/users", tenantContext, requireTenantRoles(ROLES.GERENTE), createTenantUser);
+router.patch("/users/:userId", tenantContext, requireTenantRoles(ROLES.GERENTE), updateTenantUser);
+router.delete("/users/:userId", tenantContext, requireTenantRoles(ROLES.GERENTE), deleteTenantUser);
 // Catálogo / Menú
 router.get("/menu", tenantContext, requireTenantRoles( ROLES.GERENTE, ROLES.CAJERO), listMenuCatalog);
 router.post("/menu/categories", tenantContext, requireTenantRoles( ROLES.GERENTE), createMenuCategory);

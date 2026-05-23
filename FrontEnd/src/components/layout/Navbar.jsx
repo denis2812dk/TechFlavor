@@ -1,4 +1,4 @@
-export const Navbar = ({ title, description, userName, userRole, initials, onLogout }) => {
+export const Navbar = ({ title, description, userName, userRole, initials, onLogout, onNavigate }) => {
   const accentColor = "#E89B8F";
   const mutedColor = "#6B5D56";
 
@@ -33,13 +33,25 @@ export const Navbar = ({ title, description, userName, userRole, initials, onLog
           </svg>
         </button>
 
-        <div className="user-chip">
+        <div 
+          className="user-chip" 
+          onClick={() => onNavigate("/perfil")} 
+          style={{ cursor: "pointer" }}
+          role="button"
+          title="Ver perfil"
+        >
           <div className="avatar">{initials || "TF"}</div>
           <div className="user-meta">
             <span className="user-name">{userName}</span>
             <span className="user-role">{userRole}</span>
           </div>
         </div>
+
+        <button type="button" className="icon-button" onClick={() => onNavigate("/perfil")} title="Editar Perfil">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+            <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2M12 3a4 4 0 1 0 0 8 4 4 0 0 0 0-8z" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
+        </button>
 
         <button type="button" className="logout-button" onClick={onLogout}>
           Salir

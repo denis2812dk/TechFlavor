@@ -64,37 +64,41 @@ export const createTenantUser = async (req, res, next) => {
             });
         }
 
-        const ctx = await auth.$context;
-        const hashedPassword = await ctx.password.hash(password);
-        const now = new Date();
-        const userId = randomUUID();
+        const userId = await db.transaction(async (tx) => {
+            const ctx = await auth.$context;
+            const hashedPassword = await ctx.password.hash(password);
+            const now = new Date();
+            const newUserId = randomUUID();
 
-        await db.insert(users).values({
-            id: userId,
-            name,
-            email,
-            emailVerified: true,
-            role,
-            createdAt: now,
-            updatedAt: now,
-        });
+            await tx.insert(users).values({
+                id: newUserId,
+                name,
+                email,
+                emailVerified: true,
+                role,
+                createdAt: now,
+                updatedAt: now,
+            });
 
-        await db.insert(accounts).values({
-            id: randomUUID(),
-            accountId: userId,
-            providerId: "credential",
-            userId,
-            password: hashedPassword,
-            createdAt: now,
-            updatedAt: now,
-        });
+            await tx.insert(accounts).values({
+                id: randomUUID(),
+                accountId: newUserId,
+                providerId: "credential",
+                userId: newUserId,
+                password: hashedPassword,
+                createdAt: now,
+                updatedAt: now,
+            });
 
-        await db.insert(restaurantUsers).values({
-            id: randomUUID(),
-            restaurantId: req.restaurant.restaurantId,
-            userId,
-            role,
-            status: "active",
+            await tx.insert(restaurantUsers).values({
+                id: randomUUID(),
+                restaurantId: req.restaurant.restaurantId,
+                userId: newUserId,
+                role,
+                status: "active",
+            });
+
+            return newUserId;
         });
 
         res.status(201).json({
@@ -140,6 +144,85 @@ export const listTenantUsers = async (req, res, next) => {
             },
             users: employees,
         });
+    } catch (error) {
+        next(error);
+    }
+};
+
+export const updateTenantUser = async (req, res, next) => {
+    try {
+        const { userId } = req.params;
+        const { name, role } = req.body;
+
+        if (role && !ALLOWED_EMPLOYEE_ROLES.has(role)) {
+            return res.status(400).json({
+                success: false,
+                message: "Rol invalido para empleado.",
+            });
+        }
+
+        const [existingLink] = await db
+            .select()
+            .from(restaurantUsers)
+            .where(and(
+                eq(restaurantUsers.userId, userId),
+                eq(restaurantUsers.restaurantId, req.restaurant.restaurantId)
+            ))
+            .limit(1);
+
+        if (!existingLink) {
+            return res.status(404).json({ success: false, message: "Usuario no encontrado en este restaurante." });
+        }
+
+        // Actualizar datos globales del usuario (si envía nombre)
+        if (name) {
+            await db.update(users)
+                .set({ name, updatedAt: new Date() })
+                .where(eq(users.id, userId));
+        }
+
+        // Actualizar el rol específico en este restaurante (si envía rol)
+        if (role) {
+            await db.update(restaurantUsers)
+                .set({ role })
+                .where(and(
+                    eq(restaurantUsers.userId, userId),
+                    eq(restaurantUsers.restaurantId, req.restaurant.restaurantId)
+                ));
+        }
+
+        res.json({ success: true, message: "Usuario actualizado correctamente." });
+    } catch (error) {
+        next(error);
+    }
+};
+
+export const deleteTenantUser = async (req, res, next) => {
+    try {
+        const { userId } = req.params;
+
+        const [existingLink] = await db
+            .select()
+            .from(restaurantUsers)
+            .where(and(
+                eq(restaurantUsers.userId, userId),
+                eq(restaurantUsers.restaurantId, req.restaurant.restaurantId)
+            ))
+            .limit(1);
+
+        if (!existingLink) {
+            return res.status(404).json({ success: false, message: "Usuario no encontrado en este restaurante." });
+        }
+
+        // Soft Delete: en lugar de borrar el registro, lo marcamos como inactivo
+        await db.update(restaurantUsers)
+            .set({ status: "inactive" })
+            .where(and(
+                eq(restaurantUsers.userId, userId),
+                eq(restaurantUsers.restaurantId, req.restaurant.restaurantId)
+            ));
+
+        res.json({ success: true, message: "Usuario desactivado correctamente." });
     } catch (error) {
         next(error);
     }
