@@ -151,3 +151,9 @@ export const getPendingRequests = async () => {
         .where(eq(tenantRequests.status, "pending"))
         .orderBy(desc(tenantRequests.createdAt));
 };
+export const getRegisteredRestaurants = async () => {
+    
+    return await db.select()
+        .from(restaurants)
+        .orderBy(desc(restaurants.createdAt));
+};

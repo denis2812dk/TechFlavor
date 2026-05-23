@@ -1,5 +1,6 @@
 const adminItems = [
   { label: "Dashboard", path: "/admin", icon: "dashboard" },
+  { label: "Restaurantes", path: "/admin/restaurants", icon: "users" },
   { label: "Solicitudes SaaS", path: "/admin/saas", icon: "orders" },
 ];
 
