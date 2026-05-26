@@ -64,6 +64,76 @@ export const initializeTenantDatabase = async (tenantDb) => {
             FOREIGN KEY (product_id) REFERENCES menu_products(id) ON DELETE RESTRICT
         )
     `);
+    await tenantDb.execute(sql`
+        CREATE TABLE IF NOT EXISTS restaurant_zones (
+            id varchar(36) PRIMARY KEY,
+            name varchar(80) NOT NULL,
+            is_active boolean NOT NULL DEFAULT true,
+            created_at timestamp DEFAULT CURRENT_TIMESTAMP,
+            updated_at timestamp DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+        )
+    `);
+
+    await tenantDb.execute(sql`
+        CREATE TABLE IF NOT EXISTS tables (
+            id varchar(36) PRIMARY KEY,
+            zone_id varchar(36) NOT NULL,
+            identifier varchar(30) NOT NULL,
+            capacity int NOT NULL DEFAULT 4,
+            status varchar(20) NOT NULL DEFAULT 'available',
+            created_at timestamp DEFAULT CURRENT_TIMESTAMP,
+            updated_at timestamp DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+            FOREIGN KEY (zone_id) REFERENCES restaurant_zones(id) ON DELETE RESTRICT
+        )
+    `);
+
+    await tenantDb.execute(sql`
+        CREATE TABLE IF NOT EXISTS reservations (
+            id varchar(36) PRIMARY KEY,
+            table_id varchar(36),
+            customer_name varchar(120) NOT NULL,
+            customer_phone varchar(20),
+            reservation_time timestamp NOT NULL,
+            guest_count int NOT NULL DEFAULT 1,
+            status varchar(20) NOT NULL DEFAULT 'pending',
+            created_at timestamp DEFAULT CURRENT_TIMESTAMP,
+            updated_at timestamp DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+            FOREIGN KEY (table_id) REFERENCES tables(id) ON DELETE SET NULL
+        )
+    `);
+
+    await tenantDb.execute(sql`
+        CREATE TABLE IF NOT EXISTS orders (
+            id varchar(36) PRIMARY KEY,
+            ticket_code varchar(30) NOT NULL UNIQUE,
+            status varchar(30) NOT NULL DEFAULT 'open',
+            fulfillment_type varchar(30) NOT NULL DEFAULT 'takeaway',
+            table_id varchar(36),
+            subtotal decimal(10,2) NOT NULL,
+            discount_total decimal(10,2) NOT NULL DEFAULT 0.00,
+            promotion_id varchar(36),
+            total decimal(10,2) NOT NULL,
+            cashier_user_id varchar(36) NOT NULL,
+            cashier_name varchar(120) NOT NULL,
+            created_at timestamp DEFAULT CURRENT_TIMESTAMP,
+            updated_at timestamp DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+            FOREIGN KEY (table_id) REFERENCES tables(id) ON DELETE SET NULL
+        )
+    `);
+
+    await tenantDb.execute(sql`
+        CREATE TABLE IF NOT EXISTS order_items (
+            id varchar(36) PRIMARY KEY,
+            order_id varchar(36) NOT NULL,
+            item_type varchar(20) NOT NULL,
+            item_id varchar(36) NOT NULL,
+            name varchar(120) NOT NULL,
+            unit_price decimal(10,2) NOT NULL,
+            quantity int NOT NULL,
+            line_total decimal(10,2) NOT NULL,
+            FOREIGN KEY (order_id) REFERENCES orders(id) ON DELETE CASCADE
+        )
+    `);
 
     await tenantDb.execute(sql`
         CREATE TABLE IF NOT EXISTS ingredients (
@@ -94,23 +164,27 @@ export const initializeTenantDatabase = async (tenantDb) => {
     `);
 
     await tenantDb.execute(sql`
-        CREATE TABLE IF NOT EXISTS inventory_movements (
+        CREATE TABLE IF NOT EXISTS suppliers (
             id varchar(36) PRIMARY KEY,
-            type varchar(20) NOT NULL,
-            quantity decimal(10,2) NOT NULL,
-            date timestamp DEFAULT CURRENT_TIMESTAMP,
-            reason varchar(255),
-            ingredient_id varchar(36) NOT NULL,
-            order_id varchar(36),
-            FOREIGN KEY (ingredient_id) REFERENCES ingredients(id) ON DELETE CASCADE
+            name varchar(150) NOT NULL,
+            phone varchar(20),
+            email varchar(100),
+            address text,
+            is_active boolean NOT NULL DEFAULT true,
+            created_at timestamp DEFAULT CURRENT_TIMESTAMP,
+            updated_at timestamp DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
         )
     `);
 
     await tenantDb.execute(sql`
-        CREATE TABLE IF NOT EXISTS suppliers (
+        CREATE TABLE IF NOT EXISTS supplier_ingredients (
             id varchar(36) PRIMARY KEY,
-            name varchar(150) NOT NULL,
-            contact varchar(150)
+            supplier_id varchar(36) NOT NULL,
+            ingredient_id varchar(36) NOT NULL,
+            price_reference decimal(10,2),
+            is_preferred boolean NOT NULL DEFAULT false,
+            FOREIGN KEY (supplier_id) REFERENCES suppliers(id) ON DELETE CASCADE,
+            FOREIGN KEY (ingredient_id) REFERENCES ingredients(id) ON DELETE CASCADE
         )
     `);
 
@@ -122,7 +196,45 @@ export const initializeTenantDatabase = async (tenantDb) => {
             date timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
             status varchar(20) NOT NULL DEFAULT 'ABIERTA',
             resolution_date timestamp,
+            created_at timestamp DEFAULT CURRENT_TIMESTAMP,
+            updated_at timestamp DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
             FOREIGN KEY (supplier_id) REFERENCES suppliers(id) ON DELETE CASCADE
+        )
+    `);
+    await tenantDb.execute(sql`
+        CREATE TABLE IF NOT EXISTS purchase_orders (
+            id varchar(36) PRIMARY KEY,
+            supplier_id varchar(36) NOT NULL,
+            status varchar(20) NOT NULL DEFAULT 'pending',
+            created_at timestamp DEFAULT CURRENT_TIMESTAMP,
+            updated_at timestamp DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+            FOREIGN KEY (supplier_id) REFERENCES suppliers(id) ON DELETE RESTRICT
+        )
+    `);
+
+    await tenantDb.execute(sql`
+        CREATE TABLE IF NOT EXISTS purchase_order_items (
+            id varchar(36) PRIMARY KEY,
+            purchase_order_id varchar(36) NOT NULL,
+            ingredient_id varchar(36) NOT NULL,
+            quantity decimal(10,2) NOT NULL,
+            unit_price decimal(10,2) NOT NULL,
+            FOREIGN KEY (purchase_order_id) REFERENCES purchase_orders(id) ON DELETE CASCADE,
+            FOREIGN KEY (ingredient_id) REFERENCES ingredients(id) ON DELETE RESTRICT
+        )
+    `);
+    await tenantDb.execute(sql`
+        CREATE TABLE IF NOT EXISTS inventory_movements (
+            id varchar(36) PRIMARY KEY,
+            type varchar(20) NOT NULL,
+            quantity decimal(10,2) NOT NULL,
+            date timestamp DEFAULT CURRENT_TIMESTAMP,
+            reason varchar(255),
+            ingredient_id varchar(36) NOT NULL,
+            order_id varchar(36),
+            purchase_order_id varchar(36),
+            FOREIGN KEY (ingredient_id) REFERENCES ingredients(id) ON DELETE CASCADE,
+            FOREIGN KEY (purchase_order_id) REFERENCES purchase_orders(id) ON DELETE SET NULL
         )
     `);
 
@@ -149,76 +261,6 @@ export const initializeTenantDatabase = async (tenantDb) => {
             target_type varchar(20) NOT NULL,
             target_id varchar(36),
             FOREIGN KEY (promotion_id) REFERENCES promotions(id) ON DELETE CASCADE
-        )
-    `);
-    await tenantDb.execute(sql`
-        CREATE TABLE IF NOT EXISTS restaurant_zones (
-            id varchar(36) PRIMARY KEY,
-            name varchar(80) NOT NULL,
-            is_active boolean NOT NULL DEFAULT true,
-            created_at timestamp DEFAULT CURRENT_TIMESTAMP,
-            updated_at timestamp DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
-        )
-    `);
-
-    await tenantDb.execute(sql`
-        CREATE TABLE IF NOT EXISTS tables (
-            id varchar(36) PRIMARY KEY,
-            zone_id varchar(36) NOT NULL,
-            identifier varchar(30) NOT NULL,
-            capacity int NOT NULL DEFAULT 4,
-            status varchar(20) NOT NULL DEFAULT 'available',
-            created_at timestamp DEFAULT CURRENT_TIMESTAMP,
-            updated_at timestamp DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-            FOREIGN KEY (zone_id) REFERENCES restaurant_zones(id) ON DELETE RESTRICT
-        )
-    `);
-
-    await tenantDb.execute(sql`
-        CREATE TABLE IF NOT EXISTS orders (
-            id varchar(36) PRIMARY KEY,
-            ticket_code varchar(30) NOT NULL UNIQUE,
-            status varchar(30) NOT NULL DEFAULT 'open',
-            fulfillment_type varchar(30) NOT NULL DEFAULT 'takeaway',
-            table_id varchar(36), -- Reemplazado
-            subtotal decimal(10,2) NOT NULL,
-            discount_total decimal(10,2) NOT NULL DEFAULT 0.00,
-            promotion_id varchar(36),
-            total decimal(10,2) NOT NULL,
-            cashier_user_id varchar(36) NOT NULL,
-            cashier_name varchar(120) NOT NULL,
-            created_at timestamp DEFAULT CURRENT_TIMESTAMP,
-            updated_at timestamp DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-            FOREIGN KEY (table_id) REFERENCES tables(id) ON DELETE SET NULL
-        )
-    `);
-
-    await tenantDb.execute(sql`
-        CREATE TABLE IF NOT EXISTS order_items (
-            id varchar(36) PRIMARY KEY,
-            order_id varchar(36) NOT NULL,
-            item_type varchar(20) NOT NULL,
-            item_id varchar(36) NOT NULL,
-            name varchar(120) NOT NULL,
-            unit_price decimal(10,2) NOT NULL,
-            quantity int NOT NULL,
-            line_total decimal(10,2) NOT NULL,
-            FOREIGN KEY (order_id) REFERENCES orders(id) ON DELETE CASCADE
-        )
-    `);
-
-    await tenantDb.execute(sql`
-        CREATE TABLE IF NOT EXISTS reservations (
-            id varchar(36) PRIMARY KEY,
-            table_id varchar(36),
-            customer_name varchar(120) NOT NULL,
-            customer_phone varchar(20),
-            reservation_time timestamp NOT NULL,
-            guest_count int NOT NULL DEFAULT 1,
-            status varchar(20) NOT NULL DEFAULT 'pending',
-            created_at timestamp DEFAULT CURRENT_TIMESTAMP,
-            updated_at timestamp DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-            FOREIGN KEY (table_id) REFERENCES tables(id) ON DELETE SET NULL
         )
     `);
 

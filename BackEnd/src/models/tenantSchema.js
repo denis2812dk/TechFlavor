@@ -13,7 +13,6 @@ export const restaurantSettings = mysqlTable("restaurant_settings", {
     createdAt: timestamp("created_at").defaultNow(),
     updatedAt: timestamp("updated_at").defaultNow().onUpdateNow(),
 });
-
 export const menuCategories = mysqlTable("menu_categories", {
     id: varchar("id", { length: 36 }).primaryKey(),
     name: varchar("name", { length: 80 }).notNull(),
@@ -56,7 +55,6 @@ export const menuComboItems = mysqlTable("menu_combo_items", {
         .references(() => menuProducts.id, { onDelete: "restrict" }),
     quantity: int("quantity").notNull().default(1),
 });
-
 export const restaurantZones = mysqlTable("restaurant_zones", {
     id: varchar("id", { length: 36 }).primaryKey(),
     name: varchar("name", { length: 80 }).notNull(), 
@@ -72,7 +70,7 @@ export const tables = mysqlTable("tables", {
         .references(() => restaurantZones.id, { onDelete: "restrict" }),
     identifier: varchar("identifier", { length: 30 }).notNull(), 
     capacity: int("capacity").notNull().default(4),
-    status: varchar("status", { length: 20 }).notNull().default("available"),
+    status: varchar("status", { length: 20 }).notNull().default("available"), 
     createdAt: timestamp("created_at").defaultNow(),
     updatedAt: timestamp("updated_at").defaultNow().onUpdateNow(),
 });
@@ -88,34 +86,6 @@ export const reservations = mysqlTable("reservations", {
     status: varchar("status", { length: 20 }).notNull().default("pending"), 
     createdAt: timestamp("created_at").defaultNow(),
     updatedAt: timestamp("updated_at").defaultNow().onUpdateNow(),
-});
-export const orders = mysqlTable("orders", {
-    id: varchar("id", { length: 36 }).primaryKey(),
-    ticketCode: varchar("ticket_code", { length: 30 }).notNull().unique(),
-    status: varchar("status", { length: 30 }).notNull().default("open"),
-    fulfillmentType: varchar("fulfillment_type", { length: 30 }).notNull().default("takeaway"),
-    tableId: varchar("table_id", { length: 36 }).references(() => tables.id, { onDelete: "set null" }), 
-    subtotal: decimal("subtotal", { precision: 10, scale: 2 }).notNull(),
-    total: decimal("total", { precision: 10, scale: 2 }).notNull(),
-    cashierUserId: varchar("cashier_user_id", { length: 36 }).notNull(),
-    cashierName: varchar("cashier_name", { length: 120 }).notNull(),
-    discountTotal: decimal("discount_total", { precision: 10, scale: 2 }).notNull().default("0.00"),
-    promotionId: varchar("promotion_id", { length: 36 }),
-    createdAt: timestamp("created_at").defaultNow(),
-    updatedAt: timestamp("updated_at").defaultNow().onUpdateNow(),
-});
-
-export const orderItems = mysqlTable("order_items", {
-    id: varchar("id", { length: 36 }).primaryKey(),
-    orderId: varchar("order_id", { length: 36 })
-        .notNull()
-        .references(() => orders.id, { onDelete: "cascade" }),
-    itemType: varchar("item_type", { length: 20 }).notNull(),
-    itemId: varchar("item_id", { length: 36 }).notNull(),
-    name: varchar("name", { length: 120 }).notNull(),
-    unitPrice: decimal("unit_price", { precision: 10, scale: 2 }).notNull(),
-    quantity: int("quantity").notNull(),
-    lineTotal: decimal("line_total", { precision: 10, scale: 2 }).notNull(),
 });
 
 export const ingredients = mysqlTable("ingredients", {
@@ -144,22 +114,28 @@ export const productIngredients = mysqlTable("product_ingredients", {
     quantity: decimal("quantity", { precision: 10, scale: 2 }).notNull(),
 });
 
-export const inventoryMovements = mysqlTable("inventory_movements", {
-    id: varchar("id", { length: 36 }).primaryKey(),
-    type: varchar("type", { length: 20 }).notNull(), 
-    quantity: decimal("quantity", { precision: 10, scale: 2 }).notNull(),
-    date: timestamp("date").defaultNow(),
-    reason: varchar("reason", { length: 255 }),
-    ingredientId: varchar("ingredient_id", { length: 36 })
-        .notNull()
-        .references(() => ingredients.id, { onDelete: "cascade" }),
-    orderId: varchar("order_id", { length: 36 }), 
-});
 
 export const suppliers = mysqlTable("suppliers", {
     id: varchar("id", { length: 36 }).primaryKey(),
     name: varchar("name", { length: 150 }).notNull(),
-    contact: varchar("contact", { length: 150 }),
+    phone: varchar("phone", { length: 20 }),
+    email: varchar("email", { length: 100 }),
+    address: text("address"),
+    isActive: boolean("is_active").notNull().default(true),
+    createdAt: timestamp("created_at").defaultNow(),
+    updatedAt: timestamp("updated_at").defaultNow().onUpdateNow(),
+});
+
+export const supplierIngredients = mysqlTable("supplier_ingredients", {
+    id: varchar("id", { length: 36 }).primaryKey(),
+    supplierId: varchar("supplier_id", { length: 36 })
+        .notNull()
+        .references(() => suppliers.id, { onDelete: "cascade" }),
+    ingredientId: varchar("ingredient_id", { length: 36 })
+        .notNull()
+        .references(() => ingredients.id, { onDelete: "cascade" }),
+    priceReference: decimal("price_reference", { precision: 10, scale: 2 }), 
+    isPreferred: boolean("is_preferred").notNull().default(false), 
 });
 
 export const supplierIncidences = mysqlTable("supplier_incidences", {
@@ -171,14 +147,83 @@ export const supplierIncidences = mysqlTable("supplier_incidences", {
     date: timestamp("date").defaultNow().notNull(),
     status: varchar("status", { length: 20 }).notNull().default("ABIERTA"), 
     resolutionDate: timestamp("resolution_date"),
+    createdAt: timestamp("created_at").defaultNow(),
+    updatedAt: timestamp("updated_at").defaultNow().onUpdateNow(),
 });
+
+export const purchaseOrders = mysqlTable("purchase_orders", {
+    id: varchar("id", { length: 36 }).primaryKey(),
+    supplierId: varchar("supplier_id", { length: 36 })
+        .notNull()
+        .references(() => suppliers.id, { onDelete: "restrict" }),
+    status: varchar("status", { length: 20 }).notNull().default("pending"), 
+    createdAt: timestamp("created_at").defaultNow(),
+    updatedAt: timestamp("updated_at").defaultNow().onUpdateNow(),
+});
+
+export const purchaseOrderItems = mysqlTable("purchase_order_items", {
+    id: varchar("id", { length: 36 }).primaryKey(),
+    purchaseOrderId: varchar("purchase_order_id", { length: 36 })
+        .notNull()
+        .references(() => purchaseOrders.id, { onDelete: "cascade" }),
+    ingredientId: varchar("ingredient_id", { length: 36 })
+        .notNull()
+        .references(() => ingredients.id, { onDelete: "restrict" }),
+    quantity: decimal("quantity", { precision: 10, scale: 2 }).notNull(),
+    unitPrice: decimal("unit_price", { precision: 10, scale: 2 }).notNull(),
+});
+
+export const orders = mysqlTable("orders", {
+    id: varchar("id", { length: 36 }).primaryKey(),
+    ticketCode: varchar("ticket_code", { length: 30 }).notNull().unique(),
+    status: varchar("status", { length: 30 }).notNull().default("open"), 
+    fulfillmentType: varchar("fulfillment_type", { length: 30 }).notNull().default("takeaway"), 
+    tableId: varchar("table_id", { length: 36 }).references(() => tables.id, { onDelete: "set null" }), 
+    subtotal: decimal("subtotal", { precision: 10, scale: 2 }).notNull(),
+    total: decimal("total", { precision: 10, scale: 2 }).notNull(),
+    cashierUserId: varchar("cashier_user_id", { length: 36 }).notNull(),
+    cashierName: varchar("cashier_name", { length: 120 }).notNull(),
+    discountTotal: decimal("discount_total", { precision: 10, scale: 2 }).notNull().default("0.00"),
+    promotionId: varchar("promotion_id", { length: 36 }),
+    createdAt: timestamp("created_at").defaultNow(),
+    updatedAt: timestamp("updated_at").defaultNow().onUpdateNow(),
+});
+
+export const orderItems = mysqlTable("order_items", {
+    id: varchar("id", { length: 36 }).primaryKey(),
+    orderId: varchar("order_id", { length: 36 })
+        .notNull()
+        .references(() => orders.id, { onDelete: "cascade" }),
+    itemType: varchar("item_type", { length: 20 }).notNull(), 
+    itemId: varchar("item_id", { length: 36 }).notNull(),
+    name: varchar("name", { length: 120 }).notNull(),
+    unitPrice: decimal("unit_price", { precision: 10, scale: 2 }).notNull(),
+    quantity: int("quantity").notNull(),
+    lineTotal: decimal("line_total", { precision: 10, scale: 2 }).notNull(),
+});
+
+
+export const inventoryMovements = mysqlTable("inventory_movements", {
+    id: varchar("id", { length: 36 }).primaryKey(),
+    type: varchar("type", { length: 20 }).notNull(), 
+    quantity: decimal("quantity", { precision: 10, scale: 2 }).notNull(),
+    date: timestamp("date").defaultNow(),
+    reason: varchar("reason", { length: 255 }),
+    ingredientId: varchar("ingredient_id", { length: 36 })
+        .notNull()
+        .references(() => ingredients.id, { onDelete: "cascade" }),
+    orderId: varchar("order_id", { length: 36 }),
+    purchaseOrderId: varchar("purchase_order_id", { length: 36 }) 
+        .references(() => purchaseOrders.id, { onDelete: "set null" }), 
+});
+
 
 export const promotions = mysqlTable("promotions", {
     id: varchar("id", { length: 36 }).primaryKey(),
     code: varchar("codes", { length: 30 }).notNull().unique(),
     name: varchar("name", { length: 120 }).notNull(),
     description: text("description"),
-    discountType: varchar("discount_type", { length: 20 }).notNull(), 
+    discountType: varchar("discount_type", { length: 20 }).notNull(), // percentage, fixed_amount
     discountValue: decimal("discount_value", { precision: 10, scale: 2 }).notNull(),
     startDate: timestamp("start_date").notNull(),
     endDate: timestamp("end_date").notNull(),

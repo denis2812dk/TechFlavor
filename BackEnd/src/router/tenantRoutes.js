@@ -17,7 +17,6 @@ import {
     deleteIngredient,
     updateIngredient,
     registerShrinkage,
-    registerSupplierIncidence,
     listIngredients
 } from "../controllers/tenantInventoryController.js";
 import { createTenantPromotion, listActivePromotions, listAllPromotions, deleteTenantPromotion, updateTenantPromotion,  } from "../controllers/tenantPromotionController.js";
@@ -67,7 +66,6 @@ router.post("/inventory/ingredients", tenantContext, requireTenantRoles(ROLES.GE
 router.patch("/inventory/ingredients/:ingredientId", tenantContext, requireTenantRoles(ROLES.GERENTE), updateIngredient);
 router.delete("/inventory/ingredients/:ingredientId", tenantContext, requireTenantRoles(ROLES.GERENTE), deleteIngredient);
 router.post("/inventory/shrinkage", tenantContext, requireTenantRoles(ROLES.GERENTE), validateSchema(createShrinkageSchema),registerShrinkage);
-router.post("/inventory/suppliers/incidences", tenantContext, requireTenantRoles(ROLES.GERENTE), registerSupplierIncidence);
 
 //Rutas de promociones
 router.post("/promotions", tenantContext, requireTenantRoles(ROLES.GERENTE), validateSchema(createPromotionSchema), createTenantPromotion);

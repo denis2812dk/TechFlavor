@@ -45,34 +45,6 @@ export const registerShrinkage = async (req, res, next) => {
     }
 };
 
-export const registerSupplierIncidence = async (req, res, next) => {
-    try {
-        const { supplierId, description } = req.body;
-
-        if (!requiredText(supplierId) || !requiredText(description)) {
-            return res.status(400).json({
-                success: false,
-                message: "Se requiere seleccionar un proveedor y detallar la descripción de la falla.",
-            });
-        }
-
-        const incidenceId = await inventoryService.createSupplierIncidence(req.tenantDb, {
-            supplierId,
-            description: description.trim()
-        });
-        res.status(201).json({
-            success: true,
-            message: "Incidencia con el proveedor registrada en la bitácora.",
-            incidenceId
-        });
-    } catch (error) {
-        if (error.message === "SUPPLIER_NOT_FOUND") {
-            return res.status(404).json({ success: false, message: "Proveedor no encontrado." });
-        }
-        next(error);
-    }
-};
-
 export const createIngredient = async (req, res, next) => {
     try {
         const { name, unitOfMeasure } = req.body;
@@ -156,6 +128,12 @@ export const deleteIngredient = async (req, res, next) => {
                 message: "No puedes eliminar este ingrediente porque esta ligado a una receta. Primero quitalo del producto.",
             });
         }
+        if (error.message === "INGREDIENT_IN_PURCHASE_ORDER") {
+            return res.status(409).json({
+                success: false,
+                message: "No puedes eliminar este insumo porque tiene historial en órdenes de compra con proveedores.",
+            });
+        }
         next(error);
     }
 };
@@ -167,23 +145,6 @@ export const listIngredients = async (req, res, next) => {
         res.json({
             success: true,
             ingredients: ingredientsList,
-        });
-    } catch (error) {
-        next(error);
-    }
-};
-
-export const setProductRecipe = async (req, res, next) => {
-    try {
-        const { productId } = req.params;
-        const { ingredients: recipeItems } = req.body; // Array de { ingredientId, quantity }
-
-        // Delegamos al servicio la lógica de reemplazo de la receta
-        await inventoryService.updateProductRecipe(req.tenantDb, productId, recipeItems);
-
-        res.json({
-            success: true,
-            message: "Receta del producto actualizada correctamente.",
         });
     } catch (error) {
         next(error);

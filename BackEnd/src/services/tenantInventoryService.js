@@ -6,8 +6,7 @@ import {
     inventoryMovements,
     productIngredients,
     restaurantSettings,
-    supplierIncidences,
-    suppliers
+    purchaseOrderItems 
 } from "../models/tenantSchema.js";
 
 /**
@@ -109,30 +108,6 @@ export const createShrinkageRecord = async (tenantDb, { ingredientId, quantity, 
     return movementId;
 };
 
-export const createSupplierIncidence = async (tenantDb, { supplierId, description }) => {
-    const [supplierExists] = await tenantDb
-        .select({ id: suppliers.id })
-        .from(suppliers)
-        .where(eq(suppliers.id, supplierId))
-        .limit(1);
-
-    if (!supplierExists) {
-        throw new Error("SUPPLIER_NOT_FOUND");
-    }
-
-    const incidenceId = randomUUID();
-
-    await tenantDb.insert(supplierIncidences).values({
-        id: incidenceId,
-        supplierId,
-        description,
-        status: "ABIERTA", 
-        date: new Date()
-    });
-
-    return incidenceId;
-};
-
 export const createIngredient = async (tenantDb, { name, unitOfMeasure, currentStock }) => {
     const normalizedName = name.trim();
     const [existingIngredient] = await tenantDb
@@ -221,6 +196,16 @@ export const deleteIngredient = async (tenantDb, ingredientId) => {
 
     if (usedInRecipe) {
         throw new Error("INGREDIENT_IN_USE");
+    }
+
+    const [usedInPurchase] = await tenantDb
+        .select({ id: purchaseOrderItems.id })
+        .from(purchaseOrderItems)
+        .where(eq(purchaseOrderItems.ingredientId, ingredientId))
+        .limit(1);
+
+    if (usedInPurchase) {
+        throw new Error("INGREDIENT_IN_PURCHASE_ORDER");
     }
 
     await tenantDb
