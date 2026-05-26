@@ -39,7 +39,7 @@ export const createOrderSchema = z.object({
         return false;
     }
     return true;
-    }, {
+}, {
     message: "Debes ingresar el numero de mesa para consumo en el local",
     path: ["tableId"],
 });
@@ -58,6 +58,7 @@ export const updateRecipeSchema = z.object({
         }),
     ).min(1, "La receta debe tener al menos un ingrediente"),
 });
+
 export const createPromotionSchema = z.object({
     code: z.string().min(3, "El código debe tener al menos 3 caracteres").max(30), 
     name: z.string().min(1, "El nombre de la promoción es obligatorio").max(120),
@@ -78,4 +79,58 @@ export const createPromotionSchema = z.object({
 }).refine(data => new Date(data.startDate) < new Date(data.endDate), {
     message: "La fecha de finalización debe ser posterior a la fecha de inicio",
     path: ["endDate"]
+});
+
+export const createSupplierSchema = z.object({
+    name: z.string().min(1, "La Razón Social / Marca es obligatoria").max(150),
+    contactName: z.string().max(150).optional().nullable(),
+    dui: z.string().regex(/^\d{8}-\d$/, "El DUI debe tener el formato 00000000-0"),
+    nit: z.string().regex(/^\d{4}-\d{6}-\d{3}-\d$/, "El NIT debe tener el formato 0000-000000-000-0").optional().nullable().or(z.literal('')),
+    phone: z.string().max(20).optional().nullable(),
+    email: z.string().email("Correo electrónico inválido").max(100).optional().nullable().or(z.literal('')),
+    address: z.string().optional().nullable(),
+});
+
+export const updateSupplierSchema = createSupplierSchema.partial().extend({
+    isActive: z.boolean().optional()
+});
+
+export const updateCatalogSchema = z.object({
+    items: z.array(
+        z.object({
+            ingredientId: z.string().optional().nullable(),
+            ingredientName: z.string().optional().nullable(),
+            unitOfMeasure: z.string().optional().nullable(),
+            priceReference: z.coerce.number().positive("El precio debe ser positivo").optional().nullable(),
+            isPreferred: z.boolean().optional().default(false)
+        })
+    ).default([])
+}).refine((data) => {
+    return data.items.every(item => 
+        (item.ingredientId && item.ingredientId.trim() !== "") || 
+        (item.ingredientName && item.ingredientName.trim() !== "" && item.unitOfMeasure && item.unitOfMeasure.trim() !== "")
+    );
+}, { 
+    message: "Cada insumo del catálogo debe tener un ID existente, o bien, un Nombre y Unidad de Medida para crearlo." 
+});
+
+export const createIncidenceSchema = z.object({
+    description: z.string().min(5, "La descripción debe tener al menos 5 caracteres.")
+});
+
+export const resolveIncidenceSchema = z.object({
+    notes: z.string().min(5, "Debes detallar la resolución de la incidencia."),
+    action: z.enum(["SOLO_NOTA", "DEVOLUCION", "DESCUENTO_FUTURO"], {
+        errorMap: () => ({ message: "Acción de resolución inválida." })
+    }),
+    ingredientId: z.string().optional().nullable(),
+    quantityToDeduct: z.coerce.number().positive("La cantidad a deducir debe ser mayor a 0").optional().nullable()
+}).refine((data) => {
+    if (data.action === "DEVOLUCION") {
+        return data.ingredientId && data.quantityToDeduct;
+    }
+    return true;
+}, {
+    message: "Para una devolución de producto, debes especificar el ID del ingrediente y la cantidad a descontar del inventario.",
+    path: ["quantityToDeduct"]
 });

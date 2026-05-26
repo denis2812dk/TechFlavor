@@ -117,7 +117,10 @@ export const productIngredients = mysqlTable("product_ingredients", {
 
 export const suppliers = mysqlTable("suppliers", {
     id: varchar("id", { length: 36 }).primaryKey(),
-    name: varchar("name", { length: 150 }).notNull(),
+    name: varchar("name", { length: 150 }).notNull(), 
+    contactName: varchar("contact_name", { length: 150 }), 
+    dui: varchar("dui", { length: 10 }).notNull(), 
+    nit: varchar("nit", { length: 17 }), 
     phone: varchar("phone", { length: 20 }),
     email: varchar("email", { length: 100 }),
     address: text("address"),
@@ -223,7 +226,7 @@ export const promotions = mysqlTable("promotions", {
     code: varchar("codes", { length: 30 }).notNull().unique(),
     name: varchar("name", { length: 120 }).notNull(),
     description: text("description"),
-    discountType: varchar("discount_type", { length: 20 }).notNull(), // percentage, fixed_amount
+    discountType: varchar("discount_type", { length: 20 }).notNull(), 
     discountValue: decimal("discount_value", { precision: 10, scale: 2 }).notNull(),
     startDate: timestamp("start_date").notNull(),
     endDate: timestamp("end_date").notNull(),
