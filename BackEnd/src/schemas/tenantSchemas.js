@@ -134,3 +134,13 @@ export const resolveIncidenceSchema = z.object({
     message: "Para una devolución de producto, debes especificar el ID del ingrediente y la cantidad a descontar del inventario.",
     path: ["quantityToDeduct"]
 });
+export const createPurchaseOrderSchema = z.object({
+    supplierId: idSchema,
+    items: z.array(
+        z.object({
+            ingredientId: idSchema,
+            quantity: z.coerce.number().positive("La cantidad a comprar debe ser mayor a 0"),
+            unitPrice: z.coerce.number().min(0, "El precio unitario no puede ser negativo")
+        })
+    ).min(1, "La orden de compra debe tener al menos un producto.")
+});

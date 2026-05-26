@@ -8,6 +8,7 @@ import publicRoutes from "./router/publicRoutes.js";
 import saasRoutes from "./router/saasRoutes.js";
 import tenantTableRoutes from "./router/tenantTableRoutes.js";
 import tenantSupplierRoutes from "./router/tenantSupplierRoutes.js";
+import tenantPurchaseOrderRoutes from "./router/tenantPurchaseOrderRoute.js";
 import "dotenv/config";
 const app = express();
 
@@ -30,7 +31,7 @@ app.use("/api/auth", toNodeHandler(auth));
 app.use("/api/tenant/suppliers", tenantSupplierRoutes);
 app.use("/api/tenant", tenantRoutes);
 app.use("/api/tenant/tables", tenantTableRoutes);
-
+app.use("/api/tenant/purchase-orders", tenantPurchaseOrderRoutes);
 app.get("/status", (req, res) => {
     res.json({
         status: "ok",

@@ -15,3 +15,24 @@ export const validateSchema = (schema) => async (req, res, next) => {
         });
     }
 };
+import { ZodError } from "zod";
+
+export const validateRequest = (schema) => {
+    return (req, res, next) => {
+        try {
+            req.body = schema.parse(req.body);
+            next();
+        } catch (error) {
+            if (error instanceof ZodError) {
+                const firstError = error.errors[0];
+                
+                return res.status(400).json({
+                    success: false,
+                    message: firstError.message,
+                    errorDetails: error.errors 
+                });
+            }
+            next(error);
+        }
+    };
+};
