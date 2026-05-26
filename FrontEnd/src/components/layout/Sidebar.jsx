@@ -56,7 +56,6 @@ const getSidebarItems = (role) => {
       { label: "Dashboard", icon: "dashboard", path: "/gerente" },
       { label: "Usuarios", icon: "users", path: "/gerente/users" },
       { label: "Menú", icon: "menu", path: "/gerente/menu" },
-      { label: "Ingredientes", icon: "inventory", path: "/gerente/ingredients" },
       { label: "Salón", icon: "tables", path: "/gerente/salon" },
       { label: "Inventario", icon: "inventory", path: "/gerente/inventory" },
       { label: "Promociones", icon: "promotions", path: "/gerente/promotions" },
