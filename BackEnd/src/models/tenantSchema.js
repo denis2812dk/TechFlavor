@@ -13,6 +13,7 @@ export const restaurantSettings = mysqlTable("restaurant_settings", {
     createdAt: timestamp("created_at").defaultNow(),
     updatedAt: timestamp("updated_at").defaultNow().onUpdateNow(),
 });
+
 export const menuCategories = mysqlTable("menu_categories", {
     id: varchar("id", { length: 36 }).primaryKey(),
     name: varchar("name", { length: 80 }).notNull(),
@@ -55,6 +56,7 @@ export const menuComboItems = mysqlTable("menu_combo_items", {
         .references(() => menuProducts.id, { onDelete: "restrict" }),
     quantity: int("quantity").notNull().default(1),
 });
+
 export const restaurantZones = mysqlTable("restaurant_zones", {
     id: varchar("id", { length: 36 }).primaryKey(),
     name: varchar("name", { length: 80 }).notNull(), 
@@ -114,7 +116,6 @@ export const productIngredients = mysqlTable("product_ingredients", {
     quantity: decimal("quantity", { precision: 10, scale: 2 }).notNull(),
 });
 
-
 export const suppliers = mysqlTable("suppliers", {
     id: varchar("id", { length: 36 }).primaryKey(),
     name: varchar("name", { length: 150 }).notNull(), 
@@ -141,6 +142,16 @@ export const supplierIngredients = mysqlTable("supplier_ingredients", {
     isPreferred: boolean("is_preferred").notNull().default(false), 
 });
 
+export const purchaseOrders = mysqlTable("purchase_orders", {
+    id: varchar("id", { length: 36 }).primaryKey(),
+    supplierId: varchar("supplier_id", { length: 36 })
+        .notNull()
+        .references(() => suppliers.id, { onDelete: "restrict" }),
+    status: varchar("status", { length: 20 }).notNull().default("pending"), 
+    createdAt: timestamp("created_at").defaultNow(),
+    updatedAt: timestamp("updated_at").defaultNow().onUpdateNow(),
+});
+
 export const supplierIncidences = mysqlTable("supplier_incidences", {
     id: varchar("id", { length: 36 }).primaryKey(),
     supplierId: varchar("supplier_id", { length: 36 })
@@ -152,16 +163,6 @@ export const supplierIncidences = mysqlTable("supplier_incidences", {
     date: timestamp("date").defaultNow().notNull(),
     status: varchar("status", { length: 20 }).notNull().default("ABIERTA"), 
     resolutionDate: timestamp("resolution_date"),
-    createdAt: timestamp("created_at").defaultNow(),
-    updatedAt: timestamp("updated_at").defaultNow().onUpdateNow(),
-});
-
-export const purchaseOrders = mysqlTable("purchase_orders", {
-    id: varchar("id", { length: 36 }).primaryKey(),
-    supplierId: varchar("supplier_id", { length: 36 })
-        .notNull()
-        .references(() => suppliers.id, { onDelete: "restrict" }),
-    status: varchar("status", { length: 20 }).notNull().default("pending"), 
     createdAt: timestamp("created_at").defaultNow(),
     updatedAt: timestamp("updated_at").defaultNow().onUpdateNow(),
 });
@@ -184,6 +185,11 @@ export const orders = mysqlTable("orders", {
     status: varchar("status", { length: 30 }).notNull().default("open"), 
     fulfillmentType: varchar("fulfillment_type", { length: 30 }).notNull().default("takeaway"), 
     tableId: varchar("table_id", { length: 36 }).references(() => tables.id, { onDelete: "set null" }), 
+    
+    // --- CAMPOS DE PAGO ---
+    paymentMethod: varchar("payment_method", { length: 20 }).notNull().default("cash"), 
+    paymentReference: varchar("payment_reference", { length: 100 }), 
+    
     subtotal: decimal("subtotal", { precision: 10, scale: 2 }).notNull(),
     total: decimal("total", { precision: 10, scale: 2 }).notNull(),
     cashierUserId: varchar("cashier_user_id", { length: 36 }).notNull(),
@@ -207,7 +213,6 @@ export const orderItems = mysqlTable("order_items", {
     lineTotal: decimal("line_total", { precision: 10, scale: 2 }).notNull(),
 });
 
-
 export const inventoryMovements = mysqlTable("inventory_movements", {
     id: varchar("id", { length: 36 }).primaryKey(),
     type: varchar("type", { length: 20 }).notNull(), 
@@ -221,7 +226,6 @@ export const inventoryMovements = mysqlTable("inventory_movements", {
     purchaseOrderId: varchar("purchase_order_id", { length: 36 }) 
         .references(() => purchaseOrders.id, { onDelete: "set null" }), 
 });
-
 
 export const promotions = mysqlTable("promotions", {
     id: varchar("id", { length: 36 }).primaryKey(),
@@ -244,4 +248,41 @@ export const promotionTargets = mysqlTable("promotion_targets", {
         .references(() => promotions.id, { onDelete: "cascade" }),
     targetType: varchar("target_type", { length: 20 }).notNull(), 
     targetId: varchar("target_id", { length: 36 }), 
+});
+
+export const cashShifts = mysqlTable("cash_shifts", {
+    id: varchar("id", { length: 36 }).primaryKey(),
+    cashierUserId: varchar("cashier_user_id", { length: 36 }).notNull(),
+    cashierName: varchar("cashier_name", { length: 120 }).notNull(),
+    status: varchar("status", { length: 20 }).notNull().default("open"), 
+    
+    openedAt: timestamp("opened_at").defaultNow().notNull(),
+    closedAt: timestamp("closed_at"),
+    
+    initialBalance: decimal("initial_balance", { precision: 10, scale: 2 }).notNull().default("0.00"),
+    
+    expectedCash: decimal("expected_cash", { precision: 10, scale: 2 }),
+    expectedCard: decimal("expected_card", { precision: 10, scale: 2 }),
+    expectedTransfer: decimal("expected_transfer", { precision: 10, scale: 2 }),
+    
+    declaredCash: decimal("declared_cash", { precision: 10, scale: 2 }),
+    declaredCard: decimal("declared_card", { precision: 10, scale: 2 }),
+    declaredTransfer: decimal("declared_transfer", { precision: 10, scale: 2 }),
+    
+    cashDifference: decimal("cash_difference", { precision: 10, scale: 2 }),
+    notes: text("notes"),
+});
+
+export const cashMovements = mysqlTable("cash_movements", {
+    id: varchar("id", { length: 36 }).primaryKey(),
+    shiftId: varchar("shift_id", { length: 36 })
+        .notNull()
+        .references(() => cashShifts.id, { onDelete: "cascade" }),
+    type: varchar("type", { length: 20 }).notNull(), // IN, OUT
+    amount: decimal("amount", { precision: 10, scale: 2 }).notNull(),
+    reason: varchar("reason", { length: 255 }).notNull(),
+    userId: varchar("user_id", { length: 36 }).notNull(),
+    userName: varchar("user_name", { length: 120 }).notNull(),
+    
+    createdAt: timestamp("created_at").defaultNow(),
 });
