@@ -20,7 +20,8 @@ import { SaaSManagement } from "./views/admin/SaaSManagement";
 import { SaaSRestaurants } from "./views/admin/SaaSRestaurants";
 import { ProfileEdit } from "./views/shared/ProfileEdit";
 import { OperationalOverview } from "./views/shared/OperationalOverview";
-
+import { SupplierManagement } from "./views/manager/SupplierManagement";
+import { PurchaseOrdersManagement } from "./views/manager/PurchaseOrdersManagement";
 const ROUTES = {
   // ==========================================
   // RUTAS DEL CEREBRO CENTRAL (SaaS)
@@ -83,6 +84,16 @@ const ROUTES = {
     roles: [ROLES.GERENTE],
     title: "Órdenes",
     description: "Historial de pedidos, tickets y estados operativos.",
+  },
+  "/gerente/suppliers": {
+    roles: [ROLES.GERENTE],
+    title: "Proveedores",
+    description: "Directorio de contactos, catálogos e incidencias.",
+  },
+  "/gerente/purchases": {
+    roles: [ROLES.GERENTE],
+    title: "Órdenes de Compra",
+    description: "Abastecimiento, pedidos y entradas de inventario.",
   },
 
   // ==========================================
@@ -309,6 +320,8 @@ function App() {
         {path === "/gerente" ? <OperationalOverview /> : null}
         {path === "/gerente/users" ? <UserManagement /> : null}
         {path === "/gerente/menu" ? <MenuManagement /> : null}
+        {path === "/gerente/suppliers" ? <SupplierManagement /> : null}
+        {path === "/gerente/purchases" ? <PurchaseOrdersManagement /> : null}
         {path === "/gerente/salon" ? <SalonManagement /> : null}
         {path === "/gerente/inventory" ? <InventoryManagement /> : null}
         {path === "/gerente/promotions" ? <PromotionsManagement /> : null}

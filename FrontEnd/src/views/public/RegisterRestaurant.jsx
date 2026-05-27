@@ -10,13 +10,23 @@ const initialForm = {
   notes: ""
 };
 
+const formatPhone = (value) => {
+  const digits = value.replace(/\D/g, "").slice(0, 8);
+  if (digits.length <= 4) return digits;
+  return `${digits.slice(0, 4)}-${digits.slice(4, 8)}`;
+};
+
 export const RegisterRestaurant = ({ onNavigate }) => {
   const [form, setForm] = useState(initialForm);
   const [status, setStatus] = useState("idle"); 
   const [errorMessage, setErrorMessage] = useState("");
 
   const handleChange = (e) => {
-    setForm({ ...form, [e.target.name]: e.target.value });
+    const { name, value } = e.target;
+    setForm({
+      ...form,
+      [name]: name === "phone" ? formatPhone(value) : value,
+    });
   };
 
   const handleSubmit = async (e) => {
@@ -108,7 +118,19 @@ export const RegisterRestaurant = ({ onNavigate }) => {
 
             <div className="col-md-6">
               <label htmlFor="phone" className="form-label fw-semibold text-secondary small">Teléfono / WhatsApp</label>
-              <input type="tel" className="form-control form-control-lg fs-6" id="phone" name="phone" value={form.phone} onChange={handleChange} placeholder="Ej. 7777-8888" />
+              <input
+                type="tel"
+                className="form-control form-control-lg fs-6"
+                id="phone"
+                name="phone"
+                value={form.phone}
+                onChange={handleChange}
+                placeholder="Ej. 7777-8888"
+                inputMode="numeric"
+                maxLength={9}
+                pattern="[0-9]{4}-[0-9]{4}"
+                title="El teléfono debe tener el formato 0000-0000"
+              />
             </div>
 
             <div className="col-12">

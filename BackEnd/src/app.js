@@ -31,7 +31,7 @@ app.use("/api/auth", toNodeHandler(auth));
 app.use("/api/tenant/suppliers", tenantSupplierRoutes);
 app.use("/api/tenant", tenantRoutes);
 app.use("/api/tenant/tables", tenantTableRoutes);
-app.use("/api/tenant/purchase-orders", tenantPurchaseOrderRoutes);
+app.use("/api/tenant/purchases", tenantPurchaseOrderRoutes);
 app.get("/status", (req, res) => {
     res.json({
         status: "ok",
