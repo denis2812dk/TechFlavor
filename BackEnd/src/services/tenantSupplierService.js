@@ -125,11 +125,12 @@ export const updateSupplierCatalog = async (tenantDb, supplierId, items) => {
 };
 
 
-export const createIncidence = async (tenantDb, supplierId, description) => {
+export const createIncidence = async (tenantDb, supplierId, description, purchaseOrderId = null) => {
     const incidenceId = randomUUID();
     await tenantDb.insert(supplierIncidences).values({
         id: incidenceId,
         supplierId,
+        purchaseOrderId, 
         description: description.trim(),
         status: "ABIERTA"
     });

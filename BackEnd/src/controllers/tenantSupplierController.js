@@ -67,19 +67,21 @@ export const listIncidences = async (req, res, next) => {
         res.json({ success: true, incidences });
     } catch (error) { next(error); }
 };
-
 export const addIncidence = async (req, res, next) => {
     try {
-        const { description } = req.body;
+        const { description, purchaseOrderId } = req.body; 
         if (!requiredText(description)) {
             return res.status(400).json({ success: false, message: "La descripción de la falla es obligatoria." });
         }
+
+        if (!requiredText(purchaseOrderId)) {
+            return res.status(400).json({ success: false, message: "Debes seleccionar una compra relacionada." });
+        }
         
-        const incidenceId = await supplierService.createIncidence(req.tenantDb, req.params.supplierId, description);
+        const incidenceId = await supplierService.createIncidence(req.tenantDb, req.params.supplierId, description, purchaseOrderId);
         res.status(201).json({ success: true, message: "Incidencia registrada en bitácora.", incidenceId });
     } catch (error) { next(error); }
 };
-
 export const resolveSupplierIncidence = async (req, res, next) => {
     try {
         const { incidenceId } = req.params;

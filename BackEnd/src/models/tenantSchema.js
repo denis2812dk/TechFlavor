@@ -146,6 +146,8 @@ export const supplierIncidences = mysqlTable("supplier_incidences", {
     supplierId: varchar("supplier_id", { length: 36 })
         .notNull()
         .references(() => suppliers.id, { onDelete: "cascade" }),
+    purchaseOrderId: varchar("purchase_order_id", { length: 36 })
+        .references(() => purchaseOrders.id, { onDelete: "set null" }),
     description: text("description").notNull(),
     date: timestamp("date").defaultNow().notNull(),
     status: varchar("status", { length: 20 }).notNull().default("ABIERTA"), 

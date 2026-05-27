@@ -9,14 +9,16 @@ import {
   addIncidence,
   resolveSupplierIncidence
 } from "../../lib/suppliers";
+import { listPurchaseOrders } from "../../lib/purchases";
 import { listIngredients, getErrorMessage } from "../../lib/auth"; // Reutilizamos para el buscador
 
 const TABS = ["Directorio", "Catalogo", "Incidencias"];
 
 const emptySupplier = { name: "", contactName: "", dui: "", nit: "", phone: "", email: "", address: "", isActive: true };
 const emptyCatalogItem = { ingredientId: "", ingredientName: "", unitOfMeasure: "", priceReference: "", isPreferred: false, searchText: "", isSearching: false };
-const emptyIncidence = { description: "" };
+const emptyIncidence = { description: "", purchaseOrderId: "" };
 const emptyResolution = { notes: "", action: "SOLO_NOTA", ingredientId: "", quantityToDeduct: "" };
+const INCIDENCE_PURCHASE_STATUSES = new Set(["pending", "received"]);
 
 const UNIT_OPTIONS = ["unidad", "libra", "kilo", "gramo", "litro", "mililitro", "onza"];
 
@@ -36,6 +38,7 @@ export const SupplierManagement = () => {
   const [activeTab, setActiveTab] = useState("Directorio");
   const [suppliers, setSuppliers] = useState([]);
   const [globalIngredients, setGlobalIngredients] = useState([]);
+  const [purchaseOrders, setPurchaseOrders] = useState([]);
   
   // Estados de formularios
   const [supplierForm, setSupplierForm] = useState(emptySupplier);
@@ -58,12 +61,14 @@ export const SupplierManagement = () => {
   const loadData = async () => {
     try {
       setIsLoading(true);
-      const [suppData, ingData] = await Promise.all([
+      const [suppData, ingData, purchaseData] = await Promise.all([
         listSuppliers(),
-        listIngredients()
+        listIngredients(),
+        listPurchaseOrders()
       ]);
       setSuppliers(suppData.suppliers || []);
       setGlobalIngredients(ingData.ingredients || []);
+      setPurchaseOrders(purchaseData.orders || []);
     } catch (err) {
       setError(getErrorMessage(err));
     } finally {
@@ -89,6 +94,11 @@ export const SupplierManagement = () => {
 
   const activeSuppliers = useMemo(() => suppliers.filter(s => s.isActive), [suppliers]);
   const selectedSupplier = useMemo(() => suppliers.find(s => s.id === selectedSupplierId), [suppliers, selectedSupplierId]);
+  const supplierPurchaseOrders = useMemo(() => (
+    purchaseOrders.filter(
+      (order) => order.supplierId === selectedSupplierId && INCIDENCE_PURCHASE_STATUSES.has(order.status)
+    )
+  ), [purchaseOrders, selectedSupplierId]);
 
   // ==========================================
   // 1. DIRECTORIO (CRUD)
@@ -203,7 +213,10 @@ export const SupplierManagement = () => {
     clearMessages();
     setIsSaving(true);
     try {
-      await addIncidence(selectedSupplierId, incidenceForm);
+      await addIncidence(selectedSupplierId, {
+        description: incidenceForm.description,
+        purchaseOrderId: incidenceForm.purchaseOrderId,
+      });
       setStatus("Incidencia registrada.");
       setIncidenceForm(emptyIncidence);
       setShowCreate(false);
@@ -350,7 +363,11 @@ export const SupplierManagement = () => {
                   <span className={sup.isActive ? "text-success small fw-bold" : "text-danger small fw-bold"}>{sup.isActive ? "Activo" : "Inactivo"}</span>
                   <div className="menu-card-actions">
                     <button type="button" onClick={() => { setEditingSupplier(sup); setSupplierForm(sup); setShowCreate(false); }}>Editar</button>
-                    {sup.isActive && <button type="button" onClick={() => handleDeleteSupplier(sup.id)} className="text-danger">Desactivar</button>}
+                    {sup.isActive && (
+                      <button type="button" onClick={() => handleDeleteSupplier(sup.id)} className="btn btn-sm btn-outline-danger">
+                        Desactivar
+                      </button>
+                    )}
                   </div>
                 </div>
               </article>
@@ -470,7 +487,7 @@ export const SupplierManagement = () => {
             
             <label className="is-wide mb-4">
               <span>Selecciona un Proveedor</span>
-              <select value={selectedSupplierId} onChange={(e) => { setSelectedSupplierId(e.target.value); setShowCreate(false); setResolvingIncidenceId(null); }} className="form-select border p-2 w-100">
+                <select value={selectedSupplierId} onChange={(e) => { setSelectedSupplierId(e.target.value); setShowCreate(false); setResolvingIncidenceId(null); setIncidenceForm(emptyIncidence); }} className="form-select border p-2 w-100">
                 <option value="">-- Elige un proveedor activo --</option>
                 {activeSuppliers.map(sup => <option key={sup.id} value={sup.id}>{sup.name}</option>)}
               </select>
@@ -486,11 +503,37 @@ export const SupplierManagement = () => {
                 {showCreate && (
                   <form onSubmit={handleCreateIncidence} className="mb-4 p-3 border rounded bg-light">
                     <label className="is-wide">
-                      <span>Descripción del problema</span>
-                      <textarea value={incidenceForm.description} onChange={e => setIncidenceForm({ description: e.target.value })} required placeholder="Ej. El pedido de queso llegó derretido..." className="w-100 p-2 border rounded" />
+                      <span>Descripción del problema (*)</span>
+                      <textarea
+                        value={incidenceForm.description}
+                        onChange={(e) => setIncidenceForm((current) => ({ ...current, description: e.target.value }))}
+                        required
+                        placeholder="Ej. El pedido llegó incompleto..."
+                        className="w-100 p-2 border rounded"
+                      />
+                    </label>
+                    <label className="is-wide mt-3">
+                      <span>Compra relacionada (*)</span>
+                      <select
+                        value={incidenceForm.purchaseOrderId}
+                        onChange={(e) => setIncidenceForm((current) => ({ ...current, purchaseOrderId: e.target.value }))}
+                        required
+                        className="w-100 p-2 border rounded"
+                        disabled={supplierPurchaseOrders.length === 0}
+                      >
+                        <option value="">Seleccionar compra...</option>
+                        {supplierPurchaseOrders.map((order) => (
+                          <option key={order.id} value={order.id}>
+                            {new Date(order.createdAt).toLocaleDateString()} - {order.id.slice(0, 8).toUpperCase()} - {order.status === "pending" ? "Pendiente" : "Recibida"}
+                          </option>
+                        ))}
+                      </select>
+                      {supplierPurchaseOrders.length === 0 ? (
+                        <small className="text-muted d-block mt-1">Este proveedor todavía no tiene compras registradas.</small>
+                      ) : null}
                     </label>
                     <div className="d-flex gap-2 mt-2">
-                      <button type="submit" disabled={isSaving} className="flex-grow-1">Guardar</button>
+                      <button type="submit" disabled={isSaving || !incidenceForm.description.trim() || supplierPurchaseOrders.length === 0 || !incidenceForm.purchaseOrderId} className="flex-grow-1">Guardar</button>
                       <button type="button" onClick={() => setShowCreate(false)} className="is-secondary">Cancelar</button>
                     </div>
                   </form>
@@ -542,18 +585,20 @@ export const SupplierManagement = () => {
                       <tr>
                         <th>Fecha</th>
                         <th>Descripción</th>
+                        <th>Compra</th>
                         <th>Estado</th>
                         <th>Acción</th>
                       </tr>
                     </thead>
                     <tbody>
                       {incidences.length === 0 ? (
-                        <tr><td colSpan="4" className="text-center text-muted p-3">No hay incidencias registradas.</td></tr>
+                        <tr><td colSpan="5" className="text-center text-muted p-3">No hay incidencias registradas.</td></tr>
                       ) : (
                         incidences.map(inc => (
                           <tr key={inc.id}>
                             <td className="small">{new Date(inc.date).toLocaleDateString()}</td>
                             <td className="small">{inc.description}</td>
+                            <td className="small">{inc.purchaseOrderId ? <span className="inventory-pill is-ok">{inc.purchaseOrderId.slice(0, 8).toUpperCase()}</span> : <span className="text-muted">Sin compra</span>}</td>
                             <td>
                               <span className={`inventory-pill ${inc.status === 'ABIERTA' ? 'is-empty' : 'is-ok'}`}>
                                 {inc.status}

@@ -1,5 +1,14 @@
 import { sql } from "drizzle-orm";
 
+export const ensureTenantIncidencesCompatibility = async (tenantDb) => {
+    await tenantDb.execute(sql`
+        ALTER TABLE supplier_incidences
+            ADD COLUMN IF NOT EXISTS purchase_order_id varchar(36) DEFAULT NULL,
+            ADD COLUMN IF NOT EXISTS resolution_date timestamp NULL DEFAULT NULL,
+            ADD COLUMN IF NOT EXISTS updated_at timestamp DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+    `);
+};
+
 export const initializeTenantDatabase = async (tenantDb) => {
     await tenantDb.execute(sql`
         CREATE TABLE IF NOT EXISTS restaurant_settings (
@@ -190,20 +199,6 @@ export const initializeTenantDatabase = async (tenantDb) => {
             FOREIGN KEY (ingredient_id) REFERENCES ingredients(id) ON DELETE CASCADE
         )
     `);
-
-    await tenantDb.execute(sql`
-        CREATE TABLE IF NOT EXISTS supplier_incidences (
-            id varchar(36) PRIMARY KEY,
-            supplier_id varchar(36) NOT NULL,
-            description text NOT NULL,
-            date timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
-            status varchar(20) NOT NULL DEFAULT 'ABIERTA',
-            resolution_date timestamp,
-            created_at timestamp DEFAULT CURRENT_TIMESTAMP,
-            updated_at timestamp DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-            FOREIGN KEY (supplier_id) REFERENCES suppliers(id) ON DELETE CASCADE
-        )
-    `);
     await tenantDb.execute(sql`
         CREATE TABLE IF NOT EXISTS purchase_orders (
             id varchar(36) PRIMARY KEY,
@@ -226,6 +221,22 @@ export const initializeTenantDatabase = async (tenantDb) => {
             FOREIGN KEY (ingredient_id) REFERENCES ingredients(id) ON DELETE RESTRICT
         )
     `);
+    await tenantDb.execute(sql`
+    CREATE TABLE IF NOT EXISTS supplier_incidences (
+        id varchar(36) PRIMARY KEY,
+        supplier_id varchar(36) NOT NULL,
+        purchase_order_id varchar(36) DEFAULT NULL,
+        description text NOT NULL,
+        date timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        status varchar(20) NOT NULL DEFAULT 'ABIERTA',
+        resolution_date timestamp NULL DEFAULT NULL,
+        created_at timestamp DEFAULT CURRENT_TIMESTAMP,
+        updated_at timestamp DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+        CONSTRAINT supplier_incidences_supplier_id_fk FOREIGN KEY (supplier_id) REFERENCES suppliers(id) ON DELETE CASCADE,
+        CONSTRAINT supplier_incidences_purchase_order_id_fk FOREIGN KEY (purchase_order_id) REFERENCES purchase_orders(id) ON DELETE SET NULL
+    )
+`);
+
     await tenantDb.execute(sql`
         CREATE TABLE IF NOT EXISTS inventory_movements (
             id varchar(36) PRIMARY KEY,

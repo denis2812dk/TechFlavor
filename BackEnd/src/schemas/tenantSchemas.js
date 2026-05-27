@@ -115,7 +115,8 @@ export const updateCatalogSchema = z.object({
 });
 
 export const createIncidenceSchema = z.object({
-    description: z.string().min(5, "La descripción debe tener al menos 5 caracteres.")
+    description: z.string().min(5, "La descripción debe tener al menos 5 caracteres."),
+    purchaseOrderId: z.string().min(1, "Debes seleccionar una compra relacionada.")
 });
 
 export const resolveIncidenceSchema = z.object({
