@@ -27,6 +27,7 @@ export const createOrderSchema = z.object({
     }),
     tableId: z.string().nullable().optional(),
     promoCode: z.string().min(1).max(30).optional(),
+    paymentMethod: z.enum(["cash", "card", "transfer"]).optional(),
     items: z.array(
         z.object({
             itemType: z.enum(["product", "combo"]),

@@ -62,7 +62,7 @@ const findSaleItem = async (tenantDb, item) => {
 
 export const createTenantOrder = async (req, res, next) => {
     try {
-        const { items, fulfillmentType, tableId, promoCode } = req.body;
+        const { items, fulfillmentType, tableId, promoCode, paymentMethod } = req.body;
 
         const saleItems = [];
         for (const item of items) {
@@ -160,6 +160,7 @@ export const createTenantOrder = async (req, res, next) => {
             status: "in_preparation",
             fulfillmentType,
             tableId: fulfillmentType === "dine_in" ? tableId : null,
+            paymentMethod: paymentMethod || "cash",
             subtotal: money(subtotal),
             discountTotal: money(discountTotal), 
             promotionId: activePromotion ? activePromotion.id : null,
@@ -192,6 +193,7 @@ export const createTenantOrder = async (req, res, next) => {
                 fulfillmentType: order.fulfillmentType,
                 tableId: order.tableId,
                 cashierName: order.cashierName,
+                paymentMethod: order.paymentMethod,
                 createdAt: new Date().toISOString(),
                 items: saleItems.map((item) => ({
                     type: item.itemType,
@@ -239,6 +241,7 @@ export const listTenantOrders = async (req, res, next) => {
                 fulfillmentType: order.fulfillmentType,
                 tableId: order.tableId,
                 tableName: row.tableName,
+                paymentMethod: order.paymentMethod, 
                 subtotal: order.subtotal,
                 total: order.total,
                 cashierUserId: order.cashierUserId,
