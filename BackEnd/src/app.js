@@ -9,6 +9,7 @@ import saasRoutes from "./router/saasRoutes.js";
 import tenantTableRoutes from "./router/tenantTableRoutes.js";
 import tenantSupplierRoutes from "./router/tenantSupplierRoutes.js";
 import tenantPurchaseOrderRoutes from "./router/tenantPurchaseOrderRoute.js";
+import tenantCashRoutes from "./router/tenantCashRoutes.js";
 import "dotenv/config";
 const app = express();
 
@@ -32,6 +33,7 @@ app.use("/api/tenant/suppliers", tenantSupplierRoutes);
 app.use("/api/tenant", tenantRoutes);
 app.use("/api/tenant/tables", tenantTableRoutes);
 app.use("/api/tenant/purchases", tenantPurchaseOrderRoutes);
+app.use("/api/tenant/cash", tenantCashRoutes);
 app.get("/status", (req, res) => {
     res.json({
         status: "ok",

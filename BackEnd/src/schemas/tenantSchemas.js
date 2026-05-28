@@ -145,3 +145,19 @@ export const createPurchaseOrderSchema = z.object({
         })
     ).min(1, "La orden de compra debe tener al menos un producto.")
 });
+export const openShiftSchema = z.object({
+    initialBalance: z.coerce.number().min(0, "El fondo inicial no puede ser negativo")
+});
+
+export const createMovementSchema = z.object({
+    type: z.enum(["IN", "OUT"], { errorMap: () => ({ message: "El tipo debe ser IN o OUT" }) }),
+    amount: z.coerce.number().positive("El monto debe ser mayor a 0"),
+    reason: z.string().min(5, "Debes justificar el movimiento detalladamente")
+});
+
+export const closeShiftSchema = z.object({
+    declaredCash: z.coerce.number().min(0, "El efectivo no puede ser negativo"),
+    declaredCard: z.coerce.number().min(0, "El monto en tarjeta no puede ser negativo"),
+    declaredTransfer: z.coerce.number().min(0, "El monto en transferencia no puede ser negativo"),
+    notes: z.string().optional().nullable()
+});
