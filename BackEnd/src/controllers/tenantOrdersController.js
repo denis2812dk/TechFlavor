@@ -62,7 +62,7 @@ const findSaleItem = async (tenantDb, item) => {
 
 export const createTenantOrder = async (req, res, next) => {
     try {
-        const { items, fulfillmentType, tableId, promoCode, paymentMethod } = req.body;
+        const { items, fulfillmentType, tableId, promoCode, paymentMethod, customerName } = req.body;
 
         const saleItems = [];
         for (const item of items) {
@@ -157,6 +157,7 @@ export const createTenantOrder = async (req, res, next) => {
         const order = {
             id: orderId,
             ticketCode,
+            customerName: customerName || "Cliente",
             status: "in_preparation",
             fulfillmentType,
             tableId: fulfillmentType === "dine_in" ? tableId : null,
@@ -189,6 +190,7 @@ export const createTenantOrder = async (req, res, next) => {
             message: "Pedido generado correctamente.",
             ticket: {
                 code: ticketCode,
+                customerName: order.customerName,
                 status: order.status,
                 fulfillmentType: order.fulfillmentType,
                 tableId: order.tableId,
@@ -241,6 +243,7 @@ export const listTenantOrders = async (req, res, next) => {
                 fulfillmentType: order.fulfillmentType,
                 tableId: order.tableId,
                 tableName: row.tableName,
+                customerName: order.customerName,
                 paymentMethod: order.paymentMethod, 
                 subtotal: order.subtotal,
                 total: order.total,
@@ -296,6 +299,7 @@ export const listKitchenOrders = async (req, res, next) => {
                 fulfillmentType: order.fulfillmentType,
                 tableId: order.tableId,
                 tableName: row.tableName,
+                customerName: order.customerName,
                 cashierName: order.cashierName,
                 createdAt: order.updatedAt?.toISOString() || order.createdAt?.toISOString(),
                 updatedAt: order.updatedAt?.toISOString(),
@@ -386,6 +390,7 @@ export const listDispatchOrders = async (req, res, next) => {
                 fulfillmentType: order.fulfillmentType,
                 tableId: order.tableId,
                 tableName: row.tableName,
+                customerName: order.customerName,
                 cashierName: order.cashierName,
                 createdAt: order.updatedAt?.toISOString() || order.createdAt?.toISOString(),
                 updatedAt: order.updatedAt?.toISOString(),

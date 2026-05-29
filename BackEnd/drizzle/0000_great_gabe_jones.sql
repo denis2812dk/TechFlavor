@@ -43,8 +43,7 @@ CREATE TABLE `users` (
 	`ban_expires` datetime,
 	`created_at` datetime NOT NULL,
 	`updated_at` datetime NOT NULL,
-	CONSTRAINT `users_id` PRIMARY KEY(`id`),
-	CONSTRAINT `users_email_unique` UNIQUE(`email`)
+	CONSTRAINT `users_id` PRIMARY KEY(`id`)
 );
 --> statement-breakpoint
 CREATE TABLE `verifications` (

@@ -21,11 +21,34 @@ const poolConnection = mysql.createPool({
 
 export const db = drizzle(poolConnection, { schema, mode: "default" });
 
+const ensureEmailConstraintCompatibility = async () => {
+  try {
+    await poolConnection.query("ALTER TABLE tenant_requests DROP INDEX tenant_requests_email_unique");
+    console.log("Removed unique index tenant_requests_email_unique");
+  } catch (error) {
+    // Ignore when the index does not exist on this environment.
+    if (error?.code !== "ER_CANT_DROP_FIELD_OR_KEY") {
+      throw error;
+    }
+  }
+
+  try {
+    await poolConnection.query("ALTER TABLE users DROP INDEX users_email_unique");
+    console.log("Removed unique index users_email_unique");
+  } catch (error) {
+    // Ignore when the index does not exist on this environment.
+    if (error?.code !== "ER_CANT_DROP_FIELD_OR_KEY") {
+      throw error;
+    }
+  }
+};
+
 export const connectDB = async () => {
   try {
     const connection = await poolConnection.getConnection();
     console.log('Database connection successful');
     connection.release();
+    await ensureEmailConstraintCompatibility();
 
   } catch (error) {
     console.error('Error connecting to MariaDB database:', error.message);

@@ -21,6 +21,7 @@ export const CashierCatalog = () => {
   const [isSaving, setIsSaving] = useState(false);
   const [fulfillmentType, setFulfillmentType] = useState("");
   const [tableId, setTableId] = useState("");
+  const [customerName, setCustomerName] = useState("");
   const [paymentMethod, setPaymentMethod] = useState("cash");
   const [appliedPromo, setAppliedPromo] = useState(null);
   const [promoError, setPromoError] = useState("");
@@ -123,6 +124,10 @@ export const CashierCatalog = () => {
       setError("Debes seleccionar una mesa antes de enviar el pedido.");
       return;
     }
+    if (!customerName.trim()) {
+      setError("Debes ingresar el nombre del cliente antes de enviar el pedido.");
+      return;
+    }
     handleCreateOrder();
   };
 
@@ -134,6 +139,7 @@ export const CashierCatalog = () => {
     try {
       const orderPayload = {
         fulfillmentType,
+        customerName: customerName.trim(),
         paymentMethod,
         promoCode: appliedPromo?.code || undefined,
         items: cart.map((item) => ({ itemType: item.itemType, itemId: item.itemId, quantity: item.quantity })),
@@ -146,6 +152,7 @@ export const CashierCatalog = () => {
       setCart([]);
       setFulfillmentType("");
       setTableId("");
+      setCustomerName("");
       setPaymentMethod("cash");
       setAppliedPromo(null);
       setPromoError("");
@@ -266,6 +273,18 @@ export const CashierCatalog = () => {
             <button type="button" className={fulfillmentType === "dine_in" ? "is-active" : ""} onClick={() => setFulfillmentType("dine_in")}>Consumir aquí</button>
           </div>
 
+          <label className="cashier-table-field" style={{ marginTop: "8px" }}>
+            <span>Nombre del cliente</span>
+            <input
+              type="text"
+              value={customerName}
+              onChange={(event) => setCustomerName(event.target.value)}
+              placeholder="Ej: Juan Perez"
+              maxLength={100}
+              style={{ width: "100%", padding: "11px 12px", borderRadius: "12px", border: "1px solid rgba(45,24,16,.08)", background: "#fff" }}
+            />
+          </label>
+
           {fulfillmentType === "dine_in" && (
             <label className="cashier-table-field" style={{ marginTop: "8px" }}>
               <span>Asignar Mesa</span>
@@ -328,6 +347,7 @@ export const CashierCatalog = () => {
             <div className="ticket-head">
               <span>Ticket generado</span>
               <strong>{ticket.code}</strong>
+              <em>Cliente: {ticket.customerName || "Cliente"}</em>
               <em>{ticket.fulfillmentType === "dine_in" ? `Consumir en el lugar - ${getTableName(ticket.tableId)}` : "Para llevar"}</em>
               <small>{new Date(ticket.createdAt).toLocaleString()}</small>
             </div>

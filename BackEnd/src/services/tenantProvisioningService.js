@@ -117,6 +117,7 @@ export const initializeTenantDatabase = async (tenantDb) => {
         CREATE TABLE IF NOT EXISTS orders (
             id varchar(36) PRIMARY KEY,
             ticket_code varchar(30) NOT NULL UNIQUE,
+            customer_name varchar(120) NOT NULL,
             status varchar(30) NOT NULL DEFAULT 'open',
             fulfillment_type varchar(30) NOT NULL DEFAULT 'takeaway',
             table_id varchar(36),

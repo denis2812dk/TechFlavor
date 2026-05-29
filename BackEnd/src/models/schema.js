@@ -14,7 +14,7 @@ export const restaurants = mysqlTable("restaurants", {
 export const users = mysqlTable("users", {
     id: varchar("id", { length: 36 }).primaryKey(),
     name: varchar("name", { length: 80 }).notNull(),
-    email: varchar("email", { length: 100 }).notNull().unique(),
+    email: varchar("email", { length: 100 }).notNull(),
     emailVerified: boolean("email_verified").notNull().default(false),
     image: varchar("image", { length: 255 }),
     role: varchar("role", { length: 20 }).notNull().default("operador"),
@@ -80,7 +80,7 @@ export const tenantRequests = mysqlTable("tenant_requests", {
     id: varchar("id", { length: 36 }).primaryKey(),
     restaurantName: varchar("restaurant_name", { length: 120 }).notNull(),
     ownerName: varchar("owner_name", { length: 80 }).notNull(),
-    email: varchar("email", { length: 100 }).notNull().unique(),
+    email: varchar("email", { length: 100 }).notNull(),
     phone: varchar("phone", { length: 20 }),
     status: varchar("status", { length: 30 }).notNull().default("pending"), // pending, approved, rejected
     planRequested: varchar("plan_requested", { length: 30 }).notNull().default("starter"),

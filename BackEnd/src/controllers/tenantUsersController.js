@@ -51,19 +51,6 @@ export const createTenantUser = async (req, res, next) => {
             });
         }
 
-        const [existingUser] = await db
-            .select()
-            .from(users)
-            .where(eq(users.email, email))
-            .limit(1);
-
-        if (existingUser) {
-            return res.status(409).json({
-                success: false,
-                message: "Ya existe un usuario con ese nombre de acceso.",
-            });
-        }
-
         const userId = await db.transaction(async (tx) => {
             const ctx = await auth.$context;
             const hashedPassword = await ctx.password.hash(password);
