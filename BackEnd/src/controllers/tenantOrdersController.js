@@ -10,11 +10,51 @@ import {
     promotionTargets,
     tables
 } from "../models/tenantSchema.js";
-import { deductInventoryForOrder, restockInventoryForOrder } from "../services/tenantInventoryService.js";
+import { deductInventoryForOrder, restockInventoryForOrder,validateInventoryForOrder } from "../services/tenantInventoryService.js";
 import { handleCrossShiftAdjustment } from "../services/tenantCashService.js";
 
 const money = (value) => Number(value).toFixed(2);
+const toCents = (value) => Math.round(Number(value || 0) * 100);
+const fromCents = (value) => Number((value / 100).toFixed(2));
 
+const getPromotionTarget = (promotionTargets) => promotionTargets[0] || null;
+
+const isItemEligibleForTarget = (item, target) => {
+    if (!target || target.targetType === "all") return true;
+    if (target.targetType === "product") return target.targetId === item.itemId;
+    if (target.targetType === "category") return target.targetId === item.categoryId;
+    return false;
+};
+
+const distributeDiscountAcrossItems = (items, discountCents, eligibleSubtotalCents) => {
+    if (discountCents <= 0 || eligibleSubtotalCents <= 0 || items.length === 0) {
+        return;
+    }
+
+    let allocated = 0;
+    items.forEach((item, index) => {
+        if (index === items.length - 1) {
+            item.lineDiscountCents = Math.max(0, discountCents - allocated);
+            return;
+        }
+
+        const rawShare = Math.floor((discountCents * item.lineSubtotalCents) / eligibleSubtotalCents);
+        const share = Math.min(rawShare, item.lineSubtotalCents);
+        item.lineDiscountCents = share;
+        allocated += share;
+    });
+
+    let remaining = discountCents - items.reduce((sum, item) => sum + item.lineDiscountCents, 0);
+    if (remaining > 0) {
+        for (const item of items) {
+            if (remaining <= 0) break;
+            const room = item.lineSubtotalCents - item.lineDiscountCents;
+            const extra = Math.min(room, remaining);
+            item.lineDiscountCents += extra;
+            remaining -= extra;
+        }
+    }
+};
 const createTicketCode = () => {
     const date = new Date();
     const stamp = [
@@ -31,7 +71,7 @@ const findSaleItem = async (tenantDb, item) => {
         const [product] = await tenantDb
             .select()
             .from(menuProducts)
-            .where(eq(menuProducts.id, item.itemId))
+            .where(eq(menuProducts.id, item.itemId) )
             .limit(1);
 
         if (!product?.isActive) return null;
@@ -243,13 +283,14 @@ export const listTenantOrders = async (req, res, next) => {
                 fulfillmentType: order.fulfillmentType,
                 tableId: order.tableId,
                 tableName: row.tableName,
+                customerName: order.customerName,
                 paymentMethod: order.paymentMethod, 
                 subtotal: order.subtotal,
                 total: order.total,
                 cashierUserId: order.cashierUserId,
                 cashierName: order.cashierName,
-                createdAt: order.updatedAt?.toISOString() || order.createdAt?.toISOString(),
-                updatedAt: order.updatedAt?.toISOString(),
+                isEdited: order.isEdited,
+                createdAt: order.createdAt?.toISOString(),
                 items: items.map((item) => ({
                     id: item.id,
                     itemId: item.itemId,
@@ -299,9 +340,10 @@ export const listKitchenOrders = async (req, res, next) => {
                 fulfillmentType: order.fulfillmentType,
                 tableId: order.tableId,
                 tableName: row.tableName,
+                customerName: order.customerName,
                 cashierName: order.cashierName,
-                createdAt: order.updatedAt?.toISOString() || order.createdAt?.toISOString(),
-                updatedAt: order.updatedAt?.toISOString(),
+                isEdited: order.isEdited,
+                createdAt: order.createdAt?.toISOString(),
                 items: items.map((item) => ({
                     id: item.id,
                     itemId: item.itemId,
@@ -390,9 +432,10 @@ export const listDispatchOrders = async (req, res, next) => {
                 fulfillmentType: order.fulfillmentType,
                 tableId: order.tableId,
                 tableName: row.tableName,
+                customerName: order.customerName,
                 cashierName: order.cashierName,
-                createdAt: order.updatedAt?.toISOString() || order.createdAt?.toISOString(),
-                updatedAt: order.updatedAt?.toISOString(),
+                isEdited: order.isEdited,
+                createdAt: order.createdAt?.toISOString(),
                 items: items.map((item) => ({
                     id: item.id,
                     itemId: item.itemId,
@@ -532,6 +575,14 @@ export const cancelTenantOrder = async (req, res, next) => {
         const [existingOrder] = await req.tenantDb.select().from(orders).where(eq(orders.id, orderId)).limit(1);
         
         if (!existingOrder) return res.status(404).json({ success: false, message: "Pedido no encontrado." });
+
+        if (existingOrder.status !== "in_preparation") {
+            return res.status(400).json({
+                success: false,
+                message: "No puedes editar un pedido que ya fue terminado por cocina o entregado. Si el cliente desea más productos, genera un ticket nuevo.",
+            });
+        }
+
         if (existingOrder.status === "cancelled") return res.status(400).json({ success: false, message: "No puedes editar un pedido cancelado." });
         const saleItems = [];
         for (const item of items) {
@@ -669,4 +720,4 @@ export const cancelTenantOrder = async (req, res, next) => {
         }
         next(error);
     }
-};
+}; 
