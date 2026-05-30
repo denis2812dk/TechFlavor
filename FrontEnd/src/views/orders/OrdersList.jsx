@@ -90,6 +90,7 @@ export const OrdersList = () => {
           <thead>
             <tr>
               <th>Ticket</th>
+              <th>Cliente</th>
               <th>Estado</th>
               <th>Modalidad</th>
               <th>Responsable</th>
@@ -104,6 +105,7 @@ export const OrdersList = () => {
                 <td>
                   <strong>{order.code}</strong>
                 </td>
+                <td>{order.customerName || "Cliente"}</td>
                 <td>
                   <span className={`orders-status is-${order.status}`}>{statusLabels[order.status] || order.status}</span>
                 </td>

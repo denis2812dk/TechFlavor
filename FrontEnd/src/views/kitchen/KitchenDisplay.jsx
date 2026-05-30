@@ -108,6 +108,7 @@ export const KitchenDisplay = () => {
                   <div>
                     <span>{order.code}</span>
                     <strong>{fulfillmentLabel(order)}</strong>
+                    <small className="d-block mt-1">Cliente: {order.customerName || "Cliente"}</small>
                   </div>
                   <em>{elapsedMinutes(order.createdAt)}</em>
                 </header>

@@ -22,6 +22,8 @@ import { ProfileEdit } from "./views/shared/ProfileEdit";
 import { OperationalOverview } from "./views/shared/OperationalOverview";
 import { SupplierManagement } from "./views/manager/SupplierManagement";
 import { PurchaseOrdersManagement } from "./views/manager/PurchaseOrdersManagement";
+import { ShiftHistory } from "./views/manager/ShiftHistory";
+import { CashierShift } from "./views/cashier/CashierShift";
 const ROUTES = {
   // ==========================================
   // RUTAS DEL CEREBRO CENTRAL (SaaS)
@@ -95,6 +97,11 @@ const ROUTES = {
     title: "Órdenes de Compra",
     description: "Abastecimiento, pedidos y entradas de inventario.",
   },
+  "/gerente/shifts": {
+    roles: [ROLES.GERENTE],
+    title: "Historial de turnos",
+    description: "Auditoría de cajas, cierres y descuadres de los cajeros.",
+  },
 
   // ==========================================
   // RUTAS OPERATIVAS (Restaurante)
@@ -103,6 +110,11 @@ const ROUTES = {
     roles: [ROLES.CAJERO],
     title: "Panel caja",
     description: "Cobros, cuentas abiertas, cierres de turno y pagos.",
+  },
+  "/cajero/shift": {
+    roles: [ROLES.CAJERO],
+    title: "Mi turno",
+    description: "Apertura, movimientos y cierre de caja del cajero actual.",
   },
   "/cajero/orders": {
     roles: [ROLES.CAJERO],
@@ -318,12 +330,14 @@ function App() {
         {path === "/gerente/menu" ? <MenuManagement /> : null}
         {path === "/gerente/suppliers" ? <SupplierManagement /> : null}
         {path === "/gerente/purchases" ? <PurchaseOrdersManagement /> : null}
+        {path === "/gerente/shifts" ? <ShiftHistory /> : null}
         {path === "/gerente/salon" ? <SalonManagement /> : null}
         {path === "/gerente/inventory" ? <InventoryManagement /> : null}
         {path === "/gerente/promotions" ? <PromotionsManagement /> : null}
         {path === "/gerente/orders" ? <OrdersList /> : null}
 
         {/* VISTAS OPERATIVAS */}
+        {path === "/cajero/shift" ? <CashierShift /> : null}
         {path === "/cajero/orders" ? <OrdersList /> : null}
         {path === "/cajero" ? <CashierCatalog /> : null}
         {path === "/cocina" ? <KitchenDisplay /> : null}

@@ -150,3 +150,15 @@ export const listIngredients = async (req, res, next) => {
         next(error);
     }
 };
+
+export const getCatalogStatus = async (req, res, next) => {
+    try {
+        const status = await inventoryService.getCatalogStockStatus(req.tenantDb);
+        res.json({
+            success: true,
+            data: status
+        });
+    } catch (error) {
+        next(error);
+    }
+};

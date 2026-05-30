@@ -9,9 +9,50 @@ import {
     promotionTargets,
     tables
 } from "../models/tenantSchema.js";
-import { deductInventoryForOrder } from "../services/tenantInventoryService.js";
+import { deductInventoryForOrder, validateInventoryForOrder } from "../services/tenantInventoryService.js";
 
 const money = (value) => Number(value).toFixed(2);
+const toCents = (value) => Math.round(Number(value || 0) * 100);
+const fromCents = (value) => Number((value / 100).toFixed(2));
+
+const getPromotionTarget = (promotionTargets) => promotionTargets[0] || null;
+
+const isItemEligibleForTarget = (item, target) => {
+    if (!target || target.targetType === "all") return true;
+    if (target.targetType === "product") return target.targetId === item.itemId;
+    if (target.targetType === "category") return target.targetId === item.categoryId;
+    return false;
+};
+
+const distributeDiscountAcrossItems = (items, discountCents, eligibleSubtotalCents) => {
+    if (discountCents <= 0 || eligibleSubtotalCents <= 0 || items.length === 0) {
+        return;
+    }
+
+    let allocated = 0;
+    items.forEach((item, index) => {
+        if (index === items.length - 1) {
+            item.lineDiscountCents = Math.max(0, discountCents - allocated);
+            return;
+        }
+
+        const rawShare = Math.floor((discountCents * item.lineSubtotalCents) / eligibleSubtotalCents);
+        const share = Math.min(rawShare, item.lineSubtotalCents);
+        item.lineDiscountCents = share;
+        allocated += share;
+    });
+
+    let remaining = discountCents - items.reduce((sum, item) => sum + item.lineDiscountCents, 0);
+    if (remaining > 0) {
+        for (const item of items) {
+            if (remaining <= 0) break;
+            const room = item.lineSubtotalCents - item.lineDiscountCents;
+            const extra = Math.min(room, remaining);
+            item.lineDiscountCents += extra;
+            remaining -= extra;
+        }
+    }
+};
 
 const createTicketCode = () => {
     const date = new Date();
@@ -62,7 +103,7 @@ const findSaleItem = async (tenantDb, item) => {
 
 export const createTenantOrder = async (req, res, next) => {
     try {
-        const { items, fulfillmentType, tableId, promoCode } = req.body;
+        const { items, fulfillmentType, tableId, promoCode, paymentMethod, customerName } = req.body;
 
         const saleItems = [];
         for (const item of items) {
@@ -75,11 +116,20 @@ export const createTenantOrder = async (req, res, next) => {
             }
             saleItems.push(saleItem);
         }
+
+        const inventoryCheck = await validateInventoryForOrder(req.tenantDb, saleItems);
+        if (!inventoryCheck.valid) {
+            return res.status(400).json({
+                success: false,
+                message: inventoryCheck.message
+            });
+        }
         
         let subtotal = 0;
         let discountTotal = 0;
         let activePromotion = null;
         let promoTargets = [];
+        let promotionTarget = null;
         
         if (promoCode) {
             const normalizedCode = promoCode.trim().toUpperCase();
@@ -99,6 +149,7 @@ export const createTenantOrder = async (req, res, next) => {
                     activePromotion = promo;
                     promoTargets = await req.tenantDb.select().from(promotionTargets)
                         .where(eq(promotionTargets.promotionId, promo.id));
+                    promotionTarget = getPromotionTarget(promoTargets);
                 } else {
                     return res.status(400).json({
                         success: false,
@@ -112,36 +163,50 @@ export const createTenantOrder = async (req, res, next) => {
                 });
             }
         }
-        
+
+        const eligibleItems = [];
+        let eligibleSubtotalCents = 0;
+
         for (const item of saleItems) {
-            const lineSubtotal = item.unitPrice * item.quantity;
-            let lineDiscount = 0;
+            const lineSubtotalCents = toCents(item.unitPrice) * item.quantity;
+            const appliesToItem = activePromotion ? isItemEligibleForTarget(item, promotionTarget) : false;
 
-            if (activePromotion) {
-                const appliesToItem = promoTargets.some(target => 
-                    target.targetType === 'all' || 
-                    (target.targetType === 'product' && target.targetId === item.itemId) ||
-                    (target.targetType === 'category' && target.targetId === item.categoryId)
-                );
+            item.lineSubtotalCents = lineSubtotalCents;
+            item.lineDiscountCents = 0;
+            item.lineNetTotalCents = lineSubtotalCents;
 
-                if (appliesToItem) {
-                    if (activePromotion.discountType === 'percentage') {
-                        lineDiscount = lineSubtotal * (Number(activePromotion.discountValue) / 100);
-                    } else if (activePromotion.discountType === 'fixed_amount') {
-                        lineDiscount = Number(activePromotion.discountValue) * item.quantity;
-                    }
-                }
+            if (appliesToItem) {
+                eligibleItems.push(item);
+                eligibleSubtotalCents += lineSubtotalCents;
             }
 
-            if (lineDiscount > lineSubtotal) lineDiscount = lineSubtotal;
-
-            item.lineSubtotal = lineSubtotal;
-            item.lineDiscount = lineDiscount;
-            item.lineNetTotal = lineSubtotal - lineDiscount; 
-
-            subtotal += lineSubtotal;
-            discountTotal += lineDiscount;
+            subtotal += fromCents(lineSubtotalCents);
         }
+
+        let discountTotalCents = 0;
+        if (activePromotion && eligibleSubtotalCents > 0) {
+            const discountValueCents = toCents(activePromotion.discountValue);
+
+            if (activePromotion.discountType === "percentage") {
+                discountTotalCents = Math.min(
+                    eligibleSubtotalCents,
+                    Math.round(eligibleSubtotalCents * (Number(activePromotion.discountValue) / 100))
+                );
+            } else if (activePromotion.discountType === "fixed_amount") {
+                discountTotalCents = Math.min(discountValueCents, eligibleSubtotalCents);
+            }
+
+            distributeDiscountAcrossItems(eligibleItems, discountTotalCents, eligibleSubtotalCents);
+        }
+
+        for (const item of saleItems) {
+            item.lineNetTotalCents = item.lineSubtotalCents - item.lineDiscountCents;
+            item.lineSubtotal = fromCents(item.lineSubtotalCents);
+            item.lineDiscount = fromCents(item.lineDiscountCents);
+            item.lineNetTotal = fromCents(item.lineNetTotalCents);
+        }
+
+        discountTotal = fromCents(discountTotalCents);
 
         if (promoCode && activePromotion && discountTotal <= 0) {
             return res.status(400).json({
@@ -157,11 +222,13 @@ export const createTenantOrder = async (req, res, next) => {
         const order = {
             id: orderId,
             ticketCode,
+            customerName: customerName || "Cliente",
             status: "in_preparation",
             fulfillmentType,
             tableId: fulfillmentType === "dine_in" ? tableId : null,
+            paymentMethod: paymentMethod || "cash",
             subtotal: money(subtotal),
-            discountTotal: money(discountTotal), 
+            discountTotal: money(discountTotal),
             promotionId: activePromotion ? activePromotion.id : null,
             total: money(total),
             cashierUserId: req.user.id,
@@ -169,7 +236,7 @@ export const createTenantOrder = async (req, res, next) => {
         };
 
         await req.tenantDb.insert(orders).values(order);
-        
+
         await req.tenantDb.insert(orderItems).values(saleItems.map((item) => ({
             id: randomUUID(),
             orderId,
@@ -180,7 +247,7 @@ export const createTenantOrder = async (req, res, next) => {
             quantity: item.quantity,
             lineTotal: money(item.lineNetTotal),
         })));
-        
+
         await deductInventoryForOrder(req.tenantDb, orderId, saleItems);
 
         res.status(201).json({
@@ -188,10 +255,12 @@ export const createTenantOrder = async (req, res, next) => {
             message: "Pedido generado correctamente.",
             ticket: {
                 code: ticketCode,
+                customerName: order.customerName,
                 status: order.status,
                 fulfillmentType: order.fulfillmentType,
                 tableId: order.tableId,
                 cashierName: order.cashierName,
+                paymentMethod: order.paymentMethod,
                 createdAt: new Date().toISOString(),
                 items: saleItems.map((item) => ({
                     type: item.itemType,
@@ -204,7 +273,7 @@ export const createTenantOrder = async (req, res, next) => {
                 subtotal: order.subtotal,
                 discountTotal: order.discountTotal,
                 total: order.total,
-                promotionApplied: activePromotion ? activePromotion.name : null
+                promotionApplied: activePromotion ? activePromotion.name : null,
             },
         });
     } catch (error) {
@@ -239,6 +308,8 @@ export const listTenantOrders = async (req, res, next) => {
                 fulfillmentType: order.fulfillmentType,
                 tableId: order.tableId,
                 tableName: row.tableName,
+                customerName: order.customerName,
+                paymentMethod: order.paymentMethod,
                 subtotal: order.subtotal,
                 total: order.total,
                 cashierUserId: order.cashierUserId,
@@ -293,6 +364,7 @@ export const listKitchenOrders = async (req, res, next) => {
                 fulfillmentType: order.fulfillmentType,
                 tableId: order.tableId,
                 tableName: row.tableName,
+                customerName: order.customerName,
                 cashierName: order.cashierName,
                 createdAt: order.updatedAt?.toISOString() || order.createdAt?.toISOString(),
                 updatedAt: order.updatedAt?.toISOString(),
@@ -383,6 +455,7 @@ export const listDispatchOrders = async (req, res, next) => {
                 fulfillmentType: order.fulfillmentType,
                 tableId: order.tableId,
                 tableName: row.tableName,
+                customerName: order.customerName,
                 cashierName: order.cashierName,
                 createdAt: order.updatedAt?.toISOString() || order.createdAt?.toISOString(),
                 updatedAt: order.updatedAt?.toISOString(),
