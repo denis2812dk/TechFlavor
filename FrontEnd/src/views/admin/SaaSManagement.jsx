@@ -1,21 +1,27 @@
 import { useEffect, useState } from "react";
-import { getPendingRequests, approveRequest, rejectRequest } from "../../lib/saas";
+import { getPendingRequests, approveRequest, rejectRequest, getSaaSStatistics } from "../../lib/saas";
 import "../shared/shared.css";
 
 export const SaaSManagement = () => {
   const [requests, setRequests] = useState([]);
+  const [stats, setStats] = useState({ totalRestaurants: 0, activeRestaurants: 0, pendingApprovals: 0 });
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState("");
   
   // Estados para acciones
   const [processingId, setProcessingId] = useState(null);
-  const [credentials, setCredentials] = useState(null); // Almacena credenciales al aprobar
+  const [credentials, setCredentials] = useState(null);
 
-  const loadRequests = async () => {
+  const loadData = async () => {
     try {
       setIsLoading(true);
-      const data = await getPendingRequests();
-      setRequests(data.requests || []);
+      const [statsData, requestsData] = await Promise.all([
+        getSaaSStatistics(),
+        getPendingRequests()
+      ]);
+      setStats(statsData.stats);
+      setRequests(requestsData.requests || []);
+      setError("");
     } catch (err) {
       setError(err.message);
     } finally {
@@ -26,11 +32,15 @@ export const SaaSManagement = () => {
   useEffect(() => {
     let isMounted = true;
 
-    const fetchInitialRequests = async () => {
+    const fetchInitialData = async () => {
       try {
-        const data = await getPendingRequests();
+        const [statsData, requestsData] = await Promise.all([
+          getSaaSStatistics(),
+          getPendingRequests()
+        ]);
         if (!isMounted) return;
-        setRequests(data.requests || []);
+        setStats(statsData.stats);
+        setRequests(requestsData.requests || []);
       } catch (err) {
         if (isMounted) setError(err.message);
       } finally {
@@ -38,7 +48,7 @@ export const SaaSManagement = () => {
       }
     };
 
-    fetchInitialRequests();
+    fetchInitialData();
 
     return () => {
       isMounted = false;
@@ -52,9 +62,8 @@ export const SaaSManagement = () => {
     setError("");
     try {
       const response = await approveRequest(request.id);
-      // Guardamos las credenciales generadas para mostrarlas en un modal/alerta
       setCredentials(response.data.credentials);
-      await loadRequests();
+      await loadData();
     } catch (err) {
       setError(err.message);
     } finally {
@@ -64,13 +73,13 @@ export const SaaSManagement = () => {
 
   const handleReject = async (request) => {
     const reason = window.prompt(`Ingresa el motivo de rechazo para ${request.restaurantName} (Opcional):`);
-    if (reason === null) return; // Si el admin le da cancelar al prompt
+    if (reason === null) return;
 
     setProcessingId(request.id);
     setError("");
     try {
       await rejectRequest(request.id, reason);
-      await loadRequests();
+      await loadData();
     } catch (err) {
       setError(err.message);
     } finally {
@@ -80,11 +89,11 @@ export const SaaSManagement = () => {
 
   const closeCredentials = () => setCredentials(null);
 
-  if (isLoading && requests.length === 0) {
+  if (isLoading && requests.length === 0 && stats.totalRestaurants === 0) {
     return (
       <div className="users-console">
         <div className="content-placeholder">
-          <h2>Cargando base de datos central...</h2>
+          <h2>Cargando métricas y solicitudes...</h2>
         </div>
       </div>
     );
@@ -95,17 +104,35 @@ export const SaaSManagement = () => {
       <div className="users-console-head">
         <div>
           <p className="users-breadcrumb">Super Admin</p>
-          <h2>Solicitudes de Suscripción</h2>
-          <p>Revisa y aprueba a los nuevos restaurantes que desean usar TechFlavor.</p>
+          <h2>Dashboard Central</h2>
+          <p>Métricas de la plataforma y revisión de nuevas suscripciones a TechFlavor.</p>
         </div>
-        <div className="users-inline-stats">
-          <span>{requests.length} Solicitudes pendientes</span>
+        <div className="users-inline-stats" style={{ display: "flex", gap: "12px", alignItems: "center" }}>
+          <button type="button" className="users-primary-action users-secondary-action" onClick={loadData} style={{ height: "36px", padding: "0 16px" }}>
+            Actualizar Datos
+          </button>
         </div>
       </div>
 
       {error && <div className="admin-users-error">{error}</div>}
 
-      {/* MODAL / ALERTA DE CREDENCIALES (Aparece tras aprobar) */}
+      {/* --- NUEVA SECCIÓN DE ESTADÍSTICAS --- */}
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: "16px", marginBottom: "32px", marginTop: "16px" }}>
+        <div style={{ background: "#fff", padding: "20px", borderRadius: "12px", border: "1px solid #e2e8f0", textAlign: "center", boxShadow: "0 1px 2px rgba(0,0,0,0.05)" }}>
+          <p style={{ margin: 0, color: "#64748b", fontSize: "12px", fontWeight: "bold", textTransform: "uppercase", letterSpacing: "0.5px" }}>Clientes Registrados</p>
+          <h3 style={{ margin: "8px 0 0", fontSize: "36px", color: "#0f172a", fontWeight: "900" }}>{stats.totalRestaurants}</h3>
+        </div>
+        <div style={{ background: "#fff", padding: "20px", borderRadius: "12px", border: "1px solid #e2e8f0", textAlign: "center", boxShadow: "0 1px 2px rgba(0,0,0,0.05)" }}>
+          <p style={{ margin: 0, color: "#16a34a", fontSize: "12px", fontWeight: "bold", textTransform: "uppercase", letterSpacing: "0.5px" }}>Operando Activos</p>
+          <h3 style={{ margin: "8px 0 0", fontSize: "36px", color: "#15803d", fontWeight: "900" }}>{stats.activeRestaurants}</h3>
+        </div>
+        <div style={{ background: "#fff", padding: "20px", borderRadius: "12px", border: "1px solid #e2e8f0", textAlign: "center", boxShadow: "0 1px 2px rgba(0,0,0,0.05)" }}>
+          <p style={{ margin: 0, color: "#d97706", fontSize: "12px", fontWeight: "bold", textTransform: "uppercase", letterSpacing: "0.5px" }}>Pendientes de Aprobar</p>
+          <h3 style={{ margin: "8px 0 0", fontSize: "36px", color: "#b45309", fontWeight: "900" }}>{stats.pendingApprovals}</h3>
+        </div>
+      </div>
+
+      {/* MODAL DE CREDENCIALES */}
       {credentials && (
         <div className="admin-users-panel mb-4 position-relative">
           <h4 className="fw-bold mb-3" style={{ color: "oklch(0.45 0.14 145)" }}>¡Restaurante Aprovisionado con Éxito!</h4>
@@ -122,6 +149,7 @@ export const SaaSManagement = () => {
       )}
 
       {/* TABLA DE SOLICITUDES */}
+      <h3 style={{ fontSize: "18px", marginBottom: "16px", color: "#0f172a" }}>Solicitudes de Inquilinos en Espera</h3>
       <div className="users-management-shell">
         <div className="users-table-wrap">
           <div className="users-table-scroll">

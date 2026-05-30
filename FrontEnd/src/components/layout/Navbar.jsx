@@ -1,8 +1,9 @@
-export const Navbar = ({ title, description, userName, userRole, initials, onLogout, onNavigate, settings }) => {
+export const Navbar = ({ title, description, userName, userRole, initials, onLogout, onNavigate, settings, currentPath }) => {
 
   const accentColor = settings?.primaryColor || settings?.primary_color || "#E89B8F";
   const restaurantDisplayName = settings?.restaurantName || settings?.restaurant_name || "TechFlavor";
   const mutedColor = "#6B5D56";
+  const hideSearch = currentPath === "/admin/saas";
 
   return (
     <header className="top-header">
@@ -21,12 +22,14 @@ export const Navbar = ({ title, description, userName, userRole, initials, onLog
       </div>
 
       <div className="top-header-right">
-        <label className="search-wrap" aria-label="Buscar en el dashboard">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-            <path d="m21 21-4.35-4.35M10.8 18a7.2 7.2 0 1 0 0-14.4 7.2 7.2 0 0 0 0 14.4Z" stroke={mutedColor} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
-          </svg>
-          <input className="search-input" type="search" placeholder="Buscar ordenes, mesas o clientes" />
-        </label>
+        {!hideSearch ? (
+          <label className="search-wrap" aria-label="Buscar en el dashboard">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+              <path d="m21 21-4.35-4.35M10.8 18a7.2 7.2 0 1 0 0-14.4 7.2 7.2 0 0 0 0 14.4Z" stroke={mutedColor} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+            <input className="search-input" type="search" placeholder="Buscar ordenes, mesas o clientes" />
+          </label>
+        ) : null}
 
         <button type="button" className="icon-button" aria-label="Notificaciones">
           <span className="notification-dot" />

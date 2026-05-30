@@ -51,6 +51,7 @@ export const RoleDashboard = ({ title, description, session, settings, onLogout,
               userName={userName}
               userRole={userRole}
               initials={initials}
+              currentPath={currentPath}
               onLogout={handleLogout}
               onNavigate={onNavigate}
               settings={settings}

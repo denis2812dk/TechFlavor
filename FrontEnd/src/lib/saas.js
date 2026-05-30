@@ -42,3 +42,21 @@ export const getRegisteredRestaurants = async () => {
   if (!response.ok) throw new Error(getErrorMessage(data));
   return data;
 };
+export const getSaaSStatistics = async () => {
+  const response = await fetch(`${API_URL}/api/saas/statistics`, {
+    credentials: "include",
+  });
+  const data = await parseJson(response);
+  if (!response.ok) throw new Error(getErrorMessage(data));
+  return data;
+};
+
+export const toggleRestaurantStatus = async (restaurantId) => {
+  const response = await fetch(`${API_URL}/api/saas/restaurants/${restaurantId}/toggle-status`, {
+    method: "PATCH",
+    credentials: "include",
+  });
+  const data = await parseJson(response);
+  if (!response.ok) throw new Error(getErrorMessage(data));
+  return data;
+};
