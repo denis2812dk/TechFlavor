@@ -11,14 +11,29 @@ export const ensureTenantIncidencesCompatibility = async (tenantDb) => {
 
 export const ensureTenantSettingsCompatibility = async (tenantDb, restaurantName) => {
     try {
-        await tenantDb.execute(sql`
-            ALTER TABLE restaurant_settings
-                ADD COLUMN IF NOT EXISTS logo_url text DEFAULT NULL
+        // Check if logo_url column exists
+        const [columns] = await tenantDb.execute(sql`
+            SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS
+            WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'restaurant_settings' AND COLUMN_NAME = 'logo_url';
         `);
-    } catch (e) {
-        // Ignorar si el motor no soporta IF NOT EXISTS o si la columna ya existe
-    }
 
+        if (columns.length > 0) {
+            // If logo_url exists, rename it to logo_base64
+            await tenantDb.execute(sql`
+                ALTER TABLE restaurant_settings RENAME COLUMN logo_url TO logo_base64;
+            `);
+            console.log("DEBUG: [tenantProvisioningService] Renamed 'logo_url' to 'logo_base64'.");
+        } else {
+            // If logo_url does not exist, ensure logo_base64 exists
+            await tenantDb.execute(sql`
+                ALTER TABLE restaurant_settings
+                    ADD COLUMN IF NOT EXISTS logo_base64 text DEFAULT NULL
+            `);
+            console.log("DEBUG: [tenantProvisioningService] Ensured 'logo_base64' column exists.");
+        }
+    } catch (e) {
+        console.error("ERROR: [tenantProvisioningService] Fallo en ensureTenantSettingsCompatibility:", e);
+    }
     const [rows] = await tenantDb.execute(sql`SELECT count(*) as count FROM restaurant_settings`);
     if (rows[0].count === 0) {
         await tenantDb.execute(sql`
@@ -35,7 +50,7 @@ export const initializeTenantDatabase = async (tenantDb) => {
             CREATE TABLE IF NOT EXISTS restaurant_settings (
                 id varchar(36) PRIMARY KEY,
                 restaurant_name varchar(120) NOT NULL,
-                logo_url text,
+                logo_base64 text,
                 currency varchar(10) NOT NULL DEFAULT 'USD',
                 timezone varchar(80) NOT NULL DEFAULT 'America/El_Salvador',
                 tax_rate decimal(5,2) NOT NULL DEFAULT 0.00,

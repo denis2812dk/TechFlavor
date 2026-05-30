@@ -2,6 +2,8 @@ import dotenv from "dotenv";
 import { execSync } from "child_process";
 import { db } from "../src/config/db.js";
 import { restaurants } from "../src/models/schema.js";
+import { getTenantDb } from "../src/config/tenantDb.js";
+import { ensureTenantSettingsCompatibility } from "../src/services/tenantProvisioningService.js";
 
 dotenv.config();
 
@@ -32,6 +34,11 @@ async function runUpdate() {
                 });
 
                 console.log(` ✅ Esquema sincronizado con éxito en ${restaurant.databaseName}.`);
+                
+                // 3. Ejecutar funciones de compatibilidad específicas para el tenant
+                const tenantDb = getTenantDb(restaurant.databaseName);
+                await ensureTenantSettingsCompatibility(tenantDb, restaurant.name);
+                console.log(` ✅ Funciones de compatibilidad ejecutadas para ${restaurant.databaseName}.`);
             } catch (err) {
                 console.error(` ❌ Error en ${restaurant.databaseName}:`);
                 if (err.stdout) console.error(err.stdout.toString());
