@@ -18,7 +18,8 @@ import {
     updateIngredient,
     registerShrinkage,
     listIngredients,
-    getCatalogStatus
+    getCatalogStatus,
+    listInventoryMovements
 } from "../controllers/tenantInventoryController.js";
 import { createTenantPromotion, listActivePromotions, listAllPromotions, deleteTenantPromotion, updateTenantPromotion,  } from "../controllers/tenantPromotionController.js";
 import { ROLES } from "../constants/roles.js";
@@ -73,6 +74,7 @@ router.patch("/inventory/ingredients/:ingredientId", tenantContext, writeLimiter
 router.delete("/inventory/ingredients/:ingredientId", tenantContext, writeLimiter, requireTenantRoles(ROLES.GERENTE), deleteIngredient);
 router.post("/inventory/shrinkage", tenantContext, writeLimiter, requireTenantRoles(ROLES.GERENTE), validateSchema(createShrinkageSchema),registerShrinkage);
 router.get("/inventory/catalog-status", tenantContext, readLimiter, requireTenantRoles(ROLES.GERENTE, ROLES.CAJERO), getCatalogStatus);
+router.get("/inventory/movements", tenantContext, readLimiter, requireTenantRoles(ROLES.GERENTE), listInventoryMovements);
 //Rutas de promociones
 router.post("/promotions", tenantContext, writeLimiter, requireTenantRoles(ROLES.GERENTE), validateSchema(createPromotionSchema), createTenantPromotion);
 router.get( "/promotions/active", tenantContext, readLimiter, requireTenantRoles(ROLES.GERENTE, ROLES.CAJERO), listActivePromotions);

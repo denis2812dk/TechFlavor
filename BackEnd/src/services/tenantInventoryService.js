@@ -1,5 +1,5 @@
 import { randomUUID } from "crypto";
-import { and, asc, eq, inArray, ne, sql } from "drizzle-orm";
+import { and, asc, desc, eq, inArray, ne, sql } from "drizzle-orm";
 import {
     ingredients,
     inventory,
@@ -233,6 +233,33 @@ export const createShrinkageRecord = async (tenantDb, { ingredientId, quantity, 
     });
 
     return movementId;
+};
+
+export const getInventoryMovements = async (tenantDb, { type = null, limit = 25 } = {}) => {
+    let query = tenantDb
+        .select({
+            id: inventoryMovements.id,
+            type: inventoryMovements.type,
+            quantity: inventoryMovements.quantity,
+            reason: inventoryMovements.reason,
+            ingredientId: inventoryMovements.ingredientId,
+            ingredientName: ingredients.name,
+            unitOfMeasure: ingredients.unitOfMeasure,
+            date: inventoryMovements.date,
+        })
+        .from(inventoryMovements)
+        .innerJoin(ingredients, eq(ingredients.id, inventoryMovements.ingredientId));
+
+    if (type) {
+        query = query.where(eq(inventoryMovements.type, type));
+    }
+
+    const movements = await query.orderBy(desc(inventoryMovements.date)).limit(limit);
+
+    return movements.map((movement) => ({
+        ...movement,
+        date: movement.date?.toISOString?.() || movement.date,
+    }));
 };
 
 export const createIngredient = async (tenantDb, { name, unitOfMeasure, currentStock }) => {

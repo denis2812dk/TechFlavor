@@ -4,6 +4,7 @@ import {
   deleteIngredient,
   getErrorMessage,
   listIngredients,
+  listInventoryMovements,
   registerShrinkage,
   updateIngredient,
 } from "../../lib/auth";
@@ -34,6 +35,7 @@ const UNIT_OPTIONS = [
 
 export const InventoryManagement = () => {
   const [ingredients, setIngredients] = useState([]);
+  const [movements, setMovements] = useState([]);
   const [shrinkageForm, setShrinkageForm] = useState(emptyShrinkage);
   const [ingredientForm, setIngredientForm] = useState(emptyIngredient);
   const [editingIngredientId, setEditingIngredientId] = useState("");
@@ -44,8 +46,12 @@ export const InventoryManagement = () => {
 
   const loadIngredients = async () => {
     try {
-      const data = await listIngredients();
-      setIngredients(data.ingredients || []);
+      const [ingredientsData, movementsData] = await Promise.all([
+        listIngredients(),
+        listInventoryMovements({ type: "MERMA", limit: 10 }),
+      ]);
+      setIngredients(ingredientsData.ingredients || []);
+      setMovements(movementsData.movements || []);
       setError("");
     } catch (requestError) {
       setError(getErrorMessage(requestError));
@@ -66,6 +72,10 @@ export const InventoryManagement = () => {
   const lowStockCount = useMemo(() => (
     ingredients.filter((ingredient) => Number(ingredient.currentStock || 0) <= 0).length
   ), [ingredients]);
+
+  const totalShrinkage = useMemo(() => (
+    movements.reduce((sum, movement) => sum + Number(movement.quantity || 0), 0)
+  ), [movements]);
 
   const clearMessages = () => {
     setError("");
@@ -182,7 +192,7 @@ export const InventoryManagement = () => {
         </article>
         <article>
           <span>Modulo</span>
-          <strong>Merma</strong>
+          <strong>{movements.length > 0 ? `Merma (${movements.length})` : "Merma"}</strong>
         </article>
       </section>
 
@@ -293,6 +303,34 @@ export const InventoryManagement = () => {
             {status ? <p className="admin-users-success">{status}</p> : null}
             {error ? <p className="admin-users-error">{error}</p> : null}
           </form>
+
+          <section className="inventory-form" style={{ gap: "12px" }}>
+            <div>
+              <p className="admin-users-kicker">Movimientos recientes</p>
+              <h3>Merma registrada</h3>
+              <p>Se muestran los movimientos tipo MERMA guardados en la base de datos.</p>
+            </div>
+
+            <div style={{ display: "flex", justifyContent: "space-between", gap: "12px", padding: "12px 16px", borderRadius: "12px", background: "#f8fafc", border: "1px solid #e2e8f0" }}>
+              <span>Total merma reciente</span>
+              <strong>{totalShrinkage.toFixed(2)}</strong>
+            </div>
+
+            <div style={{ display: "grid", gap: "10px", maxHeight: "240px", overflowY: "auto" }}>
+              {movements.length > 0 ? movements.map((movement) => (
+                <article key={movement.id} style={{ padding: "12px 14px", border: "1px solid #e5e7eb", borderRadius: "12px", background: "#fff" }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", gap: "12px" }}>
+                    <strong>{movement.ingredientName}</strong>
+                    <span className="inventory-pill is-empty">{movement.type}</span>
+                  </div>
+                  <p style={{ margin: "6px 0 0" }}>{Number(movement.quantity || 0).toFixed(2)} {movement.unitOfMeasure}</p>
+                  <small style={{ color: "#64748b" }}>{movement.reason || "Sin motivo"}</small>
+                </article>
+              )) : (
+                <p style={{ color: "#64748b", margin: 0 }}>No hay movimientos de merma registrados.</p>
+              )}
+            </div>
+          </section>
         </div>
 
         <section className="inventory-table-card">

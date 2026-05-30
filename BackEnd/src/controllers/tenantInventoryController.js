@@ -151,6 +151,22 @@ export const listIngredients = async (req, res, next) => {
     }
 };
 
+export const listInventoryMovements = async (req, res, next) => {
+    try {
+        const movements = await inventoryService.getInventoryMovements(req.tenantDb, {
+            type: req.query.type || "MERMA",
+            limit: Number(req.query.limit) > 0 ? Number(req.query.limit) : 25,
+        });
+
+        res.json({
+            success: true,
+            movements,
+        });
+    } catch (error) {
+        next(error);
+    }
+};
+
 export const getCatalogStatus = async (req, res, next) => {
     try {
         const status = await inventoryService.getCatalogStockStatus(req.tenantDb);

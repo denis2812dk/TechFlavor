@@ -363,6 +363,24 @@ export const registerShrinkage = async (payload) => {
   return data;
 };
 
+export const listInventoryMovements = async ({ type = "MERMA", limit = 25 } = {}) => {
+  const params = new URLSearchParams();
+  if (type) params.set("type", type);
+  if (limit) params.set("limit", String(limit));
+
+  const response = await fetch(`${API_URL}/api/tenant/inventory/movements?${params.toString()}`, {
+    credentials: "include",
+  });
+
+  const data = await parseJson(response);
+
+  if (!response.ok) {
+    throw new Error(getErrorMessage(data));
+  }
+
+  return data;
+};
+
 export const updateTenantUser = async (userId, payload) => {
   const response = await fetch(`${API_URL}/api/tenant/users/${userId}`, {
     method: "PATCH",
