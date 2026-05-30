@@ -202,3 +202,13 @@ export const createSaasPlan = async (data) => {
 
     return planId;
 };
+export const getPublicSaasPlans = async () => {
+    return await db.select({
+        name: saasPlans.name,
+        code: saasPlans.code,
+        price: saasPlans.price,
+        maxTables: saasPlans.maxTables
+    })
+    .from(saasPlans)
+    .where(eq(saasPlans.isActive, true));
+};

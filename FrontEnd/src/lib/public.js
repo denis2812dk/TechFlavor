@@ -21,3 +21,14 @@ export const submitRestaurantRequest = async (payload) => {
 
   return data;
 };
+
+export const getActivePlans = async () => {
+  const response = await fetch(`${API_URL}/api/public/plans`);
+  const data = await parseJson(response);
+
+  if (!response.ok) {
+    throw new Error(getErrorMessage(data) || "Error al cargar los planes activos.");
+  }
+
+  return data;
+};

@@ -2,6 +2,7 @@ const adminItems = [
   { label: "Dashboard", path: "/admin", icon: "dashboard" },
   { label: "Restaurantes", path: "/admin/restaurants", icon: "users" },
   { label: "Solicitudes SaaS", path: "/admin/saas", icon: "orders" },
+  { label: "Planes SaaS", path: "/admin/plans", icon: "settings" },
 ];
 
 const iconMap = {
@@ -13,6 +14,9 @@ const iconMap = {
   ),
   users: (
     <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2m12-10a4 4 0 1 1-8 0 4 4 0 0 1 8 0Z" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+  ),
+  settings: (
+    <path d="M12 8.5a3.5 3.5 0 1 0 0 7 3.5 3.5 0 0 0 0-7Zm8.5 3.5-.9-.5c-.3-.2-.4-.6-.3-.9l.5-1.1-1.8-1.8-1.1.5c-.3.2-.7.1-.9-.2l-.5-.9h-2.5l-.5.9c-.2.3-.6.4-.9.2l-1.1-.5-1.8 1.8.5 1.1c.1.3 0 .7-.3.9l-.9.5v2.5l.9.5c.3.2.4.6.3.9l-.5 1.1 1.8 1.8 1.1-.5c.3-.2.7-.1.9.2l.5.9h2.5l.5-.9c.2-.3.6-.4.9-.2l1.1.5 1.8-1.8-.5-1.1c-.1-.3 0-.7.3-.9l.9-.5v-2.5Z" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
   ),
   profile: (
     <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2M12 3a4 4 0 1 0 0 8 4 4 0 0 0 0-8z" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />

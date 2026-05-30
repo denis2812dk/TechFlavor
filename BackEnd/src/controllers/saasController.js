@@ -1,5 +1,5 @@
 import * as saasService from "../services/saasService.js";
-
+import { db } from "../config/db.js";
 export const approveSubscription = async (req, res, next) => {
     try {
         const { requestId } = req.params;
@@ -125,6 +125,18 @@ export const createNewPlan = async (req, res, next) => {
         if (error.code === 'ER_DUP_ENTRY') {
             return res.status(400).json({ success: false, message: "Ya existe un plan con ese código identificador." });
         }
+        next(error);
+    }
+};
+export const listPublicSaasPlans = async (req, res, next) => {
+    try {
+        const activePlans = await saasService.getPublicSaasPlans();
+        
+        res.json({ 
+            success: true, 
+            plans: activePlans 
+        });
+    } catch (error) {
         next(error);
     }
 };

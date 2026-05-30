@@ -60,3 +60,29 @@ export const toggleRestaurantStatus = async (restaurantId) => {
   if (!response.ok) throw new Error(getErrorMessage(data));
   return data;
 };
+export const getSaasPlans = async () => {
+  const response = await fetch(`${API_URL}/api/saas/plans`, {
+    credentials: "include",
+  });
+  const data = await parseJson(response);
+  if (!response.ok) throw new Error(getErrorMessage(data));
+  return data;
+};
+
+export const createSaasPlan = async (payload) => {
+  const response = await fetch(`${API_URL}/api/saas/plans`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    credentials: "include",
+    body: JSON.stringify(payload),
+  });
+  const data = await parseJson(response);
+  if (!response.ok) throw new Error(getErrorMessage(data));
+  return data;
+};
+export const getActivePlans = async () => {
+  const response = await fetch(`${API_URL}/api/public/plans`);
+  const data = await response.json();
+  if (!response.ok) throw new Error(data.message || "Error al cargar los planes");
+  return data;
+};

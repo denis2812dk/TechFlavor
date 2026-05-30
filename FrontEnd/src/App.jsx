@@ -18,6 +18,7 @@ import { OrdersList } from "./views/orders/OrdersList";
 import Login from "./views/shared/Login.jsx";
 import { RoleDashboard } from "./views/shared/RoleDashboard";
 import { SaaSManagement } from "./views/admin/SaaSManagement";
+import { SaasPlans } from "./views/admin/SaasPlans";
 import { SaaSRestaurants } from "./views/admin/SaaSRestaurants";
 import { ProfileEdit } from "./views/shared/ProfileEdit";
 import { OperationalOverview } from "./views/shared/OperationalOverview";
@@ -40,6 +41,11 @@ const ROUTES = {
     roles: [ROLES.ADMIN],
     title: "Solicitudes SaaS",
     description: "Aprobación y rechazo de nuevos restaurantes.",
+  },
+  "/admin/plans": {
+    roles: [ROLES.ADMIN],
+    title: "Planes SaaS",
+    description: "Creación y gestión de los planes de suscripción.",
   },
   "/admin/restaurants": {
     roles: [ROLES.ADMIN],
@@ -363,6 +369,7 @@ function App() {
           </div>
         ) : null}
         {path === "/admin/saas" ? <SaaSManagement /> : null}
+        {path === "/admin/plans" ? <SaasPlans /> : null}
         {path === "/admin/restaurants" ? <SaaSRestaurants /> : null}
 
         {/* VISTAS COMPARTIDAS */}

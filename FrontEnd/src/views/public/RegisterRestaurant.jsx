@@ -1,12 +1,12 @@
-import { useState } from "react";
-import { submitRestaurantRequest } from "../../lib/public";
+import { useEffect, useState } from "react";
+import { getActivePlans, submitRestaurantRequest } from "../../lib/public";
 
 const initialForm = {
   restaurantName: "",
   ownerName: "",
   email: "",
   phone: "",
-  planRequested: "pro",
+  planRequested: "",
   notes: ""
 };
 
@@ -20,13 +20,58 @@ export const RegisterRestaurant = ({ onNavigate }) => {
   const [form, setForm] = useState(initialForm);
   const [status, setStatus] = useState("idle"); 
   const [errorMessage, setErrorMessage] = useState("");
+  const [availablePlans, setAvailablePlans] = useState([]);
+  const [isLoadingPlans, setIsLoadingPlans] = useState(true);
+
+  useEffect(() => {
+    let isMounted = true;
+
+    const fetchPlans = async () => {
+      try {
+        const data = await getActivePlans();
+        if (!isMounted) return;
+
+        const plans = data.plans || [];
+        setAvailablePlans(plans);
+
+        if (plans.length > 0) {
+          setForm((previousForm) => ({
+            ...previousForm,
+            planRequested: previousForm.planRequested || plans[0].code,
+          }));
+        } else {
+          setForm((previousForm) => ({
+            ...previousForm,
+            planRequested: previousForm.planRequested || "custom",
+          }));
+        }
+      } catch (error) {
+        console.error("Error al cargar los planes:", error);
+        if (isMounted) {
+          setAvailablePlans([]);
+          setForm((previousForm) => ({
+            ...previousForm,
+            planRequested: previousForm.planRequested || "custom",
+          }));
+        }
+      } finally {
+        if (isMounted) setIsLoadingPlans(false);
+      }
+    };
+
+    fetchPlans();
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
-    setForm({
-      ...form,
+    setForm((previousForm) => ({
+      ...previousForm,
       [name]: name === "phone" ? formatPhone(value) : value,
-    });
+    }));
   };
 
   const handleSubmit = async (e) => {
@@ -134,10 +179,27 @@ export const RegisterRestaurant = ({ onNavigate }) => {
             </div>
 
             <div className="col-12">
-              <label htmlFor="planRequested" className="form-label fw-semibold text-secondary small">Plan de Interés</label>
-              <select className="form-select form-select-lg fs-6" id="planRequested" name="planRequested" value={form.planRequested} onChange={handleChange}>
-                <option value="starter">Starter (Ideal para negocios pequeños)</option>
-                <option value="pro">Pro (Ideal para franquicias o sucursales)</option>
+              <label htmlFor="planRequested" className="form-label fw-semibold text-secondary small">Plan de Interés *</label>
+              <select
+                className="form-select form-select-lg fs-6"
+                id="planRequested"
+                name="planRequested"
+                value={form.planRequested}
+                onChange={handleChange}
+                required
+                disabled={isLoadingPlans}
+              >
+                {isLoadingPlans ? (
+                  <option value="">Cargando planes...</option>
+                ) : availablePlans.length === 0 ? (
+                  <option value="custom">Plan a medida</option>
+                ) : (
+                  availablePlans.map((plan) => (
+                    <option key={plan.code} value={plan.code}>
+                      {plan.name} - ${Number(plan.price).toFixed(2)}/mes
+                    </option>
+                  ))
+                )}
               </select>
             </div>
 
