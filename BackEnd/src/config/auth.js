@@ -45,22 +45,47 @@ export const auth = betterAuth({
         enabled: true,
         sendResetPassword: async ({ user, url }) => {
             console.log(`Enviando reset a ${user.email} desde ${emailFrom}`);
-            await resend.emails.send({
-                from: emailFrom,
-                to: user.email,
-                subject: "Reset your password",
-                text: `Click the link to reset your password: ${url}`,
-            }).catch((err) => console.error("Failed to send reset password email:", err));
+            try {
+                const { data, error } = await resend.emails.send({
+                    from: emailFrom,
+                    to: user.email,
+                    subject: "Restablecer contraseña de TechFlavor",
+                    html: `
+                      <div style="font-family: Arial, sans-serif; color: #333; max-width: 500px;">
+                        <h2>Hola, ${user.name}</h2>
+                        <p>Recibimos una solicitud para restablecer tu contraseña. Si fuiste tú, haz clic en el botón de abajo para asignar una nueva:</p>
+                        <a href="${url}" style="display: inline-block; padding: 12px 20px; background-color: #ea580c; color: #fff; text-decoration: none; border-radius: 6px; font-weight: bold; margin-top: 10px;">
+                          Restablecer mi contraseña
+                        </a>
+                        <p style="margin-top: 20px; font-size: 13px; color: #666;">Si no solicitaste este cambio, puedes ignorar este correo de forma segura.</p>
+                      </div>
+                    `,
+                });
+
+                if (error) {
+                    console.error("❌ Error de Resend al enviar el correo:", error);
+                    return;
+                }
+                console.log("✅ Correo enviado con éxito por Resend. ID:", data?.id);
+            } catch (err) {
+                console.error("❌ Excepción inesperada ejecutando Resend:", err);
+            }
         },
     },
     emailVerification: {
         sendVerificationEmail: async ({ user, url }) => {
-            resend.emails.send({
-                from: emailFrom,
-                to: user.email,
-                subject: "Verify your email address",
-                text: `Click the link to verify your email: ${url}`,
-            }).catch((err) => console.error("Failed to send verification email:", err));
+            try {
+                const { data, error } = await resend.emails.send({
+                    from: emailFrom,
+                    to: user.email,
+                    subject: "Verify your email address",
+                    text: `Click the link to verify your email: ${url}`,
+                });
+                if (error) console.error("❌ Error de Resend verificando email:", error);
+                else console.log("✅ Correo de verificación enviado. ID:", data?.id);
+            } catch (err) {
+                console.error("❌ Excepción inesperada ejecutando Resend:", err);
+            }
         },
         sendOnSignUp: true,
     },

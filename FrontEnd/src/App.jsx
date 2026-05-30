@@ -26,6 +26,7 @@ import { PurchaseOrdersManagement } from "./views/manager/PurchaseOrdersManageme
 import { ShiftHistory } from "./views/manager/ShiftHistory";
 import { CashierShift } from "./views/cashier/CashierShift";
 import { CashierOrders } from "./views/cashier/CashierOrders";
+import { ResetPassword } from "./views/shared/ResetPassword";
 const ROUTES = {
   // ==========================================
   // RUTAS DEL CEREBRO CENTRAL (SaaS)
@@ -291,6 +292,11 @@ function App() {
   if (path === "/register") {
     if (session?.user) return null; // El useEffect lo redirigirá
     return <RegisterRestaurant onNavigate={navigate} />;
+  }
+
+  if (path === "/reset-password") {
+    if (session?.user) return null;
+    return <ResetPassword onNavigate={navigate} />;
   }
 
   if (path === "/" || path === "/login") {

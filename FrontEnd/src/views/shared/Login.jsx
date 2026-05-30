@@ -45,13 +45,34 @@ export default function Login({ onLogin, onRegister }) {
     }
   };
 
-  const handleReset = () => {
+  const handleReset = async () => {
     if (!email.trim()) {
       setError("Escribe tu correo para preparar la recuperación de acceso.");
       return;
     }
     setError("");
-    setToast("Recuperación de contraseña pendiente de conectar al backend.");
+    setLoading(true);
+
+    try {
+      const API_URL = import.meta.env.VITE_API_URL || "http://localhost:3000";
+      const res = await fetch(`${API_URL}/api/auth/request-password-reset`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ 
+          email: email.trim(),
+          redirectTo: `${window.location.origin}/reset-password`
+        }),
+      });
+      if (!res.ok) {
+        throw new Error("No pudimos procesar la solicitud. Verifica el correo e intenta nuevamente.");
+      }
+      setToast("Si el correo está registrado, recibirás un enlace de recuperación.");
+      setShowReset(false);
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
