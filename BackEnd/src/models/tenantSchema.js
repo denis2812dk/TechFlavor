@@ -183,6 +183,7 @@ export const orders = mysqlTable("orders", {
     id: varchar("id", { length: 36 }).primaryKey(),
     ticketCode: varchar("ticket_code", { length: 30 }).notNull().unique(),
     customerName: varchar("customer_name", { length: 120 }).notNull(),
+    isEdited: boolean("is_edited").notNull().default(false),
     status: varchar("status", { length: 30 }).notNull().default("open"), 
     fulfillmentType: varchar("fulfillment_type", { length: 30 }).notNull().default("takeaway"), 
     tableId: varchar("table_id", { length: 36 }).references(() => tables.id, { onDelete: "set null" }), 
