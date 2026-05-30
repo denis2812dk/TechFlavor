@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { getSalonStatus, createZone, createTable, updateTableStatus } from "../../lib/salon";
+import { getSalonStatus, createZone, createTable, updateTableStatus, editTable, editZone, updateZoneStatus } from "../../lib/salon";
 
 export const SalonManagement = () => {
   const [zones, setZones] = useState([]);
@@ -11,13 +11,23 @@ export const SalonManagement = () => {
   const [newTable, setNewTable] = useState({ zoneId: "", identifier: "", capacity: 4 });
   const [activeTab, setActiveTab] = useState("");
 
+  // Estado para edición
+  const [editingTable, setEditingTable] = useState(null);
+  const [editingZone, setEditingZone] = useState(null);
+
   const loadSalon = async () => {
     try {
       setIsLoading(true);
       const data = await getSalonStatus();
       setZones(data.salon || []);
-      if (data.salon && data.salon.length > 0 && !activeTab) {
-        setActiveTab(data.salon[0].id);
+      
+      const activeZones = (data.salon || []).filter(z => z.isActive);
+      
+      // Si la pestaña activa actual ya no existe o está inactiva, volvemos a la primera activa
+      if (activeZones.length > 0 && (!activeTab || !activeZones.find(z => z.id === activeTab))) {
+        setActiveTab(activeZones[0].id);
+      } else if (activeZones.length === 0) {
+        setActiveTab("");
       }
     } catch (err) {
       setError(err.message);
@@ -46,6 +56,45 @@ export const SalonManagement = () => {
     }
   };
 
+  const openEditZoneModal = (zone) => {
+    setEditingZone({ ...zone });
+  };
+
+  const handleEditZoneSubmit = async (e) => {
+    e.preventDefault();
+    if (!editingZone.name.trim()) return;
+    try {
+      await editZone(editingZone.id, editingZone.name);
+      setEditingZone(null);
+      await loadSalon();
+    } catch (err) {
+      setError(err.message);
+    }
+  };
+
+  const toggleModalZoneStatus = async () => {
+    if (!window.confirm(`¿Estás seguro de desactivar la zona "${editingZone.name}"? Esto también desactivará TODAS las mesas dentro de esta zona.`)) return;
+    
+    try {
+      await updateZoneStatus(editingZone.id, false);
+      setEditingZone(null);
+      await loadSalon();
+    } catch (err) {
+      setError(err.message);
+    }
+  };
+
+  const handleReactivateZone = async (zone) => {
+    if (!window.confirm(`¿Deseas reactivar la zona "${zone.name}"?`)) return;
+    
+    try {
+      await updateZoneStatus(zone.id, true);
+      await loadSalon();
+    } catch (err) {
+      setError(err.message);
+    }
+  };
+
   const handleCreateTable = async (e) => {
     e.preventDefault();
     if (!newTable.zoneId || !newTable.identifier.trim()) return;
@@ -59,12 +108,30 @@ export const SalonManagement = () => {
     }
   };
 
-  const toggleTableStatus = async (table) => {
-    const newStatus = table.status === "inactive" ? "available" : "inactive";
-    if (!window.confirm(`¿Cambiar estado de ${table.identifier} a ${newStatus === 'inactive' ? 'Inactiva' : 'Disponible'}?`)) return;
+  const openEditModal = (table) => {
+    setEditingTable({ ...table });
+  };
+
+  const handleEditSubmit = async (e) => {
+    e.preventDefault();
+    if (!editingTable.zoneId || !editingTable.identifier.trim()) return;
+    try {
+      await editTable(editingTable.id, editingTable.zoneId, editingTable.identifier, editingTable.capacity);
+      setEditingTable(null);
+      await loadSalon();
+      setActiveTab(editingTable.zoneId);
+    } catch (err) {
+      setError(err.message);
+    }
+  };
+
+  const toggleModalTableStatus = async () => {
+    const newStatus = editingTable.status === "inactive" ? "available" : "inactive";
+    if (!window.confirm(`¿Cambiar estado de ${editingTable.identifier} a ${newStatus === 'inactive' ? 'Inactiva' : 'Disponible'}?`)) return;
     
     try {
-      await updateTableStatus(table.id, newStatus);
+      await updateTableStatus(editingTable.id, newStatus);
+      setEditingTable(prev => ({ ...prev, status: newStatus }));
       await loadSalon();
     } catch (err) {
       setError(err.message);
@@ -75,7 +142,9 @@ export const SalonManagement = () => {
     return <p className="menu-loading" style={{ padding: "40px", textAlign: "center" }}>Cargando configuración del salón...</p>;
   }
 
-  const activeZoneData = zones.find(z => z.id === activeTab) || zones[0];
+  const activeZones = zones.filter(z => z.isActive);
+  const inactiveZones = zones.filter(z => !z.isActive);
+  const activeZoneData = activeZones.find(z => z.id === activeTab) || activeZones[0];
 
   return (
     <section className="users-console">
@@ -123,7 +192,7 @@ export const SalonManagement = () => {
               required
             >
               <option value="">Seleccionar...</option>
-              {zones.map(z => <option key={z.id} value={z.id}>{z.name}</option>)}
+              {activeZones.map(z => <option key={z.id} value={z.id}>{z.name}</option>)}
             </select>
           </label>
           <label>
@@ -147,33 +216,45 @@ export const SalonManagement = () => {
               required 
             />
           </label>
-          <button type="submit" disabled={zones.length === 0}>Crear mesa</button>
+          <button type="submit" disabled={activeZones.length === 0}>Crear mesa</button>
         </form>
       </div>
 
-      {/* Mapa del Salón (Tabs) */}
-      {zones.length > 0 ? (
+      {/* Zonas Activas */}
+      {activeZones.length > 0 ? (
         <div className="users-management-shell" style={{ padding: "24px" }}>
-          <div className="users-tabs" style={{ marginBottom: "24px", overflowX: "auto", paddingBottom: "8px" }}>
-            {zones.map((zone) => (
-              <span 
-                key={zone.id}
-                className={activeTab === zone.id ? "is-active" : ""}
-                onClick={() => setActiveTab(zone.id)}
-                style={{ cursor: "pointer", whiteSpace: "nowrap" }}
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "24px" }}>
+            <div className="users-tabs" style={{ overflowX: "auto", paddingBottom: "8px", flex: 1 }}>
+              {activeZones.map((zone) => (
+                <span 
+                  key={zone.id}
+                  className={activeTab === zone.id ? "is-active" : ""}
+                  onClick={() => setActiveTab(zone.id)}
+                  style={{ cursor: "pointer", whiteSpace: "nowrap" }}
+                >
+                  {zone.name}
+                  <strong style={{ 
+                    background: activeTab === zone.id ? "rgba(0,0,0,0.06)" : "rgba(0,0,0,0.04)", 
+                    padding: "2px 8px", 
+                    borderRadius: "12px", 
+                    fontSize: "11px",
+                    marginLeft: "4px" 
+                  }}>
+                    {zone.tables?.length || 0}
+                  </strong>
+                </span>
+              ))}
+            </div>
+            {activeZoneData && (
+              <button 
+                type="button"
+                onClick={() => openEditZoneModal(activeZoneData)}
+                className="users-secondary-action"
+                style={{ padding: "0 16px", borderRadius: "10px", marginLeft: "16px", flexShrink: 0, height: "38px", cursor: "pointer", fontWeight: "600" }}
               >
-                {zone.name}
-                <strong style={{ 
-                  background: activeTab === zone.id ? "rgba(0,0,0,0.06)" : "rgba(0,0,0,0.04)", 
-                  padding: "2px 8px", 
-                  borderRadius: "12px", 
-                  fontSize: "11px",
-                  marginLeft: "4px" 
-                }}>
-                  {zone.tables?.length || 0}
-                </strong>
-              </span>
-            ))}
+                Editar Zona
+              </button>
+            )}
           </div>
           
           <div style={{ minHeight: "200px" }}>
@@ -183,8 +264,8 @@ export const SalonManagement = () => {
                   <button 
                     key={table.id}
                     type="button"
-                    onClick={() => toggleTableStatus(table)}
-                    title="Clic para Activar/Desactivar"
+                    onClick={() => openEditModal(table)}
+                    title="Clic para Editar"
                     style={{
                       background: table.status === 'inactive' ? "rgba(45,24,16,.04)" : "#fff",
                       border: "1px solid rgba(45,24,16,.08)",
@@ -222,8 +303,199 @@ export const SalonManagement = () => {
         </div>
       ) : (
         <div className="inventory-empty" style={{ border: "1px dashed rgba(45,24,16,.15)", borderRadius: "20px" }}>
-          <strong>Aún no has creado ninguna zona.</strong>
-          <p>Empieza creando la primera (Ej. "Salón Principal").</p>
+          <strong>No tienes zonas activas.</strong>
+          <p>Crea una nueva zona o reactiva una zona inactiva.</p>
+        </div>
+      )}
+
+      {/* Zonas Inactivas */}
+      {inactiveZones.length > 0 && (
+        <div style={{ marginTop: "40px" }}>
+          <h3 style={{ fontSize: "18px", color: "var(--color-text)", marginBottom: "16px", fontWeight: "760" }}>Zonas Inactivas</h3>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))", gap: "16px" }}>
+            {inactiveZones.map(zone => (
+              <div 
+                key={zone.id} 
+                style={{ 
+                  display: "flex", 
+                  alignItems: "center", 
+                  justifyContent: "space-between", 
+                  background: "rgba(45,24,16,.03)", 
+                  border: "1px solid rgba(45,24,16,.08)", 
+                  borderRadius: "14px", 
+                  padding: "16px 20px" 
+                }}
+              >
+                <div>
+                  <h4 style={{ margin: "0 0 4px", fontSize: "16px", color: "var(--color-text)", opacity: 0.7 }}>{zone.name}</h4>
+                  <p style={{ margin: 0, fontSize: "12px", color: "var(--color-muted)" }}>{zone.tables?.length || 0} mesas inactivas</p>
+                </div>
+                <button 
+                  onClick={() => handleReactivateZone(zone)}
+                  className="users-secondary-action"
+                  style={{ 
+                    padding: "6px 12px", 
+                    borderRadius: "8px", 
+                    cursor: "pointer", 
+                    fontWeight: "600",
+                    fontSize: "13px",
+                    background: "#10b981 !important",
+                    color: "white !important",
+                    border: "none !important"
+                  }}
+                >
+                  Reactivar
+                </button>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Modal de Edición de Mesa */}
+      {editingTable && (
+        <div className="users-modal-backdrop">
+          <div className="users-modal" style={{ maxWidth: "450px" }}>
+            <div className="users-modal-head">
+              <div>
+                <h3>Editar Mesa</h3>
+                <p>Modifica la información o estado de la mesa.</p>
+              </div>
+              <button onClick={() => setEditingTable(null)}>×</button>
+            </div>
+            <form className="users-create-modal-form inventory-form" onSubmit={handleEditSubmit} style={{ gap: "16px", display: "flex", flexDirection: "column" }}>
+              <label>
+                <span>Zona</span>
+                <select 
+                  value={editingTable.zoneId}
+                  onChange={(e) => setEditingTable({ ...editingTable, zoneId: e.target.value })}
+                  required
+                >
+                  {activeZones.map(z => <option key={z.id} value={z.id}>{z.name}</option>)}
+                </select>
+              </label>
+              <label>
+                <span>ID / Nombre de la Mesa</span>
+                <input 
+                  type="text" 
+                  value={editingTable.identifier}
+                  onChange={(e) => setEditingTable({ ...editingTable, identifier: e.target.value })}
+                  required 
+                />
+              </label>
+              <label>
+                <span>Sillas (Capacidad)</span>
+                <input 
+                  type="number" 
+                  min="1"
+                  value={editingTable.capacity}
+                  onChange={(e) => setEditingTable({ ...editingTable, capacity: e.target.value })}
+                  required 
+                />
+              </label>
+              <div className="users-modal-actions" style={{ justifyContent: "space-between", marginTop: "16px", alignItems: "center" }}>
+                <button 
+                  type="button" 
+                  onClick={toggleModalTableStatus}
+                  className="users-secondary-action"
+                  style={{ 
+                    background: editingTable.status === "inactive" ? "#10b981 !important" : "#ef4444 !important", 
+                    color: "white !important", 
+                    borderColor: "transparent !important"
+                  }}
+                >
+                  {editingTable.status === "inactive" ? "Activar Mesa" : "Desactivar Mesa"}
+                </button>
+                <div style={{ display: "flex", gap: "12px" }}>
+                  <button 
+                    type="button" 
+                    onClick={() => setEditingTable(null)}
+                    className="users-secondary-action"
+                  >
+                    Cancelar
+                  </button>
+                  <button 
+                    type="submit" 
+                    style={{
+                      background: "var(--color-accent)",
+                      color: "white",
+                      border: "none",
+                      padding: "8px 16px",
+                      borderRadius: "8px",
+                      cursor: "pointer",
+                      fontWeight: "600"
+                    }}
+                  >
+                    Guardar
+                  </button>
+                </div>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Modal de Edición de Zona */}
+      {editingZone && (
+        <div className="users-modal-backdrop">
+          <div className="users-modal" style={{ maxWidth: "450px" }}>
+            <div className="users-modal-head">
+              <div>
+                <h3>Editar Zona</h3>
+                <p>Modifica el nombre o desactiva esta zona.</p>
+              </div>
+              <button onClick={() => setEditingZone(null)}>×</button>
+            </div>
+            <form className="users-create-modal-form inventory-form" onSubmit={handleEditZoneSubmit} style={{ gap: "16px", display: "flex", flexDirection: "column" }}>
+              <label>
+                <span>Nombre de zona</span>
+                <input 
+                  type="text" 
+                  value={editingZone.name}
+                  onChange={(e) => setEditingZone({ ...editingZone, name: e.target.value })}
+                  required 
+                />
+              </label>
+              
+              <div className="users-modal-actions" style={{ justifyContent: "space-between", marginTop: "16px", alignItems: "center" }}>
+                <button 
+                  type="button" 
+                  onClick={toggleModalZoneStatus}
+                  className="users-secondary-action"
+                  style={{ 
+                    background: "#ef4444 !important", 
+                    color: "white !important", 
+                    borderColor: "transparent !important"
+                  }}
+                >
+                  Desactivar Zona
+                </button>
+                <div style={{ display: "flex", gap: "12px" }}>
+                  <button 
+                    type="button" 
+                    onClick={() => setEditingZone(null)}
+                    className="users-secondary-action"
+                  >
+                    Cancelar
+                  </button>
+                  <button 
+                    type="submit" 
+                    style={{
+                      background: "var(--color-accent)",
+                      color: "white",
+                      border: "none",
+                      padding: "8px 16px",
+                      borderRadius: "8px",
+                      cursor: "pointer",
+                      fontWeight: "600"
+                    }}
+                  >
+                    Guardar
+                  </button>
+                </div>
+              </div>
+            </form>
+          </div>
         </div>
       )}
     </section>

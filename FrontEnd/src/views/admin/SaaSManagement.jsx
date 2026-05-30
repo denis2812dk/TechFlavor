@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { getPendingRequests, approveRequest, rejectRequest } from "../../lib/saas";
+import "../shared/shared.css";
 
 export const SaaSManagement = () => {
   const [requests, setRequests] = useState([]);
@@ -80,103 +81,117 @@ export const SaaSManagement = () => {
   const closeCredentials = () => setCredentials(null);
 
   if (isLoading && requests.length === 0) {
-    return <div className="p-5 text-center text-muted">Cargando base de datos central...</div>;
+    return (
+      <div className="users-console">
+        <div className="content-placeholder">
+          <h2>Cargando base de datos central...</h2>
+        </div>
+      </div>
+    );
   }
 
   return (
-    <div className="container-fluid py-4 px-3 px-lg-4">
-      <div className="d-flex flex-column flex-md-row justify-content-between align-items-md-end gap-3 mb-4 border-bottom pb-3">
+    <div className="users-console">
+      <div className="users-console-head">
         <div>
-          <p className="text-uppercase text-muted fw-semibold small mb-1">Super Admin</p>
-          <h2 className="h3 mb-1">Solicitudes de Suscripción</h2>
-          <p className="text-muted mb-0">Revisa y aprueba a los nuevos restaurantes que desean usar TechFlavor.</p>
+          <p className="users-breadcrumb">Super Admin</p>
+          <h2>Solicitudes de Suscripción</h2>
+          <p>Revisa y aprueba a los nuevos restaurantes que desean usar TechFlavor.</p>
         </div>
-        <div className="d-flex gap-2">
-          <span className="badge text-bg-primary fs-6 py-2 px-3">
-            {requests.length} Solicitudes pendientes
-          </span>
+        <div className="users-inline-stats">
+          <span>{requests.length} Solicitudes pendientes</span>
         </div>
       </div>
 
-      {error && <div className="alert alert-danger shadow-sm border-0">{error}</div>}
+      {error && <div className="admin-users-error">{error}</div>}
 
       {/* MODAL / ALERTA DE CREDENCIALES (Aparece tras aprobar) */}
       {credentials && (
-        <div className="alert alert-success border border-success border-opacity-25 shadow-sm p-4 mb-4 position-relative">
-          <button type="button" className="btn-close position-absolute top-0 end-0 m-3" onClick={closeCredentials}></button>
-          <h4 className="alert-heading fw-bold mb-3">¡Restaurante Aprovisionado con Éxito!</h4>
+        <div className="admin-users-panel mb-4 position-relative">
+          <h4 className="fw-bold mb-3" style={{ color: "oklch(0.45 0.14 145)" }}>¡Restaurante Aprovisionado con Éxito!</h4>
           <p>La base de datos y la cuenta de <strong>{credentials.restaurantName}</strong> han sido creadas. Envía estos datos al cliente para que inicie sesión:</p>
           
-          <div className="bg-white p-3 rounded border border-success border-opacity-25 my-3 font-monospace">
-            <div className="mb-2"><strong>URL de Acceso:</strong> <span className="text-primary">tu-dominio.com</span></div>
+          <div className="bg-white p-3 rounded border my-3 font-monospace text-dark">
+            <div className="mb-2"><strong>URL de Acceso:</strong> <span style={{ color: "var(--color-accent)" }}>tu-dominio.com</span></div>
             <div className="mb-2"><strong>Usuario (Gerente):</strong> {credentials.email}</div>
-            <div className="mb-0"><strong>Contraseña Temporal:</strong> <span className="badge bg-dark fs-6">{credentials.tempPassword}</span></div>
+            <div className="mb-0"><strong>Contraseña Temporal:</strong> <span>{credentials.tempPassword}</span></div>
           </div>
-          <p className="mb-0 small text-muted">Nota: El gerente podrá cambiar esta contraseña desde su panel de control.</p>
+          <p className="mb-3 small" style={{ color: "var(--color-muted)" }}>Nota: El gerente podrá cambiar esta contraseña desde su panel de control.</p>
+          <button type="button" className="users-primary-action users-secondary-action" onClick={closeCredentials}>Cerrar</button>
         </div>
       )}
 
       {/* TABLA DE SOLICITUDES */}
-      <div className="card border-0 shadow-sm">
-        <div className="card-body p-0">
-          <div className="table-responsive">
-            <table className="table table-hover align-middle mb-0">
-              <thead className="table-light">
+      <div className="users-management-shell">
+        <div className="users-table-wrap">
+          <div className="users-table-scroll">
+            <table className="users-table">
+              <thead>
                 <tr>
-                  <th className="py-3 px-4">Fecha</th>
-                  <th className="py-3 px-4">Restaurante</th>
-                  <th className="py-3 px-4">Propietario / Contacto</th>
-                  <th className="py-3 px-4">Plan</th>
-                  <th className="py-3 px-4">Notas</th>
-                  <th className="py-3 px-4 text-end">Acciones</th>
+                  <th>Fecha</th>
+                  <th>Restaurante</th>
+                  <th>Propietario / Contacto</th>
+                  <th>Plan</th>
+                  <th>Notas</th>
+                  <th style={{ textAlign: "right" }}>Acciones</th>
                 </tr>
               </thead>
-              <tbody className="border-top-0">
+              <tbody>
                 {requests.length === 0 ? (
                   <tr>
-                    <td colSpan="6" className="text-center py-5 text-muted">
+                    <td colSpan="6" className="users-empty-row">
                       No hay solicitudes de restaurantes pendientes.
                     </td>
                   </tr>
                 ) : (
                   requests.map((req) => (
                     <tr key={req.id}>
-                      <td className="px-4 text-muted small">
+                      <td>
                         {new Date(req.createdAt).toLocaleDateString('es-SV', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}
                       </td>
-                      <td className="px-4 fw-semibold text-dark">
-                        {req.restaurantName}
+                      <td>
+                        <div className="users-name-cell">
+                          <div>
+                            <strong>{req.restaurantName}</strong>
+                          </div>
+                        </div>
                       </td>
-                      <td className="px-4">
-                        <div className="fw-medium">{req.ownerName}</div>
-                        <div className="small text-muted">{req.email}</div>
-                        <div className="small text-muted">{req.phone || "Sin teléfono"}</div>
+                      <td>
+                        <div className="users-name-cell">
+                          <div>
+                            <strong>{req.ownerName}</strong>
+                            <small className="d-block">{req.email}</small>
+                            <small className="d-block">{req.phone || "Sin teléfono"}</small>
+                          </div>
+                        </div>
                       </td>
-                      <td className="px-4">
-                        <span className={`badge ${req.planRequested === 'pro' ? 'text-bg-warning' : 'text-bg-secondary'}`}>
+                      <td>
+                        <span className={`users-role-badge ${req.planRequested === 'pro' ? 'role-admin' : ''}`}>
                           {req.planRequested.toUpperCase()}
                         </span>
                       </td>
-                      <td className="px-4">
+                      <td>
                         {req.notes ? (
-                          <span className="d-inline-block text-truncate small text-muted" style={{ maxWidth: "200px" }} title={req.notes}>
+                          <span className="d-inline-block text-truncate" style={{ maxWidth: "200px" }} title={req.notes}>
                             {req.notes}
                           </span>
                         ) : (
-                          <span className="text-muted small fst-italic">Sin notas</span>
+                          <span className="fst-italic" style={{ opacity: 0.75 }}>Sin notas</span>
                         )}
                       </td>
-                      <td className="px-4 text-end">
+                      <td style={{ textAlign: "right" }}>
                         <div className="d-flex justify-content-end gap-2">
                           <button
-                            className="btn btn-sm btn-outline-danger fw-semibold"
+                            className="users-primary-action users-secondary-action"
+                            style={{ height: "34px", fontSize: "13px", padding: "0 12px" }}
                             disabled={processingId === req.id}
                             onClick={() => handleReject(req)}
                           >
                             Rechazar
                           </button>
                           <button
-                            className="btn btn-sm btn-success fw-semibold"
+                            className="users-primary-action"
+                            style={{ height: "34px", fontSize: "13px", padding: "0 12px" }}
                             disabled={processingId === req.id}
                             onClick={() => handleApprove(req)}
                           >

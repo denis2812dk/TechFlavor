@@ -27,6 +27,30 @@ export const createZone = async (name) => {
   return data;
 };
 
+export const editZone = async (zoneId, name) => {
+  const response = await fetch(`${API_URL}/api/tenant/tables/zones/${zoneId}`, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    credentials: "include",
+    body: JSON.stringify({ name }),
+  });
+  const data = await parseJson(response);
+  if (!response.ok) throw new Error(getErrorMessage(data));
+  return data;
+};
+
+export const updateZoneStatus = async (zoneId, isActive) => {
+  const response = await fetch(`${API_URL}/api/tenant/tables/zones/${zoneId}/status`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    credentials: "include",
+    body: JSON.stringify({ isActive }),
+  });
+  const data = await parseJson(response);
+  if (!response.ok) throw new Error(getErrorMessage(data));
+  return data;
+};
+
 export const createTable = async (zoneId, identifier, capacity) => {
   const response = await fetch(`${API_URL}/api/tenant/tables`, {
     method: "POST",
@@ -45,6 +69,18 @@ export const updateTableStatus = async (tableId, status) => {
     headers: { "Content-Type": "application/json" },
     credentials: "include",
     body: JSON.stringify({ status }),
+  });
+  const data = await parseJson(response);
+  if (!response.ok) throw new Error(getErrorMessage(data));
+  return data;
+};
+
+export const editTable = async (tableId, zoneId, identifier, capacity) => {
+  const response = await fetch(`${API_URL}/api/tenant/tables/${tableId}`, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    credentials: "include",
+    body: JSON.stringify({ zoneId, identifier, capacity: Number(capacity) }),
   });
   const data = await parseJson(response);
   if (!response.ok) throw new Error(getErrorMessage(data));

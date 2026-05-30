@@ -287,25 +287,21 @@ function App() {
       >
         {/* VISTAS DEL SAAS ADMIN */}
         {path === "/admin" ? (
-          <div className="container py-4">
-            <div className="row justify-content-center">
-              <div className="col-12 col-lg-10 col-xl-8">
-                <div className="card border-0 shadow-sm">
-                  <div className="card-body p-4 p-md-5">
-                    <p className="text-uppercase text-muted fw-semibold small mb-2">Panel admin</p>
-                    <h2 className="h3 fw-bold mb-3">Bienvenido al centro de control SaaS</h2>
-                    <p className="text-muted mb-4">
-                      Desde aquí puedes revisar las solicitudes de nuevos restaurantes y avanzar a la vista de gestión.
-                    </p>
-                    <button
-                      type="button"
-                      className="btn btn-primary btn-lg"
-                      onClick={() => navigate("/admin/saas")}
-                    >
-                      Abrir vista SaaSManagement
-                    </button>
-                  </div>
-                </div>
+          <div className="users-console">
+            <div className="content-placeholder">
+              <p className="admin-users-kicker" style={{ margin: "0 0 6px" }}>Panel admin</p>
+              <h2>Bienvenido al centro de control SaaS</h2>
+              <p>
+                Desde aquí puedes revisar las solicitudes de nuevos restaurantes y avanzar a la vista de gestión.
+              </p>
+              <div style={{ marginTop: "24px" }}>
+                <button
+                  type="button"
+                  className="users-primary-action"
+                  onClick={() => navigate("/admin/saas")}
+                >
+                  Abrir vista SaaSManagement
+                </button>
               </div>
             </div>
           </div>
