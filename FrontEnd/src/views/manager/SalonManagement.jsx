@@ -332,16 +332,13 @@ export const SalonManagement = () => {
                 </div>
                 <button 
                   onClick={() => handleReactivateZone(zone)}
-                  className="users-secondary-action"
+                  className="users-secondary-action btn-danger"
                   style={{ 
                     padding: "6px 12px", 
                     borderRadius: "8px", 
                     cursor: "pointer", 
                     fontWeight: "600",
-                    fontSize: "13px",
-                    background: "#10b981 !important",
-                    color: "white !important",
-                    border: "none !important"
+                    fontSize: "13px"
                   }}
                 >
                   Reactivar
@@ -397,12 +394,7 @@ export const SalonManagement = () => {
                 <button 
                   type="button" 
                   onClick={toggleModalTableStatus}
-                  className="users-secondary-action"
-                  style={{ 
-                    background: editingTable.status === "inactive" ? "#10b981 !important" : "#ef4444 !important", 
-                    color: "white !important", 
-                    borderColor: "transparent !important"
-                  }}
+                  className="users-secondary-action btn-danger"
                 >
                   {editingTable.status === "inactive" ? "Activar Mesa" : "Desactivar Mesa"}
                 </button>
@@ -461,12 +453,7 @@ export const SalonManagement = () => {
                 <button 
                   type="button" 
                   onClick={toggleModalZoneStatus}
-                  className="users-secondary-action"
-                  style={{ 
-                    background: "#ef4444 !important", 
-                    color: "white !important", 
-                    borderColor: "transparent !important"
-                  }}
+                  className="users-secondary-action btn-danger"
                 >
                   Desactivar Zona
                 </button>
