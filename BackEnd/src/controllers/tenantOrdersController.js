@@ -9,8 +9,8 @@ import {
     promotionTargets,
     tables
 } from "../models/tenantSchema.js";
-import { deductInventoryForOrder, validateInventoryForOrder } from "../services/tenantInventoryService.js";
-
+import { deductInventoryForOrder, validateInventoryForOrder, restockInventoryForOrder } from "../services/tenantInventoryService.js";
+import { handleCrossShiftAdjustment } from "../services/tenantCashService.js";
 const money = (value) => Number(value).toFixed(2);
 const toCents = (value) => Math.round(Number(value || 0) * 100);
 const fromCents = (value) => Number((value / 100).toFixed(2));
@@ -122,14 +122,11 @@ export const createTenantOrder = async (req, res, next) => {
         }
         console.log("[DEBUG - ORDERS] Productos analizados listos para validar:", saleItems);
 
-        // ==========================================
-        // FASE 2: VALIDACIÓN DE INVENTARIO
-        // ==========================================
         const inventoryCheck = await validateInventoryForOrder(req.tenantDb, saleItems);
         console.log("[DEBUG - ORDERS] Resultado de validación final:", inventoryCheck);
         
         if (!inventoryCheck.valid) {
-            console.log("[DEBUG - ORDERS] ❌ Orden rechazada por falta de stock.");
+            console.log("[DEBUG - ORDERS]  Orden rechazada por falta de stock.");
             return res.status(400).json({
                 success: false,
                 message: inventoryCheck.message
@@ -291,7 +288,7 @@ export const createTenantOrder = async (req, res, next) => {
             },
         });
     } catch (error) {
-        console.error("[DEBUG - ORDERS] ❌ ERROR EN LA ORDEN:", error);
+        console.error("[DEBUG - ORDERS]  ERROR EN LA ORDEN:", error);
         next(error);
     }
 };
@@ -530,6 +527,63 @@ export const deliverDispatchOrder = async (req, res, next) => {
             message: "Entrega confirmada.",
         });
     } catch (error) {
+        next(error);
+    }
+};
+export const cancelTenantOrder = async (req, res, next) => {
+    try {
+        const { orderId } = req.params;
+        const userId = req.user.id;
+        const userName = req.user.name || req.user.email || "Usuario de caja";
+
+        const [existingOrder] = await req.tenantDb
+            .select()
+            .from(orders)
+            .where(eq(orders.id, orderId))
+            .limit(1);
+
+        if (!existingOrder) {
+            return res.status(404).json({ success: false, message: "Pedido no encontrado." });
+        }
+
+        if (existingOrder.status === "cancelled") {
+            return res.status(400).json({ success: false, message: "El pedido ya se encuentra cancelado." });
+        }
+        await handleCrossShiftAdjustment(
+            req.tenantDb,
+            existingOrder.createdAt,
+            -Number(existingOrder.total), 
+            `Devolución por cancelación de ticket ${existingOrder.ticketCode}`,
+            userId,
+            userName
+        );
+
+        await req.tenantDb
+            .update(orders)
+            .set({ 
+                status: "cancelled", 
+                updatedAt: new Date() 
+            })
+            .where(eq(orders.id, orderId));
+
+        // 4. Devolvemos los ingredientes a la bodega
+        await restockInventoryForOrder(
+            req.tenantDb, 
+            orderId, 
+            `Cancelación de ticket ${existingOrder.ticketCode}`
+        );
+
+        res.json({
+            success: true,
+            message: "Orden cancelada exitosamente. El inventario y el dinero han sido devueltos.",
+        });
+    } catch (error) {
+        if (error.message === "NO_OPEN_SHIFT_FOR_ADJUSTMENT") {
+            return res.status(400).json({
+                success: false,
+                message: "Debes tener un turno de caja abierto para poder procesar una cancelación y devolver el dinero."
+            });
+        }
         next(error);
     }
 };
