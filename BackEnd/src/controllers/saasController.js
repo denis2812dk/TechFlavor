@@ -101,3 +101,30 @@ export const toggleRestaurantStatus = async (req, res, next) => {
         next(error);
     }
 };
+export const listSaasPlans = async (req, res, next) => {
+    try {
+        const plans = await saasService.getSaasPlans();
+        res.json({ 
+            success: true, 
+            plans 
+        });
+    } catch (error) {
+        next(error);
+    }
+};
+
+export const createNewPlan = async (req, res, next) => {
+    try {
+        await saasService.createSaasPlan(req.body);
+        
+        res.status(201).json({ 
+            success: true, 
+            message: "Plan de suscripción creado exitosamente." 
+        });
+    } catch (error) {
+        if (error.code === 'ER_DUP_ENTRY') {
+            return res.status(400).json({ success: false, message: "Ya existe un plan con ese código identificador." });
+        }
+        next(error);
+    }
+};

@@ -1,4 +1,4 @@
-import { mysqlTable, varchar, text, datetime, boolean, int, bigint, timestamp } from "drizzle-orm/mysql-core";
+import { mysqlTable, varchar, text, datetime, boolean, int, bigint, timestamp, decimal } from "drizzle-orm/mysql-core";
 
 export const restaurants = mysqlTable("restaurants", {
     id: varchar("id", { length: 36 }).primaryKey(),
@@ -85,6 +85,22 @@ export const tenantRequests = mysqlTable("tenant_requests", {
     status: varchar("status", { length: 30 }).notNull().default("pending"), // pending, approved, rejected
     planRequested: varchar("plan_requested", { length: 30 }).notNull().default("starter"),
     notes: text("notes"),
+    createdAt: timestamp("created_at").defaultNow(),
+    updatedAt: timestamp("updated_at").defaultNow().onUpdateNow(),
+});
+export const saasPlans = mysqlTable("saas_plans", {
+    id: varchar("id", { length: 36 }).primaryKey(),
+    name: varchar("name", { length: 80 }).notNull(), 
+    code: varchar("code", { length: 30 }).notNull().unique(), 
+    price: decimal("price", { precision: 10, scale: 2 }).notNull(),
+    
+    
+    maxTables: int("max_tables").notNull().default(10),
+    maxUsers: int("max_users").notNull().default(3),
+    hasInventory: boolean("has_inventory").notNull().default(false), 
+    hasKitchenDisplay: boolean("has_kitchen_display").notNull().default(false), 
+    
+    isActive: boolean("is_active").notNull().default(true),
     createdAt: timestamp("created_at").defaultNow(),
     updatedAt: timestamp("updated_at").defaultNow().onUpdateNow(),
 });

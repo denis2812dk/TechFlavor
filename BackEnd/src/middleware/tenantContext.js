@@ -16,14 +16,17 @@ export const tenantContext = async (req, res, next) => {
         if (!session?.user) {
             return res.status(401).json({
                 success: false,
-                message: "Debes iniciar sesion.",
+                message: "Debes iniciar sesión.",
             });
         }
+        
         req.user = session.user;
         req.session = session.session;
+        
         if (session.user.role === ROLES.ADMIN) {
             return next();
         }
+
         const [membership] = await db
             .select({
                 restaurantId: restaurants.id,
@@ -38,15 +41,30 @@ export const tenantContext = async (req, res, next) => {
             .innerJoin(restaurants, eq(restaurantUsers.restaurantId, restaurants.id))
             .where(and(eq(restaurantUsers.userId, session.user.id), eq(restaurantUsers.status, "active")))
             .limit(1);
-
-        if (!membership || membership.restaurantStatus !== "active") {
+        if (!membership) {
             return res.status(403).json({
                 success: false,
-                message: "No tienes un restaurante activo asignado.",
+                message: "No tienes un restaurante asignado en el sistema.",
             });
         }
+
+        if (membership.restaurantStatus === "suspended") {
+            return res.status(403).json({
+                success: false,
+                message: "ACCESO DENEGADO: La cuenta de este restaurante se encuentra suspendida por el administrador.",
+            });
+        }
+
+        if (membership.restaurantStatus !== "active") {
+            return res.status(403).json({
+                success: false,
+                message: "El restaurante no se encuentra activo actualmente.",
+            });
+        }
+
         req.restaurant = membership;
         req.tenantDb = getTenantDb(membership.databaseName);
+        
         await ensureTenantIncidencesCompatibility(req.tenantDb);
         await ensureTenantSettingsCompatibility(req.tenantDb, membership.restaurantName);
 

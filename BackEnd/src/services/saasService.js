@@ -5,7 +5,7 @@ import { auth } from "../config/auth.js";
 import { db } from "../config/db.js";
 import { getTenantDb } from "../config/tenantDb.js";
 import { ROLES } from "../constants/roles.js";
-import { accounts, restaurantUsers, restaurants, tenantRequests, users } from "../models/schema.js";
+import { accounts, restaurantUsers, restaurants, tenantRequests, users, saasPlans } from "../models/schema.js";
 import { initializeTenantDatabase } from "./tenantProvisioningService.js";
 
 export const registerTenantRequest = async (data) => {
@@ -179,4 +179,27 @@ export const toggleRestaurantStatus = async (restaurantId) => {
         name: restaurant.name,
         newStatus: newStatus
     };
+};
+export const getSaasPlans = async () => {
+    return await db.select()
+        .from(saasPlans)
+        .orderBy(desc(saasPlans.createdAt));
+};
+
+export const createSaasPlan = async (data) => {
+    const planId = randomUUID();
+    
+    await db.insert(saasPlans).values({
+        id: planId,
+        name: data.name,
+        code: data.code.toLowerCase().trim(),
+        price: data.price,
+        maxTables: data.maxTables || 10,
+        maxUsers: data.maxUsers || 3,
+        hasInventory: data.hasInventory || false,
+        hasKitchenDisplay: data.hasKitchenDisplay || false,
+        isActive: true
+    });
+
+    return planId;
 };
