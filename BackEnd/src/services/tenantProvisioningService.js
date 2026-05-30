@@ -27,10 +27,16 @@ export const ensureTenantSettingsCompatibility = async (tenantDb, restaurantName
             // If logo_url does not exist, ensure logo_base64 exists
             await tenantDb.execute(sql`
                 ALTER TABLE restaurant_settings
-                    ADD COLUMN IF NOT EXISTS logo_base64 text DEFAULT NULL
+                    ADD COLUMN IF NOT EXISTS logo_base64 mediumtext DEFAULT NULL
             `);
             console.log("DEBUG: [tenantProvisioningService] Ensured 'logo_base64' column exists.");
         }
+
+        await tenantDb.execute(sql`
+            ALTER TABLE restaurant_settings
+                MODIFY COLUMN logo_base64 mediumtext DEFAULT NULL
+        `);
+        console.log("DEBUG: [tenantProvisioningService] Ensured 'logo_base64' uses MEDIUMTEXT.");
     } catch (e) {
         console.error("ERROR: [tenantProvisioningService] Fallo en ensureTenantSettingsCompatibility:", e);
     }
@@ -50,7 +56,7 @@ export const initializeTenantDatabase = async (tenantDb) => {
             CREATE TABLE IF NOT EXISTS restaurant_settings (
                 id varchar(36) PRIMARY KEY,
                 restaurant_name varchar(120) NOT NULL,
-                logo_base64 text,
+                logo_base64 mediumtext,
                 currency varchar(10) NOT NULL DEFAULT 'USD',
                 timezone varchar(80) NOT NULL DEFAULT 'America/El_Salvador',
                 tax_rate decimal(5,2) NOT NULL DEFAULT 0.00,
