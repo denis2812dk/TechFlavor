@@ -3,6 +3,7 @@ import { boolean, decimal, int, mysqlTable, text, timestamp, varchar } from "dri
 export const restaurantSettings = mysqlTable("restaurant_settings", {
     id: varchar("id", { length: 36 }).primaryKey(),
     restaurantName: varchar("restaurant_name", { length: 120 }).notNull(),
+    logoBase64: text("logo_base64"),
     currency: varchar("currency", { length: 10 }).notNull().default("USD"),
     timezone: varchar("timezone", { length: 80 }).notNull().default("America/El_Salvador"),
     taxRate: decimal("tax_rate", { precision: 5, scale: 2 }).notNull().default("0.00"),

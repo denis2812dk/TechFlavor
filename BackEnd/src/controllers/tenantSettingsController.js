@@ -1,14 +1,12 @@
 import { eq } from "drizzle-orm";
 import { restaurantSettings } from "../models/tenantSchema.js";
+import { updateRestaurantSettingsSchema } from "../schemas/tenantSchemas.js";
 
 const SETTINGS_NOT_FOUND = "No se encontro configuracion para este restaurante.";
 
-export const getTenantSettings = async (req, res, next) => {
+export const getSettings = async (req, res, next) => {
     try {
-        const [settings] = await req.tenantDb
-            .select()
-            .from(restaurantSettings)
-            .limit(1);
+        const [settings] = await req.tenantDb.select().from(restaurantSettings).limit(1);
 
         if (!settings) {
             return res.status(404).json({
@@ -32,12 +30,11 @@ export const getTenantSettings = async (req, res, next) => {
     }
 };
 
-export const updateTenantSettings = async (req, res, next) => {
+export const updateSettings = async (req, res, next) => {
     try {
-        const [currentSettings] = await req.tenantDb
-            .select()
-            .from(restaurantSettings)
-            .limit(1);
+        const validatedData = updateRestaurantSettingsSchema.parse(req.body);
+
+        const [currentSettings] = await req.tenantDb.select().from(restaurantSettings).limit(1);
 
         if (!currentSettings) {
             return res.status(404).json({
@@ -46,49 +43,19 @@ export const updateTenantSettings = async (req, res, next) => {
             });
         }
 
-        const allowedFields = [
-            "restaurantName",
-            "currency",
-            "timezone",
-            "taxRate",
-            "primaryColor",
-            "allowDelivery",
-            "allowInventory",
-            "notes",
-        ];
-
-        const dataToUpdate = allowedFields.reduce((data, field) => {
-            if (Object.prototype.hasOwnProperty.call(req.body, field)) {
-                data[field] = req.body[field];
-            }
-
-            return data;
-        }, {});
-
-        if (Object.keys(dataToUpdate).length === 0) {
-            return res.status(400).json({
-                success: false,
-                message: "No enviaste campos validos para actualizar.",
-            });
-        }
-
         await req.tenantDb
             .update(restaurantSettings)
-            .set(dataToUpdate)
+            .set({
+                ...validatedData,
+                updatedAt: new Date(),
+            })
             .where(eq(restaurantSettings.id, currentSettings.id));
 
-        const [updatedSettings] = await req.tenantDb
-            .select()
-            .from(restaurantSettings)
-            .where(eq(restaurantSettings.id, currentSettings.id))
-            .limit(1);
-
-        res.json({
-            success: true,
-            message: "Configuracion actualizada correctamente.",
-            settings: updatedSettings,
-        });
+        res.json({ success: true, message: "Configuración actualizada correctamente." });
     } catch (error) {
+        if (error.name === "ZodError") {
+            return res.status(400).json({ success: false, errors: error.errors });
+        }
         next(error);
     }
 };

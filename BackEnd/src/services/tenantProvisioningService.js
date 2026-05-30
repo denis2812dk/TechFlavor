@@ -9,11 +9,31 @@ export const ensureTenantIncidencesCompatibility = async (tenantDb) => {
     `);
 };
 
+export const ensureTenantSettingsCompatibility = async (tenantDb, restaurantName) => {
+    try {
+        await tenantDb.execute(sql`
+            ALTER TABLE restaurant_settings
+                ADD COLUMN IF NOT EXISTS logo_url text DEFAULT NULL
+        `);
+    } catch (e) {
+        // Ignorar si el motor no soporta IF NOT EXISTS o si la columna ya existe
+    }
+
+    const [rows] = await tenantDb.execute(sql`SELECT count(*) as count FROM restaurant_settings`);
+    if (rows[0].count === 0) {
+        await tenantDb.execute(sql`
+            INSERT INTO restaurant_settings (id, restaurant_name)
+            VALUES (UUID(), ${restaurantName})
+        `);
+    }
+};
+
 export const initializeTenantDatabase = async (tenantDb) => {
     await tenantDb.execute(sql`
         CREATE TABLE IF NOT EXISTS restaurant_settings (
             id varchar(36) PRIMARY KEY,
             restaurant_name varchar(120) NOT NULL,
+            logo_url text,
             currency varchar(10) NOT NULL DEFAULT 'USD',
             timezone varchar(80) NOT NULL DEFAULT 'America/El_Salvador',
             tax_rate decimal(5,2) NOT NULL DEFAULT 0.00,

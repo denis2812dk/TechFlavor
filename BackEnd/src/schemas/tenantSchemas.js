@@ -137,6 +137,20 @@ export const resolveIncidenceSchema = z.object({
     message: "Para una devolución de producto, debes especificar el ID del ingrediente y la cantidad a descontar del inventario.",
     path: ["quantityToDeduct"]
 });
+
+export const updateRestaurantSettingsSchema = z.object({
+    restaurantName: z.string().min(1).max(120).optional(),
+    logoBase64: z.string().refine((val) => val === "" || val.startsWith("data:image/"), {
+        message: "El logo debe ser una cadena Base64 válida (data:image/...)"
+    }).optional().nullable(),
+    currency: z.string().max(10).optional(),
+    timezone: z.string().max(80).optional(),
+    taxRate: z.coerce.number().min(0).optional(),
+    primaryColor: z.string().regex(/^#([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})$/).optional(),
+    allowDelivery: z.boolean().optional(),
+    allowInventory: z.boolean().optional(),
+    notes: z.string().optional().nullable(),
+});
 export const createPurchaseOrderSchema = z.object({
     supplierId: idSchema,
     items: z.array(
