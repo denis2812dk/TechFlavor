@@ -4,6 +4,31 @@ const parseJson = async (response) => {
   return response.json().catch(() => ({}));
 };
 
+const fetchAPI = async (url, options = {}) => {
+  const fullUrl = url.startsWith("http") ? url : `${API_URL}${url}`;
+  const response = await fetch(fullUrl, {
+    ...options,
+    credentials: options.credentials || "include",
+    headers: {
+      "Content-Type": "application/json",
+      ...options.headers,
+    },
+  });
+
+  let data;
+  try {
+    data = await response.json();
+  } catch (error) {
+    data = null;
+  }
+
+  if (!response.ok) {
+    throw new Error((data && (data.message || data.error)) || "Error en la petición");
+  }
+
+  return data;
+};
+
 export const getErrorMessage = (error) => {
   if (Array.isArray(error?.errors) && error.errors.length > 0) {
     return error.errors.map((item) => {
@@ -371,3 +396,4 @@ export const deleteTenantUser = async (userId) => {
 
   return data;
 };
+export const getCatalogStockStatus = () => fetchAPI("/api/tenant/inventory/catalog-status");

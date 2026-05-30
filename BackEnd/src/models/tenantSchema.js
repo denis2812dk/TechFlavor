@@ -8,7 +8,7 @@ export const restaurantSettings = mysqlTable("restaurant_settings", {
     taxRate: decimal("tax_rate", { precision: 5, scale: 2 }).notNull().default("0.00"),
     primaryColor: varchar("primary_color", { length: 30 }).notNull().default("#ea580c"),
     allowDelivery: boolean("allow_delivery").notNull().default(true),
-    allowInventory: boolean("allow_inventory").notNull().default(false),
+    allowInventory: boolean("allow_inventory").notNull().default(true),
     notes: text("notes"),
     createdAt: timestamp("created_at").defaultNow(),
     updatedAt: timestamp("updated_at").defaultNow().onUpdateNow(),

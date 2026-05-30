@@ -103,12 +103,16 @@ const findSaleItem = async (tenantDb, item) => {
 
 export const createTenantOrder = async (req, res, next) => {
     try {
+        console.log("\n[DEBUG - ORDERS] === NUEVA PETICIÓN DE ORDEN RECIBIDA ===");
+        console.log("[DEBUG - ORDERS] Payload:", JSON.stringify(req.body, null, 2));
+
         const { items, fulfillmentType, tableId, promoCode, paymentMethod, customerName } = req.body;
 
         const saleItems = [];
         for (const item of items) {
             const saleItem = await findSaleItem(req.tenantDb, item);
             if (!saleItem) {
+                console.log(`[DEBUG - ORDERS] Producto/combo no encontrado o inactivo: ${item.itemId}`);
                 return res.status(400).json({
                     success: false,
                     message: "Uno de los productos o combos ya no esta disponible.",
@@ -116,9 +120,16 @@ export const createTenantOrder = async (req, res, next) => {
             }
             saleItems.push(saleItem);
         }
+        console.log("[DEBUG - ORDERS] Productos analizados listos para validar:", saleItems);
 
+        // ==========================================
+        // FASE 2: VALIDACIÓN DE INVENTARIO
+        // ==========================================
         const inventoryCheck = await validateInventoryForOrder(req.tenantDb, saleItems);
+        console.log("[DEBUG - ORDERS] Resultado de validación final:", inventoryCheck);
+        
         if (!inventoryCheck.valid) {
+            console.log("[DEBUG - ORDERS] ❌ Orden rechazada por falta de stock.");
             return res.status(400).json({
                 success: false,
                 message: inventoryCheck.message
@@ -235,6 +246,7 @@ export const createTenantOrder = async (req, res, next) => {
             cashierName: req.user.name || req.user.email || "Usuario de caja",
         };
 
+        console.log("[DEBUG - ORDERS] Guardando orden en base de datos:", orderId);
         await req.tenantDb.insert(orders).values(order);
 
         await req.tenantDb.insert(orderItems).values(saleItems.map((item) => ({
@@ -248,7 +260,9 @@ export const createTenantOrder = async (req, res, next) => {
             lineTotal: money(item.lineNetTotal),
         })));
 
+        console.log("[DEBUG - ORDERS] Orden guardada. Mandando a descontar inventario...");
         await deductInventoryForOrder(req.tenantDb, orderId, saleItems);
+        console.log("[DEBUG - ORDERS] === ORDEN COMPLETADA CON ÉXITO ===");
 
         res.status(201).json({
             success: true,
@@ -277,6 +291,7 @@ export const createTenantOrder = async (req, res, next) => {
             },
         });
     } catch (error) {
+        console.error("[DEBUG - ORDERS] ❌ ERROR EN LA ORDEN:", error);
         next(error);
     }
 };

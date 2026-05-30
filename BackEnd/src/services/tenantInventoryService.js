@@ -12,6 +12,7 @@ import {
 } from "../models/tenantSchema.js";
 
 const getRequiredProductsMap = async (tenantDb, saleItems) => {
+    console.log("[DEBUG - INVENTORY] Generando mapa de productos requeridos para:", saleItems);
     const productQuantities = {};
 
     for (const item of saleItems) {
@@ -25,26 +26,40 @@ const getRequiredProductsMap = async (tenantDb, saleItems) => {
             }
         }
     }
+    console.log("[DEBUG - INVENTORY] Mapa de productos calculado:", productQuantities);
     return productQuantities;
 };
 
 export const validateInventoryForOrder = async (tenantDb, saleItems) => {
+    console.log("[DEBUG - INVENTORY] Iniciando validateInventoryForOrder...");
+    
     const [settings] = await tenantDb.select({ allowInventory: restaurantSettings.allowInventory }).from(restaurantSettings).limit(1);
+    console.log("[DEBUG - INVENTORY] Configuración allowInventory:", settings?.allowInventory);
+    
     if (!settings?.allowInventory) return { valid: true };
 
     const productQuantities = await getRequiredProductsMap(tenantDb, saleItems);
     const productIds = Object.keys(productQuantities);
     
-    if (productIds.length === 0) return { valid: true };
+    if (productIds.length === 0) {
+        console.log("[DEBUG - INVENTORY] No hay productos para validar.");
+        return { valid: true };
+    }
 
     const recipes = await tenantDb.select().from(productIngredients).where(inArray(productIngredients.productId, productIds));
-    if (recipes.length === 0) return { valid: true };
+    console.log("[DEBUG - INVENTORY] Recetas encontradas:", recipes);
+    
+    if (recipes.length === 0) {
+        console.log("[DEBUG - INVENTORY] Los productos no tienen receta. Aprobando por defecto.");
+        return { valid: true };
+    }
 
     const requiredIngredients = {};
     for (const recipeItem of recipes) {
         const qtyNeeded = Number(recipeItem.quantity) * productQuantities[recipeItem.productId];
         requiredIngredients[recipeItem.ingredientId] = (requiredIngredients[recipeItem.ingredientId] || 0) + qtyNeeded;
     }
+    console.log("[DEBUG - INVENTORY] Ingredientes y cantidades requeridas:", requiredIngredients);
 
     const ingredientIds = Object.keys(requiredIngredients);
     const currentStocks = await tenantDb
@@ -57,12 +72,17 @@ export const validateInventoryForOrder = async (tenantDb, saleItems) => {
         .from(inventory)
         .innerJoin(ingredients, eq(ingredients.id, inventory.ingredientId))
         .where(inArray(inventory.ingredientId, ingredientIds));
+        
+    console.log("[DEBUG - INVENTORY] Stock actual en bodega:", currentStocks);
 
     for (const stockRow of currentStocks) {
         const required = requiredIngredients[stockRow.id];
         const available = Number(stockRow.stock);
 
+        console.log(`[DEBUG - INVENTORY] Evaluando ${stockRow.name}: Requiere ${required}, Disponible ${available}`);
+
         if (available < required) {
+            console.log(`[DEBUG - INVENTORY]  Falla de Stock: ${stockRow.name}`);
             return { 
                 valid: false, 
                 message: `Stock insuficiente de "${stockRow.name}". Necesitas ${required.toFixed(2)} ${stockRow.unit}, pero solo quedan ${available.toFixed(2)} ${stockRow.unit}.` 
@@ -70,6 +90,7 @@ export const validateInventoryForOrder = async (tenantDb, saleItems) => {
         }
     }
 
+    console.log("[DEBUG - INVENTORY] Validación superada exitosamente.");
     return { valid: true };
 };
 
@@ -130,8 +151,12 @@ export const getCatalogStockStatus = async (tenantDb) => {
 };
 
 export const deductInventoryForOrder = async (tenantDb, orderId, saleItems) => {
+    console.log(`[DEBUG - INVENTORY] Iniciando deducción para la orden ${orderId}...`);
     const [settings] = await tenantDb.select({ allowInventory: restaurantSettings.allowInventory }).from(restaurantSettings).limit(1);
-    if (!settings?.allowInventory) return;
+    if (!settings?.allowInventory) {
+        console.log("[DEBUG - INVENTORY] Deducción omitida porque allowInventory es falso.");
+        return;
+    }
 
     const productQuantities = await getRequiredProductsMap(tenantDb, saleItems);
     const productIds = Object.keys(productQuantities);
@@ -139,13 +164,18 @@ export const deductInventoryForOrder = async (tenantDb, orderId, saleItems) => {
     if (productIds.length === 0) return;
 
     const recipes = await tenantDb.select().from(productIngredients).where(inArray(productIngredients.productId, productIds));
-    if (recipes.length === 0) return;
+    if (recipes.length === 0) {
+        console.log("[DEBUG - INVENTORY] No hay recetas para descontar.");
+        return;
+    }
 
     const ingredientDeductions = {};
     for (const recipeItem of recipes) {
         const totalNeeded = Number(recipeItem.quantity) * productQuantities[recipeItem.productId];
         ingredientDeductions[recipeItem.ingredientId] = (ingredientDeductions[recipeItem.ingredientId] || 0) + totalNeeded;
     }
+    
+    console.log("[DEBUG - INVENTORY] Ejecutando transacción de deducción de DB con:", ingredientDeductions);
     
     await tenantDb.transaction(async (tx) => {
         const movements = [];
@@ -167,9 +197,11 @@ export const deductInventoryForOrder = async (tenantDb, orderId, saleItems) => {
         }
 
         if (movements.length > 0) {
+            console.log(`[DEBUG - INVENTORY] Insertando ${movements.length} movimientos de salida...`);
             await tx.insert(inventoryMovements).values(movements);
         }
     });
+    console.log("[DEBUG - INVENTORY] Deducción completada.");
 };
 
 export const createShrinkageRecord = async (tenantDb, { ingredientId, quantity, reason }) => {
@@ -211,27 +243,27 @@ export const createIngredient = async (tenantDb, { name, unitOfMeasure, currentS
         .where(eq(ingredients.name, normalizedName))
         .limit(1);
 
-    if (existingIngredient) {
+    if (!existingIngredient) {
+        const ingredientId = randomUUID();
+
+        await tenantDb.transaction(async (tx) => {
+            await tx.insert(ingredients).values({
+                id: ingredientId,
+                name: normalizedName,
+                unitOfMeasure: unitOfMeasure.trim(),
+            });
+
+            await tx.insert(inventory).values({
+                id: randomUUID(),
+                ingredientId,
+                currentStock,
+            });
+        });
+
+        return ingredientId;
+    } else {
         throw new Error("INGREDIENT_NAME_EXISTS");
     }
-
-    const ingredientId = randomUUID();
-
-    await tenantDb.transaction(async (tx) => {
-        await tx.insert(ingredients).values({
-            id: ingredientId,
-            name: normalizedName,
-            unitOfMeasure: unitOfMeasure.trim(),
-        });
-
-        await tx.insert(inventory).values({
-            id: randomUUID(),
-            ingredientId,
-            currentStock,
-        });
-    });
-
-    return ingredientId;
 };
 
 export const updateIngredient = async (tenantDb, ingredientId, { name, unitOfMeasure, currentStock }) => {

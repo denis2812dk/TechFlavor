@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { createOrder, getErrorMessage, getMenuCatalog } from "../../lib/auth";
+import { createOrder, getErrorMessage, getMenuCatalog, getCatalogStockStatus } from "../../lib/auth"; 
 import { listActivePromotions } from "../../lib/promotions";
 import { getSalonStatus } from "../../lib/salon";
 import { getMyShift } from "../../lib/cash"; 
@@ -12,8 +12,7 @@ export const CashierCatalog = () => {
   const [salonZones, setSalonZones] = useState([]);
   
   const [hasOpenShift, setHasOpenShift] = useState(true); 
-  // ------------------------------
-
+  const [stockStatus, setStockStatus] = useState({ productsStock: {}, combosStock: {} }); 
   const [cart, setCart] = useState([]);
   const [ticket, setTicket] = useState(null);
   const [error, setError] = useState("");
@@ -30,17 +29,19 @@ export const CashierCatalog = () => {
   useEffect(() => {
     const loadInitialData = async () => {
       try {
-        const [catalogData, promosData, salonData, shiftData] = await Promise.all([
+        const [catalogData, promosData, salonData, shiftData, stockData] = await Promise.all([
           getMenuCatalog(),
           listActivePromotions(),
           getSalonStatus(),
-          getMyShift(), // <-- REVISAMOS SI HAY CAJA ABIERTA
+          getMyShift(),
+          getCatalogStockStatus() 
         ]);
 
         setCatalog(catalogData);
         setActivePromotions(promosData.promotions || []);
         setSalonZones(salonData.salon || []);
-        setHasOpenShift(shiftData.hasOpenShift); // <-- GUARDAMOS EL ESTADO
+        setHasOpenShift(shiftData.hasOpenShift);
+        setStockStatus(stockData.data || { productsStock: {}, combosStock: {} }); // <-- GUARDAMOS EL MAPA
       } catch (requestError) {
         setError(getErrorMessage(requestError));
       } finally {
@@ -126,7 +127,7 @@ export const CashierCatalog = () => {
   const handlePreCheckout = () => {
     setError("");
     if (!hasOpenShift) {
-      setError(" Necesitas declarar el dinero inicial y abrir tu turno de caja antes de generar pedidos.");
+      setError("Necesitas declarar el dinero inicial y abrir tu turno de caja antes de generar pedidos.");
       return;
     }
     if (!fulfillmentType) {
@@ -144,7 +145,6 @@ export const CashierCatalog = () => {
     handleCreateOrder();
   };
 
-  // --- PASO 2: ENVIAR LA ORDEN CON EL MÉTODO DE PAGO ---
   const handleCreateOrder = async () => {
     setIsSaving(true);
     setError("");
@@ -169,6 +169,10 @@ export const CashierCatalog = () => {
       setPaymentMethod("cash");
       setAppliedPromo(null);
       setPromoError("");
+      
+      const stockData = await getCatalogStockStatus();
+      setStockStatus(stockData.data || { productsStock: {}, combosStock: {} });
+      
     } catch (requestError) {
       setError(getErrorMessage(requestError));
     } finally {
@@ -197,7 +201,6 @@ export const CashierCatalog = () => {
         </header>
         {error && <p className="admin-users-error mb-2">{error}</p>}
         
-        {/* ALERTA VISUAL DE CAJA CERRADA */}
         {!isLoading && !hasOpenShift && (
           <div className="admin-users-error" style={{ background: "#fee2e2", color: "#991b1b", border: "1px solid #f87171", fontWeight: "bold" }}>
              CAJA CERRADA: No puedes emitir tickets. Por favor, abre tu turno de caja primero.
@@ -206,7 +209,6 @@ export const CashierCatalog = () => {
       </div>
 
       <main className="cashier-catalog" style={{ opacity: hasOpenShift ? 1 : 0.5, pointerEvents: hasOpenShift ? "auto" : "none" }}>
-        {/* ... (Todo el contenido de productos y combos se mantiene exactamente igual) ... */}
         <section>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "16px" }}>
             <div>
@@ -216,15 +218,33 @@ export const CashierCatalog = () => {
             <span className="inventory-pill is-ok">{catalog.products.length} disponibles</span>
           </div>
           <div className="cashier-item-grid">
-            {catalog.products.map((product) => (
-              <button className="cashier-sale-item" type="button" key={product.id} onClick={() => addToCart(product, "product")}>
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: "8px" }}>
-                  <strong>{product.name}</strong><b>${toMoney(product.price)}</b>
-                </div>
-                <span>{product.categoryName}</span>
-                <p>{product.description}</p>
-              </button>
-            ))}
+            {catalog.products.map((product) => {
+              // Verificamos si el producto tiene stock. Si no está en el mapa, es porque no tiene receta (infinito).
+              const isAvailable = stockStatus.productsStock[product.id] !== false;
+
+              return (
+                <button 
+                  className="cashier-sale-item" 
+                  type="button" 
+                  key={product.id} 
+                  onClick={() => addToCart(product, "product")}
+                  disabled={!isAvailable}
+                  style={{ opacity: isAvailable ? 1 : 0.4, cursor: isAvailable ? "pointer" : "not-allowed", position: "relative" }}
+                >
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: "8px" }}>
+                    <strong>{product.name}</strong><b>${toMoney(product.price)}</b>
+                  </div>
+                  <span>{product.categoryName}</span>
+                  <p>{product.description}</p>
+                  
+                  {!isAvailable && (
+                    <div style={{ position: "absolute", bottom: "10px", right: "10px", background: "#fee2e2", color: "#b91c1c", padding: "2px 8px", borderRadius: "12px", fontSize: "11px", fontWeight: "bold" }}>
+                      Agotado
+                    </div>
+                  )}
+                </button>
+              );
+            })}
           </div>
         </section>
 
@@ -237,15 +257,33 @@ export const CashierCatalog = () => {
             <span className="inventory-pill is-ok">{catalog.combos.length} disponibles</span>
           </div>
           <div className="cashier-item-grid">
-            {catalog.combos.map((combo) => (
-              <button className="cashier-sale-item" type="button" key={combo.id} onClick={() => addToCart(combo, "combo")}>
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: "8px" }}>
-                  <strong>{combo.name}</strong><b>${toMoney(combo.price)}</b>
-                </div>
-                <span>Combo</span>
-                <p style={{ marginBottom: "4px" }}>{combo.items.map((item) => `${item.quantity}x ${item.productName}`).join(", ")}</p>
-              </button>
-            ))}
+            {catalog.combos.map((combo) => {
+              // Verificamos si el combo tiene stock
+              const isAvailable = stockStatus.combosStock[combo.id] !== false;
+
+              return (
+                <button 
+                  className="cashier-sale-item" 
+                  type="button" 
+                  key={combo.id} 
+                  onClick={() => addToCart(combo, "combo")}
+                  disabled={!isAvailable}
+                  style={{ opacity: isAvailable ? 1 : 0.4, cursor: isAvailable ? "pointer" : "not-allowed", position: "relative" }}
+                >
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: "8px" }}>
+                    <strong>{combo.name}</strong><b>${toMoney(combo.price)}</b>
+                  </div>
+                  <span>Combo</span>
+                  <p style={{ marginBottom: "4px" }}>{combo.items.map((item) => `${item.quantity}x ${item.productName}`).join(", ")}</p>
+                  
+                  {!isAvailable && (
+                    <div style={{ position: "absolute", bottom: "10px", right: "10px", background: "#fee2e2", color: "#b91c1c", padding: "2px 8px", borderRadius: "12px", fontSize: "11px", fontWeight: "bold" }}>
+                      Agotado
+                    </div>
+                  )}
+                </button>
+              );
+            })}
           </div>
         </section>
       </main>
