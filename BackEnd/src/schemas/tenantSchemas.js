@@ -85,12 +85,12 @@ export const createPromotionSchema = z.object({
 
 export const createSupplierSchema = z.object({
     name: z.string().min(1, "La Razón Social / Marca es obligatoria").max(150),
-    contactName: z.string().max(150).optional().nullable(),
+    contactName: z.string().max(150).optional().nullable().or(z.literal("")),
     dui: z.string().regex(/^\d{8}-\d$/, "El DUI debe tener el formato 00000000-0"),
     nit: z.string().regex(/^\d{4}-\d{6}-\d{3}-\d$/, "El NIT debe tener el formato 0000-000000-000-0").optional().nullable().or(z.literal('')),
-    phone: z.string().max(20).optional().nullable(),
+    phone: z.string().max(20).optional().nullable().or(z.literal("")),
     email: z.string().email("Correo electrónico inválido").max(100).optional().nullable().or(z.literal('')),
-    address: z.string().optional().nullable(),
+    address: z.string().max(300).optional().nullable().or(z.literal("")),
 });
 
 export const updateSupplierSchema = createSupplierSchema.partial().extend({

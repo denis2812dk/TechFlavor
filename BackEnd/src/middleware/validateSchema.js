@@ -24,12 +24,13 @@ export const validateRequest = (schema) => {
             next();
         } catch (error) {
             if (error instanceof ZodError) {
-                const firstError = error.errors[0];
+                const issues = error.issues || error.errors || [];
+                const firstError = issues[0] || { message: "Datos inválidos." };
                 
                 return res.status(400).json({
                     success: false,
                     message: firstError.message,
-                    errorDetails: error.errors 
+                    errorDetails: issues 
                 });
             }
             next(error);
