@@ -89,22 +89,35 @@ export const CashierCatalog = () => {
   }
 
   const { subtotal, discount, total } = useMemo(() => {
-    let sub = 0; let applicableSub = 0;
+    const target = appliedPromo?.targets?.[0];
+    const targetType = target?.targetType;
+    const targetId = target?.targetId;
+
+    const matchesTarget = (item) => {
+      if (!appliedPromo) return false;
+      if (!targetType || targetType === "all") return true;
+      if (targetType === "product") return targetId === item.itemId;
+      if (targetType === "category") return targetId === item.categoryId;
+      return false;
+    };
+
+    let sub = 0;
+    let eligibleSub = 0;
+
     cart.forEach((item) => {
       const lineSubtotal = item.price * item.quantity;
       sub += lineSubtotal;
-      if (appliedPromo) {
-        const applies = appliedPromo.targets?.some((target) => (target.targetType === "all" || (target.targetType === "product" && target.targetId === item.itemId) || (target.targetType === "category" && target.targetId === item.categoryId)));
-        if (applies) applicableSub += lineSubtotal;
+      if (matchesTarget(item)) {
+        eligibleSub += lineSubtotal;
       }
     });
 
     let disc = 0;
-    if (appliedPromo && applicableSub > 0) {
+    if (appliedPromo && eligibleSub > 0) {
       if (appliedPromo.discountType === "percentage") {
-        disc = applicableSub * (Number(appliedPromo.discountValue) / 100);
+        disc = eligibleSub * (Number(appliedPromo.discountValue) / 100);
       } else if (appliedPromo.discountType === "fixed_amount") {
-        disc = Math.min(Number(appliedPromo.discountValue), applicableSub);
+        disc = Math.min(Number(appliedPromo.discountValue), eligibleSub);
       }
     }
     return { subtotal: sub, discount: disc, total: sub - disc };
