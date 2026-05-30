@@ -252,6 +252,7 @@ export const listTenantOrders = async (req, res, next) => {
                 updatedAt: order.updatedAt?.toISOString(),
                 items: items.map((item) => ({
                     id: item.id,
+                    itemId: item.itemId,
                     type: item.itemType,
                     name: item.name,
                     quantity: item.quantity,
@@ -303,6 +304,7 @@ export const listKitchenOrders = async (req, res, next) => {
                 updatedAt: order.updatedAt?.toISOString(),
                 items: items.map((item) => ({
                     id: item.id,
+                    itemId: item.itemId,
                     type: item.itemType,
                     name: item.name,
                     quantity: item.quantity,
@@ -393,6 +395,7 @@ export const listDispatchOrders = async (req, res, next) => {
                 updatedAt: order.updatedAt?.toISOString(),
                 items: items.map((item) => ({
                     id: item.id,
+                    itemId: item.itemId,
                     type: item.itemType,
                     name: item.name,
                     quantity: item.quantity,
@@ -515,6 +518,154 @@ export const cancelTenantOrder = async (req, res, next) => {
                 success: false,
                 message: "Debes tener un turno de caja abierto para poder procesar una cancelación y devolver el dinero.",
             });
+        }
+        next(error);
+    }
+};export const editTenantOrder = async (req, res, next) => {
+    try {
+        console.log("\n[DEBUG - EDIT] === INICIANDO EDICIÓN DE ORDEN ===");
+        const { orderId } = req.params;
+        const { items, fulfillmentType, tableId, promoCode, paymentMethod, customerName } = req.body;
+        const userId = req.user.id;
+        const userName = req.user.name || req.user.email || "Usuario de caja";
+
+        const [existingOrder] = await req.tenantDb.select().from(orders).where(eq(orders.id, orderId)).limit(1);
+        
+        if (!existingOrder) return res.status(404).json({ success: false, message: "Pedido no encontrado." });
+        if (existingOrder.status === "cancelled") return res.status(400).json({ success: false, message: "No puedes editar un pedido cancelado." });
+        const saleItems = [];
+        for (const item of items) {
+            const saleItem = await findSaleItem(req.tenantDb, item);
+            if (!saleItem) {
+                return res.status(400).json({ success: false, message: "Uno de los productos o combos ya no esta disponible." });
+            }
+            saleItems.push(saleItem);
+        }
+        const oldOrderItemsDb = await req.tenantDb.select().from(orderItems).where(eq(orderItems.orderId, orderId));
+        
+        console.log("[DEBUG - EDIT] Devolviendo inventario viejo a bodega temporalmente...");
+        await restockInventoryForOrder(req.tenantDb, orderId, `Reversión temporal por edición - Ticket ${existingOrder.ticketCode}`);
+
+        const inventoryCheck = await validateInventoryForOrder(req.tenantDb, saleItems);
+        if (!inventoryCheck.valid) {
+            console.log("[DEBUG - EDIT] ❌ Falla de inventario en la edición. Deshaciendo reversión...");
+            // Como falló, volvemos a descontar lo viejo para dejar todo como estaba
+            const rollbackItems = oldOrderItemsDb.map(oi => ({ itemType: oi.itemType, itemId: oi.itemId, quantity: oi.quantity }));
+            await deductInventoryForOrder(req.tenantDb, orderId, rollbackItems);
+            
+            return res.status(400).json({ success: false, message: inventoryCheck.message });
+        }
+
+        let subtotal = 0;
+        let discountTotal = 0;
+        let activePromotion = null;
+        let promoTargets = [];
+        let promotionTarget = null;
+
+        if (promoCode) {
+            const normalizedCode = promoCode.trim().toUpperCase();
+            const [promo] = await req.tenantDb.select().from(promotions)
+                .where(and(eq(promotions.code, normalizedCode), eq(promotions.isActive, true))).limit(1);
+
+            if (promo) {
+                const now = new Date();
+                const start = new Date(promo.startDate);
+                const end = new Date(promo.endDate);
+                if (now >= start && now <= end) {
+                    activePromotion = promo;
+                    promoTargets = await req.tenantDb.select().from(promotionTargets).where(eq(promotionTargets.promotionId, promo.id));
+                    promotionTarget = getPromotionTarget(promoTargets);
+                } else {
+                    const rollbackItems = oldOrderItemsDb.map(oi => ({ itemType: oi.itemType, itemId: oi.itemId, quantity: oi.quantity }));
+                    await deductInventoryForOrder(req.tenantDb, orderId, rollbackItems);
+                    return res.status(400).json({ success: false, message: "El código promocional ha expirado." });
+                }
+            }
+        }
+
+        const eligibleItems = [];
+        let eligibleSubtotalCents = 0;
+
+        for (const item of saleItems) {
+            const lineSubtotalCents = toCents(item.unitPrice) * item.quantity;
+            const appliesToItem = activePromotion ? isItemEligibleForTarget(item, promotionTarget) : false;
+            item.lineSubtotalCents = lineSubtotalCents;
+            item.lineDiscountCents = 0;
+            item.lineNetTotalCents = lineSubtotalCents;
+
+            if (appliesToItem) {
+                eligibleItems.push(item);
+                eligibleSubtotalCents += lineSubtotalCents;
+            }
+            subtotal += fromCents(lineSubtotalCents);
+        }
+
+        let discountTotalCents = 0;
+        if (activePromotion && eligibleSubtotalCents > 0) {
+            const discountValueCents = toCents(activePromotion.discountValue);
+            if (activePromotion.discountType === "percentage") {
+                discountTotalCents = Math.min(eligibleSubtotalCents, Math.round(eligibleSubtotalCents * (Number(activePromotion.discountValue) / 100)));
+            } else if (activePromotion.discountType === "fixed_amount") {
+                discountTotalCents = Math.min(discountValueCents, eligibleSubtotalCents);
+            }
+            distributeDiscountAcrossItems(eligibleItems, discountTotalCents, eligibleSubtotalCents);
+        }
+
+        for (const item of saleItems) {
+            item.lineNetTotalCents = item.lineSubtotalCents - item.lineDiscountCents;
+            item.lineSubtotal = fromCents(item.lineSubtotalCents);
+            item.lineDiscount = fromCents(item.lineDiscountCents);
+            item.lineNetTotal = fromCents(item.lineNetTotalCents);
+        }
+
+        discountTotal = fromCents(discountTotalCents);
+        const total = subtotal - discountTotal;
+        const amountDiff = total - Number(existingOrder.total);
+
+        console.log(`[DEBUG - EDIT] Diferencia de dinero: ${amountDiff}. Ajustando caja chica si es necesario...`);
+        await handleCrossShiftAdjustment(
+            req.tenantDb,
+            existingOrder.createdAt,
+            amountDiff, 
+            `Ajuste por edición de ticket ${existingOrder.ticketCode}`,
+            userId,
+            userName
+        );
+
+        await req.tenantDb.delete(orderItems).where(eq(orderItems.orderId, orderId));
+        await req.tenantDb.insert(orderItems).values(saleItems.map((item) => ({
+            id: randomUUID(),
+            orderId,
+            itemType: item.itemType,
+            itemId: item.itemId,
+            name: item.name,
+            unitPrice: money(item.unitPrice),
+            quantity: item.quantity,
+            lineTotal: money(item.lineNetTotal),
+        })));
+        await req.tenantDb.update(orders).set({
+            customerName: customerName || existingOrder.customerName,
+            status: "in_preparation", 
+            isEdited: true,          
+            fulfillmentType,
+            tableId: fulfillmentType === "dine_in" ? tableId : null,
+            paymentMethod: paymentMethod || existingOrder.paymentMethod,
+            subtotal: money(subtotal),
+            discountTotal: money(discountTotal),
+            promotionId: activePromotion ? activePromotion.id : null,
+            total: money(total),
+            updatedAt: new Date()
+        }).where(eq(orders.id, orderId));
+
+        console.log("[DEBUG - EDIT] Descontando el nuevo inventario...");
+        await deductInventoryForOrder(req.tenantDb, orderId, saleItems);
+
+        console.log("[DEBUG - EDIT] === EDICIÓN COMPLETADA CON ÉXITO ===");
+        res.json({ success: true, message: "Orden editada correctamente." });
+    } catch (error) {
+        console.error("[DEBUG - EDIT] ❌ ERROR EN EDICIÓN:", error);
+        if (error.message === "NO_OPEN_SHIFT_FOR_ADJUSTMENT") {
+            return res.status(400).json({ success: false, message: "Debes tener un turno de caja abierto para realizar ediciones que alteran el monto total." });
         }
         next(error);
     }

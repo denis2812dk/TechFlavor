@@ -5,7 +5,7 @@ import {
 } from "../controllers/tenantSettingsController.js";
 import { createMenuCategory, updateMenuCategory, createMenuCombo, createMenuProduct, listMenuCatalog, updateMenuCombo, updateMenuProduct,
     setProductRecipe, deleteProduct } from "../controllers/tenantMenuController.js";
-import { createTenantOrder, deliverDispatchOrder, finishKitchenOrder, listDispatchOrders, listKitchenOrders, listTenantOrders,cancelTenantOrder} from "../controllers/tenantOrdersController.js";
+import { createTenantOrder, deliverDispatchOrder, finishKitchenOrder, listDispatchOrders, listKitchenOrders, listTenantOrders,cancelTenantOrder, editTenantOrder} from "../controllers/tenantOrdersController.js";
 import {
     createTenantUser,
     listTenantUsers,
@@ -61,6 +61,7 @@ router.patch("/orders/:orderId/finish", tenantContext, requireTenantRoles(ROLES.
 router.get("/orders/dispatch", tenantContext, requireTenantRoles(ROLES.DESPACHO), listDispatchOrders);
 router.patch("/orders/:orderId/deliver", tenantContext, requireTenantRoles(ROLES.DESPACHO), deliverDispatchOrder);
 router.patch("/orders/:orderId/cancel", tenantContext, requireTenantRoles(ROLES.CAJERO, ROLES.GERENTE), cancelTenantOrder);
+router.put("/orders/:orderId", tenantContext, requireTenantRoles(ROLES.CAJERO, ROLES.GERENTE), validateSchema(createOrderSchema), editTenantOrder);
 // RUTAS DE INVENTARIO Y PROVEEDORES
 router.get("/inventory/ingredients", tenantContext, requireTenantRoles( ROLES.GERENTE), listIngredients);
 router.post("/inventory/ingredients", tenantContext, requireTenantRoles(ROLES.GERENTE), createIngredient);
