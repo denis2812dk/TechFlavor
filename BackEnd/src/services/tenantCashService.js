@@ -1,10 +1,9 @@
 import { randomUUID } from "crypto";
-import { eq, and, gte, sql, desc } from "drizzle-orm";
+import { eq, and, gte, lte, ne, sql, desc } from "drizzle-orm"; // <-- Agregamos lte y ne
 import { cashShifts, cashMovements, orders } from "../models/tenantSchema.js";
 
 
 export const getCurrentShift = async (tenantDb, userId) => {
-    
     const [shift] = await tenantDb
         .select()
         .from(cashShifts)
@@ -24,8 +23,8 @@ export const openShift = async (tenantDb, userId, userName, initialBalance) => {
         cashierUserId: userId,
         cashierName: userName,
         initialBalance: initialBalance,
-        status: "open",
-        openedAt: new Date()
+        status: "open"
+
     });
 
     return shiftId;
@@ -47,8 +46,7 @@ export const registerMovement = async (tenantDb, shiftId, type, amount, reason, 
         amount,
         reason: reason.trim(),
         userId,
-        userName,
-        createdAt: new Date()
+        userName
     });
 
     return movementId;
@@ -66,18 +64,22 @@ export const getShiftTotals = async (tenantDb, shiftId) => {
     const [shift] = await tenantDb.select().from(cashShifts).where(eq(cashShifts.id, shiftId)).limit(1);
     if (!shift) throw new Error("SHIFT_NOT_FOUND");
 
+    const orderConditions = [
+        eq(orders.cashierUserId, shift.cashierUserId),
+        gte(orders.createdAt, shift.openedAt), 
+        ne(orders.status, "cancelled")         
+    ];
+    if (shift.closedAt) {
+        orderConditions.push(lte(orders.createdAt, shift.closedAt));
+    }
+
     const ordersSummary = await tenantDb
         .select({
             method: orders.paymentMethod,
             totalAmount: sql`SUM(${orders.total})`
         })
         .from(orders)
-        .where(
-            and(
-                eq(orders.cashierUserId, shift.cashierUserId),
-                gte(orders.createdAt, shift.openedAt) 
-            )
-        )
+        .where(and(...orderConditions))
         .groupBy(orders.paymentMethod);
 
     const movementsSummary = await tenantDb
@@ -140,7 +142,7 @@ export const closeShift = async (tenantDb, shiftId, declaredCash, declaredCard, 
 
     await tenantDb.update(cashShifts).set({
         status: "closed",
-        closedAt: new Date(),
+        closedAt: sql`CURRENT_TIMESTAMP`, 
         
         expectedCash: totals.expected.cash,
         expectedCard: totals.expected.card,

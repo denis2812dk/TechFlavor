@@ -60,6 +60,7 @@ const getSidebarItems = (role) => {
       { label: "Inventario", icon: "inventory", path: "/gerente/inventory" },
       { label: "Proveedores", icon: "settings", path: "/gerente/suppliers" },
       { label: "Órdenes de Compra", icon: "orders", path: "/gerente/purchases" },
+      { label: "Historial de turnos", icon: "reports", path: "/gerente/shifts" },
       { label: "Promociones", icon: "promotions", path: "/gerente/promotions" },
       { label: "Órdenes", icon: "orders", path: "/gerente/orders" },
     ];
@@ -68,6 +69,7 @@ const getSidebarItems = (role) => {
   if (role === "cajero") {
     return [
       { label: "Caja", icon: "dashboard", path: "/cajero" },
+      { label: "Mi turno", icon: "reports", path: "/cajero/shift" },
       { label: "Órdenes Activas", icon: "orders", path: "/cajero/orders" },
     ];
   }

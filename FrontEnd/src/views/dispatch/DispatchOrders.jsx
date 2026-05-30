@@ -90,6 +90,7 @@ export const DispatchOrders = () => {
                 <div>
                   <span>{order.code}</span>
                   <h3>{deliveryLabel(order)}</h3>
+                  <p>Cliente: {order.customerName || "Cliente"}</p>
                   <p>Terminado por cocina - {elapsedMinutes(order.updatedAt, serverTime)}</p>
                 </div>
                 <strong>{order.items.reduce((sum, item) => sum + item.quantity, 0)} items</strong>

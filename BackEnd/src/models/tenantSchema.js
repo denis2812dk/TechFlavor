@@ -182,11 +182,10 @@ export const purchaseOrderItems = mysqlTable("purchase_order_items", {
 export const orders = mysqlTable("orders", {
     id: varchar("id", { length: 36 }).primaryKey(),
     ticketCode: varchar("ticket_code", { length: 30 }).notNull().unique(),
+    customerName: varchar("customer_name", { length: 120 }).notNull(),
     status: varchar("status", { length: 30 }).notNull().default("open"), 
     fulfillmentType: varchar("fulfillment_type", { length: 30 }).notNull().default("takeaway"), 
     tableId: varchar("table_id", { length: 36 }).references(() => tables.id, { onDelete: "set null" }), 
-    
-    // --- CAMPOS DE PAGO ---
     paymentMethod: varchar("payment_method", { length: 20 }).notNull().default("cash"), 
     paymentReference: varchar("payment_reference", { length: 100 }), 
     

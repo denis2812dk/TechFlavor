@@ -34,13 +34,6 @@ export const registerRestaurantRequest = async (req, res, next) => {
         });
 
     } catch (error) {
-        // Manejo de errores de negocio que lanza el servicio
-        if (error.message === "EMAIL_ALREADY_REGISTERED") {
-            return res.status(409).json({
-                success: false,
-                message: "Este correo electrónico ya está registrado o tiene una solicitud en proceso.",
-            });
-        }
         next(error);
     }
 };
