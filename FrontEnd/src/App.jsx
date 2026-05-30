@@ -24,6 +24,7 @@ import { SupplierManagement } from "./views/manager/SupplierManagement";
 import { PurchaseOrdersManagement } from "./views/manager/PurchaseOrdersManagement";
 import { ShiftHistory } from "./views/manager/ShiftHistory";
 import { CashierShift } from "./views/cashier/CashierShift";
+import { CashierOrders } from "./views/cashier/CashierOrders";
 const ROUTES = {
   // ==========================================
   // RUTAS DEL CEREBRO CENTRAL (SaaS)
@@ -118,8 +119,8 @@ const ROUTES = {
   },
   "/cajero/orders": {
     roles: [ROLES.CAJERO],
-    title: "Órdenes Activas",
-    description: "Pedidos generados desde caja y seguimiento del ticket.",
+    title: "Órdenes de caja",
+    description: "Historial y gestión de órdenes generadas desde caja.",
   },
   "/cocina": {
     roles: [ROLES.COCINA],
@@ -338,7 +339,7 @@ function App() {
 
         {/* VISTAS OPERATIVAS */}
         {path === "/cajero/shift" ? <CashierShift /> : null}
-        {path === "/cajero/orders" ? <OrdersList /> : null}
+        {path === "/cajero/orders" ? <CashierOrders /> : null}
         {path === "/cajero" ? <CashierCatalog /> : null}
         {path === "/cocina" ? <KitchenDisplay /> : null}
         {path === "/cocina/orders" ? <OrdersList /> : null}

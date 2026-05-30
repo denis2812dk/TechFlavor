@@ -397,3 +397,4 @@ export const deleteTenantUser = async (userId) => {
   return data;
 };
 export const getCatalogStockStatus = () => fetchAPI("/api/tenant/inventory/catalog-status");
+export const getTenantOrders = () => fetchAPI("/api/tenant/orders");
