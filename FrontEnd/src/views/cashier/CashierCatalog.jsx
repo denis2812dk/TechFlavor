@@ -187,9 +187,12 @@ export const CashierCatalog = () => {
       if (fulfillmentType === "dine_in") { orderPayload.tableId = tableId; }
 
       if (editingOrderId) {
-        await editOrder(editingOrderId, orderPayload);
+        const result = await editOrder(editingOrderId, orderPayload);
+        if (result?.ticket) {
+          window.sessionStorage.setItem("tf_last_edited_ticket", JSON.stringify(result.ticket));
+          setTicket(result.ticket);
+        }
         setEditingOrderId(null);
-        alert("Orden editada y actualizada exitosamente.");
       } else {
         const result = await createOrder(orderPayload);
         setTicket(result.ticket);
@@ -198,7 +201,9 @@ export const CashierCatalog = () => {
       setCart([]);
       setFulfillmentType("");
       setTableId("");
-      setCustomerName("");
+      if (!editingOrderId) {
+        setCustomerName("");
+      }
       setPaymentMethod("cash");
       setAppliedPromo(null);
       setPromoError("");

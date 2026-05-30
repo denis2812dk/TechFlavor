@@ -104,7 +104,8 @@ const findSaleItem = async (tenantDb, item) => {
 
 export const createTenantOrder = async (req, res, next) => {
     try {
-        const { items, fulfillmentType, tableId, promoCode, paymentMethod } = req.body;
+        const { items, fulfillmentType, tableId, promoCode, paymentMethod, customerName } = req.body;
+        const normalizedCustomerName = customerName?.trim() || req.user.name || req.user.email || "Cliente";
 
         const saleItems = [];
         for (const item of items) {
@@ -199,6 +200,7 @@ export const createTenantOrder = async (req, res, next) => {
         const order = {
             id: orderId,
             ticketCode,
+            customerName: normalizedCustomerName,
             status: "in_preparation",
             fulfillmentType,
             tableId: fulfillmentType === "dine_in" ? tableId : null,
@@ -230,10 +232,12 @@ export const createTenantOrder = async (req, res, next) => {
             success: true,
             message: "Pedido generado correctamente.",
             ticket: {
+                id: orderId,
                 code: ticketCode,
                 status: order.status,
                 fulfillmentType: order.fulfillmentType,
                 tableId: order.tableId,
+                customerName: order.customerName,
                 cashierName: order.cashierName,
                 paymentMethod: order.paymentMethod,
                 createdAt: new Date().toISOString(),
@@ -672,6 +676,7 @@ export const cancelTenantOrder = async (req, res, next) => {
         discountTotal = fromCents(discountTotalCents);
         const total = subtotal - discountTotal;
         const amountDiff = total - Number(existingOrder.total);
+        const newTicketCode = createTicketCode();
 
         console.log(`[DEBUG - EDIT] Diferencia de dinero: ${amountDiff}. Ajustando caja chica si es necesario...`);
         await handleCrossShiftAdjustment(
@@ -695,6 +700,7 @@ export const cancelTenantOrder = async (req, res, next) => {
             lineTotal: money(item.lineNetTotal),
         })));
         await req.tenantDb.update(orders).set({
+            ticketCode: newTicketCode,
             customerName: customerName || existingOrder.customerName,
             status: "in_preparation", 
             isEdited: true,          
@@ -712,7 +718,31 @@ export const cancelTenantOrder = async (req, res, next) => {
         await deductInventoryForOrder(req.tenantDb, orderId, saleItems);
 
         console.log("[DEBUG - EDIT] === EDICIÓN COMPLETADA CON ÉXITO ===");
-        res.json({ success: true, message: "Orden editada correctamente." });
+        res.json({
+            success: true,
+            message: "Orden editada correctamente.",
+            ticket: {
+                id: orderId,
+                code: newTicketCode,
+                status: "in_preparation",
+                fulfillmentType,
+                tableId: fulfillmentType === "dine_in" ? tableId : null,
+                customerName: customerName || existingOrder.customerName,
+                paymentMethod: paymentMethod || existingOrder.paymentMethod,
+                createdAt: new Date().toISOString(),
+                items: saleItems.map((item) => ({
+                    type: item.itemType,
+                    name: item.name,
+                    quantity: item.quantity,
+                    unitPrice: money(item.unitPrice),
+                    lineTotal: money(item.lineNetTotal),
+                })),
+                subtotal: money(subtotal),
+                discountTotal: money(discountTotal),
+                total: money(total),
+                promotionApplied: activePromotion ? activePromotion.name : null,
+            },
+        });
     } catch (error) {
         console.error("[DEBUG - EDIT] ❌ ERROR EN EDICIÓN:", error);
         if (error.message === "NO_OPEN_SHIFT_FOR_ADJUSTMENT") {

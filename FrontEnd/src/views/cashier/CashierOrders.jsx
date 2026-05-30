@@ -15,11 +15,62 @@ export const CashierOrders = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState("");
 
+  const normalizeTicket = (ticket) => ({
+    id: ticket.id,
+    code: ticket.code,
+    status: ticket.status,
+    fulfillmentType: ticket.fulfillmentType,
+    tableId: ticket.tableId,
+    tableName: ticket.tableName || null,
+    customerName: ticket.customerName,
+    paymentMethod: ticket.paymentMethod,
+    subtotal: ticket.subtotal,
+    total: ticket.total,
+    cashierName: ticket.cashierName || "Usuario de caja",
+    isEdited: true,
+    createdAt: ticket.createdAt,
+    items: Array.isArray(ticket.items)
+      ? ticket.items.map((item, index) => ({
+          id: item.id || `${ticket.id}-${index}`,
+          type: item.type,
+          name: item.name,
+          quantity: item.quantity,
+          unitPrice: item.unitPrice,
+          lineTotal: item.lineTotal,
+        }))
+      : [],
+  });
+
   const loadOrders = async () => {
     try {
       setIsLoading(true);
       const res = await getTenantOrders();
-      setOrders(res.orders || []);
+      const freshOrders = res.orders || [];
+
+      const storedEditedTicketRaw = window.sessionStorage.getItem("tf_last_edited_ticket");
+      if (storedEditedTicketRaw) {
+        try {
+          const storedEditedTicket = JSON.parse(storedEditedTicketRaw);
+          if (storedEditedTicket?.id) {
+            const normalizedEditedTicket = normalizeTicket(storedEditedTicket);
+            const updatedOrders = freshOrders.map((order) => (
+              order.id === normalizedEditedTicket.id ? { ...order, ...normalizedEditedTicket } : order
+            ));
+
+            if (!updatedOrders.some((order) => order.id === normalizedEditedTicket.id)) {
+              updatedOrders.unshift(normalizedEditedTicket);
+            }
+
+            setOrders(updatedOrders);
+            window.sessionStorage.removeItem("tf_last_edited_ticket");
+            return;
+          }
+        } catch (storageError) {
+          window.sessionStorage.removeItem("tf_last_edited_ticket");
+        }
+      }
+
+      setOrders(freshOrders);
     } catch (err) {
       setError(getErrorMessage(err));
     } finally {
