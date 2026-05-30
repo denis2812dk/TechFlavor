@@ -24,7 +24,6 @@ const getTenantPool = (databaseName) => {
         waitForConnections: true,
         connectionLimit: Number(process.env.TENANT_DB_CONNECTION_LIMIT) || 5,
         queueLimit: 0,
-        timezone: 'Z',
     });
 
     tenantPools.set(databaseName, pool);

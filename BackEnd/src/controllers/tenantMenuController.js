@@ -22,6 +22,17 @@ const parseActiveFilter = (req) => {
 
 const requiredText = (value) => typeof value === "string" && value.trim().length > 0;
 
+const normalizeImageBase64 = (value) => {
+    if (value === undefined) return undefined;
+    if (value === null) return null;
+    if (typeof value !== "string") return null;
+
+    const trimmed = value.trim();
+    if (!trimmed) return null;
+    if (!trimmed.startsWith("data:image/")) return null;
+    return trimmed;
+};
+
 const parsePrice = (price) => {
     const parsed = Number(price);
     if (!Number.isFinite(parsed) || parsed < 0) return null;
@@ -54,6 +65,8 @@ export const listMenuCatalog = async (req, res, next) => {
                 id: menuProducts.id,
                 categoryId: menuProducts.categoryId,
                 categoryName: menuCategories.name,
+                categoryImageBase64: menuCategories.imageBase64,
+                imageBase64: menuProducts.imageBase64,
                 name: menuProducts.name,
                 description: menuProducts.description,
                 price: menuProducts.price,
@@ -121,6 +134,7 @@ export const createMenuCategory = async (req, res, next) => {
             id: randomUUID(),
             name,
             description,
+            imageBase64: normalizeImageBase64(req.body.imageBase64),
             isActive: true,
         };
 
@@ -134,7 +148,7 @@ export const createMenuCategory = async (req, res, next) => {
 export const updateMenuCategory = async (req, res, next) => {
     try {
         const { categoryId } = req.params;
-        const allowedFields = ["name", "description", "isActive"];
+        const allowedFields = ["name", "description", "imageBase64", "isActive"];
         const dataToUpdate = {};
 
         for (const field of allowedFields) {
@@ -142,6 +156,12 @@ export const updateMenuCategory = async (req, res, next) => {
 
             if (field === "isActive") {
                 dataToUpdate.isActive = Boolean(req.body.isActive);
+            } else if (field === "imageBase64") {
+                const imageBase64 = normalizeImageBase64(req.body.imageBase64);
+                if (req.body.imageBase64 && !imageBase64) {
+                    return res.status(400).json({ success: false, message: "La imagen de la categoria debe ser Base64 válida." });
+                }
+                dataToUpdate.imageBase64 = imageBase64;
             } else if (field !== "description" && !requiredText(req.body[field])) {
                 return res.status(400).json({ success: false, message: `${field} no puede ir vacio.` });
             } else {
@@ -172,6 +192,7 @@ export const createMenuProduct = async (req, res, next) => {
         const description = req.body.description?.trim();
         const categoryId = req.body.categoryId;
         const price = parsePrice(req.body.price);
+        const imageBase64 = normalizeImageBase64(req.body.imageBase64);
 
         if (!requiredText(name) || !requiredText(description) || !requiredText(categoryId) || price === null) {
             return res.status(400).json({
@@ -196,6 +217,7 @@ export const createMenuProduct = async (req, res, next) => {
             name,
             description,
             price,
+            imageBase64,
             isActive: true,
         };
 
@@ -208,7 +230,7 @@ export const createMenuProduct = async (req, res, next) => {
 
 export const updateMenuProduct = async (req, res, next) => {
     try {
-        const allowedFields = ["name", "description", "categoryId", "price", "isActive"];
+        const allowedFields = ["name", "description", "categoryId", "price", "imageBase64", "isActive"];
         const dataToUpdate = {};
 
         for (const field of allowedFields) {
@@ -222,6 +244,12 @@ export const updateMenuProduct = async (req, res, next) => {
                 dataToUpdate.price = price;
             } else if (field === "isActive") {
                 dataToUpdate.isActive = Boolean(req.body.isActive);
+            } else if (field === "imageBase64") {
+                const imageBase64 = normalizeImageBase64(req.body.imageBase64);
+                if (req.body.imageBase64 && !imageBase64) {
+                    return res.status(400).json({ success: false, message: "La imagen del producto debe ser Base64 válida." });
+                }
+                dataToUpdate.imageBase64 = imageBase64;
             } else if (field !== "description" && !requiredText(req.body[field])) {
                 return res.status(400).json({ success: false, message: `${field} no puede ir vacio.` });
             } else {

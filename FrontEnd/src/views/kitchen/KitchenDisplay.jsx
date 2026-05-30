@@ -18,7 +18,7 @@ const getMinutesPassed = (value) => {
 
   // Calculamos la diferencia en milisegundos y la pasamos a minutos
   const diffMs = now.getTime() - orderDate.getTime();
-  const minutes = Math.floor(diffMs / 60000);
+  const minutes = Math.floor(diffMs / 60000) - 360;
 
   return Math.max(0, minutes);
 };
@@ -123,6 +123,11 @@ export const KitchenDisplay = () => {
                 <div className="kitchen-items">
                   {order.items.map((item) => (
                     <div className="kitchen-item" key={item.id}>
+                      {(item.imageBase64 || item.categoryImageBase64) && (
+                        <div style={{ width: "44px", height: "44px", borderRadius: "10px", overflow: "hidden", background: "#f8fafc", flexShrink: 0 }}>
+                          <img src={item.imageBase64 || item.categoryImageBase64} alt={item.name} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                        </div>
+                      )}
                       <b>{item.quantity}x</b>
                       <span>{item.name}</span>
                     </div>

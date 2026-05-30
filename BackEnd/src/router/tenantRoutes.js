@@ -28,10 +28,13 @@ import { readLimiter, writeLimiter, criticalLimiter } from "../middleware/rateLi
 import { validateSchema } from "../middleware/validateSchema.js";
 import { 
     createOrderSchema, 
+    createCategorySchema,
     createProductSchema, 
     createComboSchema, 
     createShrinkageSchema,
-    updateRecipeSchema, createPromotionSchema
+    updateRecipeSchema, createPromotionSchema,
+    updateCategorySchema,
+    updateProductSchema
 } from "../schemas/tenantSchemas.js";
 
 const router = Router();
@@ -46,10 +49,10 @@ router.patch("/users/:userId", tenantContext, writeLimiter, requireTenantRoles(R
 router.delete("/users/:userId", tenantContext, writeLimiter, requireTenantRoles(ROLES.GERENTE), deleteTenantUser);
 // Catálogo / Menú
 router.get("/menu", tenantContext, readLimiter, requireTenantRoles( ROLES.GERENTE, ROLES.CAJERO), listMenuCatalog);
-router.post("/menu/categories", tenantContext, writeLimiter, requireTenantRoles( ROLES.GERENTE), createMenuCategory);
-router.patch("/menu/categories/:categoryId", tenantContext, writeLimiter, requireTenantRoles(ROLES.GERENTE), updateMenuCategory);
+router.post("/menu/categories", tenantContext, writeLimiter, requireTenantRoles( ROLES.GERENTE), validateSchema(createCategorySchema), createMenuCategory);
+router.patch("/menu/categories/:categoryId", tenantContext, writeLimiter, requireTenantRoles(ROLES.GERENTE), validateSchema(updateCategorySchema), updateMenuCategory);
 router.post("/menu/products", tenantContext, writeLimiter, requireTenantRoles(ROLES.GERENTE), validateSchema(createProductSchema), createMenuProduct);
-router.patch("/menu/products/:productId", tenantContext, writeLimiter, requireTenantRoles(ROLES.GERENTE), updateMenuProduct);
+router.patch("/menu/products/:productId", tenantContext, writeLimiter, requireTenantRoles(ROLES.GERENTE), validateSchema(updateProductSchema), updateMenuProduct);
 router.put("/menu/products/:productId/recipe", tenantContext, writeLimiter, requireTenantRoles(ROLES.GERENTE), validateSchema(updateRecipeSchema), setProductRecipe);
 router.delete("/menu/products/:productId", tenantContext, writeLimiter, requireTenantRoles(ROLES.GERENTE), deleteProduct);
 router.post("/menu/combos", tenantContext, writeLimiter, requireTenantRoles(ROLES.GERENTE), validateSchema(createComboSchema), createMenuCombo);

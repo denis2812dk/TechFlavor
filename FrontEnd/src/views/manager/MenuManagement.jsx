@@ -13,8 +13,8 @@ import {
 } from "../../lib/auth";
 
 const TABS = ["Productos", "Categorias", "Combos"];
-const emptyCategory = { name: "", description: "", isActive: true };
-const emptyProduct = { name: "", description: "", price: "", categoryId: "", isActive: true };
+const emptyCategory = { name: "", description: "", imageBase64: "", isActive: true };
+const emptyProduct = { name: "", description: "", price: "", categoryId: "", imageBase64: "", isActive: true };
 const emptyComboItem = { productId: "", quantity: 1 };
 const emptyCombo = { name: "", description: "", price: "", items: [emptyComboItem] };
 const emptyRecipeItem = { ingredientId: "", quantity: "", searchText: "", isSearching: false, unitOfMeasure: "" };
@@ -44,6 +44,34 @@ export const MenuManagement = () => {
   const [activeDropdown, setActiveDropdown] = useState(null);
   const [hoveredButton, setHoveredButton] = useState(null);
   const [hoveredItem, setHoveredItem] = useState(null);
+
+  const handleImageFile = (event, setFormState) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      setFormState((form) => ({ ...form, imageBase64: reader.result || "" }));
+    };
+    reader.readAsDataURL(file);
+    event.target.value = "";
+  };
+
+  const renderSelectedImage = (value, alt) => {
+    if (!value) return null;
+
+    return (
+      <div style={{ display: "flex", alignItems: "center", gap: "12px", marginTop: "10px" }}>
+        <div style={{ width: "56px", height: "56px", borderRadius: "14px", overflow: "hidden", border: "1px solid #e5e7eb", background: "#f8fafc", flexShrink: 0 }}>
+          <img src={value} alt={alt} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+        </div>
+        <div>
+          <strong style={{ display: "block", fontSize: "13px" }}>Archivo seleccionado</strong>
+          <span style={{ fontSize: "12px", color: "#64748b" }}>La imagen se verá guardada en el producto o categoría.</span>
+        </div>
+      </div>
+    );
+  };
 
   const loadCatalog = async () => {
     try {
@@ -122,7 +150,10 @@ export const MenuManagement = () => {
     event.preventDefault();
     clearMessages();
     try {
-      await createMenuCategory(categoryForm);
+      await createMenuCategory({
+        ...categoryForm,
+        imageBase64: categoryForm.imageBase64 || undefined,
+      });
       setCategoryForm(emptyCategory);
       setStatus("Categoria creada.");
       setShowCreate(false);
@@ -136,7 +167,10 @@ export const MenuManagement = () => {
     event.preventDefault();
     clearMessages();
     try {
-      const response = await createMenuProduct(productForm);
+      const response = await createMenuProduct({
+        ...productForm,
+        imageBase64: productForm.imageBase64 || undefined,
+      });
 
       const validRecipe = recipeRows
         .filter((row) => row.ingredientId && row.quantity)
@@ -164,7 +198,10 @@ export const MenuManagement = () => {
     event.preventDefault();
     clearMessages();
     try {
-      await updateMenuProduct(editingProduct.id, productForm);
+      await updateMenuProduct(editingProduct.id, {
+        ...productForm,
+        imageBase64: productForm.imageBase64 || undefined,
+      });
 
       const validRecipe = recipeRows
         .filter((row) => row.ingredientId && row.quantity)
@@ -193,6 +230,7 @@ export const MenuManagement = () => {
       description: product.description || "",
       price: product.price,
       categoryId: product.categoryId,
+      imageBase64: product.imageBase64 || "",
       isActive: product.isActive,
     });
     setRecipeRows(
@@ -216,7 +254,10 @@ export const MenuManagement = () => {
     event.preventDefault();
     clearMessages();
     try {
-      await updateMenuCategory(editingCategory.id, categoryForm);
+      await updateMenuCategory(editingCategory.id, {
+        ...categoryForm,
+        imageBase64: categoryForm.imageBase64 || undefined,
+      });
       setEditingCategory(null);
       setCategoryForm(emptyCategory);
       setStatus("Categoria actualizada correctamente.");
@@ -232,6 +273,7 @@ export const MenuManagement = () => {
     setCategoryForm({
       name: category.name,
       description: category.description || "",
+      imageBase64: category.imageBase64 || "",
       isActive: category.isActive,
     });
     setShowCreate(false);
@@ -513,6 +555,11 @@ export const MenuManagement = () => {
             <input value={productForm.name} onChange={(event) => setProductForm((form) => ({ ...form, name: event.target.value }))} placeholder="Classic Burger" />
           </label>
           <label>
+            <span>Imagen del producto</span>
+            <input type="file" accept="image/*" onChange={(event) => handleImageFile(event, setProductForm)} />
+            {renderSelectedImage(productForm.imageBase64, productForm.name || "Producto")}
+          </label>
+          <label>
             <span>Precio</span>
             <input type="number" step="0.01" value={productForm.price} onChange={(event) => setProductForm((form) => ({ ...form, price: event.target.value }))} placeholder="12.99" />
           </label>
@@ -560,6 +607,11 @@ export const MenuManagement = () => {
             <input value={productForm.name} onChange={(event) => setProductForm((form) => ({ ...form, name: event.target.value }))} />
           </label>
           <label>
+            <span>Imagen del producto</span>
+            <input type="file" accept="image/*" onChange={(event) => handleImageFile(event, setProductForm)} />
+            {renderSelectedImage(productForm.imageBase64, productForm.name || "Producto")}
+          </label>
+          <label>
             <span>Precio</span>
             <input type="number" step="0.01" value={productForm.price} onChange={(event) => setProductForm((form) => ({ ...form, price: event.target.value }))} />
           </label>
@@ -597,6 +649,11 @@ export const MenuManagement = () => {
             <span>Nombre</span>
             <input value={categoryForm.name} onChange={(event) => setCategoryForm((form) => ({ ...form, name: event.target.value }))} placeholder="Burgers" />
           </label>
+          <label>
+            <span>Imagen de la categoria</span>
+            <input type="file" accept="image/*" onChange={(event) => handleImageFile(event, setCategoryForm)} />
+            {renderSelectedImage(categoryForm.imageBase64, categoryForm.name || "Categoria")}
+          </label>
           <label className="is-wide">
             <span>Descripcion</span>
             <textarea value={categoryForm.description} onChange={(event) => setCategoryForm((form) => ({ ...form, description: event.target.value }))} placeholder="Premium beef and chicken burgers" />
@@ -621,6 +678,11 @@ export const MenuManagement = () => {
           <label className="is-wide">
             <span>Nombre</span>
             <input value={categoryForm.name} onChange={(event) => setCategoryForm((form) => ({ ...form, name: event.target.value }))} />
+          </label>
+          <label>
+            <span>Imagen de la categoria</span>
+            <input type="file" accept="image/*" onChange={(event) => handleImageFile(event, setCategoryForm)} />
+            {renderSelectedImage(categoryForm.imageBase64, categoryForm.name || "Categoria")}
           </label>
           <label className="is-wide">
             <span>Descripcion</span>
@@ -755,7 +817,9 @@ export const MenuManagement = () => {
                   </div>
                 )}
               </div>
-              <div className="menu-card-icon">{getInitials(product.name)}</div>
+              <div className="menu-card-icon" style={{ overflow: "hidden" }}>
+                {product.imageBase64 ? <img src={product.imageBase64} alt={product.name} style={{ width: "100%", height: "100%", objectFit: "cover" }} /> : getInitials(product.name)}
+              </div>
               <h3>{product.name}</h3>
               <p>{product.description || "Producto disponible para venta en caja."}</p>
               {product.recipe?.length ? (
@@ -829,10 +893,14 @@ export const MenuManagement = () => {
                   </div>
                 )}
               </div>
-              <div className="menu-card-icon">
-                <svg width="27" height="27" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-                  <path d="M12 3 5 7v10l7 4 7-4V7l-7-4Zm0 0v8M5 7l7 4 7-4" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" />
-                </svg>
+              <div className="menu-card-icon" style={{ overflow: "hidden" }}>
+                {category.imageBase64 ? (
+                  <img src={category.imageBase64} alt={category.name} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                ) : (
+                  <svg width="27" height="27" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                    <path d="M12 3 5 7v10l7 4 7-4V7l-7-4Zm0 0v8M5 7l7 4 7-4" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" />
+                  </svg>
+                )}
               </div>
               <h3>{category.name}</h3>
               <p>{category.description || "Categoria del catalogo del restaurante."}</p>

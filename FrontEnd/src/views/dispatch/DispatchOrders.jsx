@@ -98,7 +98,14 @@ export const DispatchOrders = () => {
 
               <div className="dispatch-items">
                 {order.items.map((item) => (
-                  <span key={item.id}>{item.quantity}x {item.name}</span>
+                  <span key={item.id} style={{ display: "inline-flex", alignItems: "center", gap: "8px" }}>
+                    {(item.imageBase64 || item.categoryImageBase64) && (
+                      <span style={{ width: "32px", height: "32px", borderRadius: "8px", overflow: "hidden", background: "#f8fafc", flexShrink: 0 }}>
+                        <img src={item.imageBase64 || item.categoryImageBase64} alt={item.name} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                      </span>
+                    )}
+                    <span>{item.quantity}x {item.name}</span>
+                  </span>
                 ))}
               </div>
 

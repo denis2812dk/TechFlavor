@@ -27,6 +27,10 @@ export const CashierCatalog = () => {
   const [prevCart, setPrevCart] = useState([]);
   const [editingOrderId, setEditingOrderId] = useState(null);
 
+  const categoryById = useMemo(() => {
+    return Object.fromEntries((catalog.categories || []).map((category) => [category.id, category]));
+  }, [catalog.categories]);
+
   useEffect(() => {
     const loadInitialData = async () => {
       try {
@@ -259,6 +263,7 @@ export const CashierCatalog = () => {
             {catalog.products.map((product) => {
               // Verificamos si el producto tiene stock. Si no está en el mapa, es porque no tiene receta (infinito).
               const isAvailable = stockStatus.productsStock[product.id] !== false;
+              const productImage = product.imageBase64 || categoryById[product.categoryId]?.imageBase64 || "";
 
               return (
                 <button 
@@ -269,6 +274,11 @@ export const CashierCatalog = () => {
                   disabled={!isAvailable}
                   style={{ opacity: isAvailable ? 1 : 0.4, cursor: isAvailable ? "pointer" : "not-allowed", position: "relative" }}
                 >
+                    {productImage && (
+                      <div style={{ width: "100%", height: "96px", borderRadius: "12px", overflow: "hidden", marginBottom: "10px", background: "#f8fafc" }}>
+                        <img src={productImage} alt={product.name} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                      </div>
+                    )}
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: "8px" }}>
                     <strong>{product.name}</strong><b>${toMoney(product.price)}</b>
                   </div>

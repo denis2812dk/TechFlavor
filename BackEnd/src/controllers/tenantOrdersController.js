@@ -1,6 +1,7 @@
 import { randomUUID } from "crypto";
 import { and, desc, eq, gte, lte } from "drizzle-orm";
 import {
+    menuCategories,
     menuCombos,
     menuProducts,
     inventoryMovements,
@@ -276,8 +277,20 @@ export const listTenantOrders = async (req, res, next) => {
         for (const row of tenantOrders) {
             const order = row.order;
             const items = await req.tenantDb
-                .select()
+                .select({
+                    id: orderItems.id,
+                    itemId: orderItems.itemId,
+                    itemType: orderItems.itemType,
+                    name: orderItems.name,
+                    quantity: orderItems.quantity,
+                    unitPrice: orderItems.unitPrice,
+                    lineTotal: orderItems.lineTotal,
+                    imageBase64: menuProducts.imageBase64,
+                    categoryImageBase64: menuCategories.imageBase64,
+                })
                 .from(orderItems)
+                .leftJoin(menuProducts, eq(orderItems.itemId, menuProducts.id))
+                .leftJoin(menuCategories, eq(menuProducts.categoryId, menuCategories.id))
                 .where(eq(orderItems.orderId, order.id));
 
             orderPayload.push({
@@ -303,6 +316,8 @@ export const listTenantOrders = async (req, res, next) => {
                     quantity: item.quantity,
                     unitPrice: item.unitPrice,
                     lineTotal: item.lineTotal,
+                    imageBase64: item.imageBase64,
+                    categoryImageBase64: item.categoryImageBase64,
                 })),
             });
         }
@@ -333,8 +348,18 @@ export const listKitchenOrders = async (req, res, next) => {
         for (const row of kitchenOrders) {
             const order = row.order;
             const items = await req.tenantDb
-                .select()
+                .select({
+                    id: orderItems.id,
+                    itemId: orderItems.itemId,
+                    itemType: orderItems.itemType,
+                    name: orderItems.name,
+                    quantity: orderItems.quantity,
+                    imageBase64: menuProducts.imageBase64,
+                    categoryImageBase64: menuCategories.imageBase64,
+                })
                 .from(orderItems)
+                .leftJoin(menuProducts, eq(orderItems.itemId, menuProducts.id))
+                .leftJoin(menuCategories, eq(menuProducts.categoryId, menuCategories.id))
                 .where(eq(orderItems.orderId, order.id));
 
             orderPayload.push({
@@ -354,6 +379,8 @@ export const listKitchenOrders = async (req, res, next) => {
                     type: item.itemType,
                     name: item.name,
                     quantity: item.quantity,
+                    imageBase64: item.imageBase64,
+                    categoryImageBase64: item.categoryImageBase64,
                 })),
             });
         }
@@ -425,8 +452,18 @@ export const listDispatchOrders = async (req, res, next) => {
         for (const row of dispatchOrders) {
             const order = row.order;
             const items = await req.tenantDb
-                .select()
+                .select({
+                    id: orderItems.id,
+                    itemId: orderItems.itemId,
+                    itemType: orderItems.itemType,
+                    name: orderItems.name,
+                    quantity: orderItems.quantity,
+                    imageBase64: menuProducts.imageBase64,
+                    categoryImageBase64: menuCategories.imageBase64,
+                })
                 .from(orderItems)
+                .leftJoin(menuProducts, eq(orderItems.itemId, menuProducts.id))
+                .leftJoin(menuCategories, eq(menuProducts.categoryId, menuCategories.id))
                 .where(eq(orderItems.orderId, order.id));
 
             orderPayload.push({
@@ -446,6 +483,8 @@ export const listDispatchOrders = async (req, res, next) => {
                     type: item.itemType,
                     name: item.name,
                     quantity: item.quantity,
+                    imageBase64: item.imageBase64,
+                    categoryImageBase64: item.categoryImageBase64,
                 })),
             });
         }

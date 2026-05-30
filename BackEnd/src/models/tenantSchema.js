@@ -18,6 +18,7 @@ export const restaurantSettings = mysqlTable("restaurant_settings", {
 export const menuCategories = mysqlTable("menu_categories", {
     id: varchar("id", { length: 36 }).primaryKey(),
     name: varchar("name", { length: 80 }).notNull(),
+    imageBase64: mediumtext("image_base64"),
     description: text("description"),
     isActive: boolean("is_active").notNull().default(true),
     createdAt: timestamp("created_at").defaultNow(),
@@ -30,6 +31,7 @@ export const menuProducts = mysqlTable("menu_products", {
         .notNull()
         .references(() => menuCategories.id, { onDelete: "restrict" }),
     name: varchar("name", { length: 120 }).notNull(),
+    imageBase64: mediumtext("image_base64"),
     description: text("description").notNull(),
     price: decimal("price", { precision: 10, scale: 2 }).notNull(),
     isActive: boolean("is_active").notNull().default(true),

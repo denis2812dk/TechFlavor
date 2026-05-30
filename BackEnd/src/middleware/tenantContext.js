@@ -5,7 +5,7 @@ import { db } from "../config/db.js";
 import { restaurantUsers, restaurants } from "../models/schema.js";
 import { getTenantDb } from "../config/tenantDb.js";
 import { ROLES } from "../constants/roles.js";
-import { ensureTenantIncidencesCompatibility, ensureTenantSettingsCompatibility } from "../services/tenantProvisioningService.js";
+import { ensureTenantIncidencesCompatibility, ensureTenantMenuImagesCompatibility, ensureTenantSettingsCompatibility } from "../services/tenantProvisioningService.js";
 
 export const tenantContext = async (req, res, next) => {
     try {
@@ -67,6 +67,7 @@ export const tenantContext = async (req, res, next) => {
         
         await ensureTenantIncidencesCompatibility(req.tenantDb);
         await ensureTenantSettingsCompatibility(req.tenantDb, membership.restaurantName);
+        await ensureTenantMenuImagesCompatibility(req.tenantDb);
 
         next();
     } catch (error) {

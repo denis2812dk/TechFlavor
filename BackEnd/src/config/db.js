@@ -16,7 +16,6 @@ const poolConnection = mysql.createPool({
   waitForConnections: true,
   connectionLimit: 10,
   queueLimit: 0,
-  timezone: 'Z',
 });
 
 export const db = drizzle(poolConnection, { schema, mode: "default" });

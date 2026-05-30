@@ -7,6 +7,33 @@ export const createProductSchema = z.object({
     description: z.string().min(1, "La descripcion es obligatoria"),
     categoryId: idSchema,
     price: z.coerce.number().positive("El precio debe ser mayor a 0"),
+    imageBase64: z.string()
+        .max(7 * 1024 * 1024, "La imagen codificada no puede exceder los 7MB")
+        .refine((val) => val.startsWith("data:image/"), {
+            message: "La imagen del producto debe ser una cadena Base64 válida (data:image/...)"
+        })
+        .optional()
+        .nullable(),
+});
+
+export const createCategorySchema = z.object({
+    name: z.string().min(1, "El nombre no puede estar vacio").max(80),
+    description: z.string().optional().nullable(),
+    imageBase64: z.string()
+        .max(7 * 1024 * 1024, "La imagen codificada no puede exceder los 7MB")
+        .refine((val) => val.startsWith("data:image/"), {
+            message: "La imagen de la categoria debe ser una cadena Base64 válida (data:image/...)"
+        })
+        .optional()
+        .nullable(),
+});
+
+export const updateCategorySchema = createCategorySchema.partial().extend({
+    isActive: z.boolean().optional(),
+});
+
+export const updateProductSchema = createProductSchema.partial().extend({
+    isActive: z.boolean().optional(),
 });
 
 export const createComboSchema = z.object({

@@ -49,6 +49,26 @@ export const ensureTenantSettingsCompatibility = async (tenantDb, restaurantName
     }
 };
 
+export const ensureTenantMenuImagesCompatibility = async (tenantDb) => {
+    try {
+        await tenantDb.execute(sql`
+            ALTER TABLE menu_categories
+                ADD COLUMN IF NOT EXISTS image_base64 mediumtext DEFAULT NULL,
+                MODIFY COLUMN image_base64 mediumtext DEFAULT NULL
+        `);
+
+        await tenantDb.execute(sql`
+            ALTER TABLE menu_products
+                ADD COLUMN IF NOT EXISTS image_base64 mediumtext DEFAULT NULL,
+                MODIFY COLUMN image_base64 mediumtext DEFAULT NULL
+        `);
+
+        console.log("DEBUG: [tenantProvisioningService] Compatibilidad de imágenes de menú aplicada.");
+    } catch (e) {
+        console.error("ERROR: [tenantProvisioningService] Fallo en ensureTenantMenuImagesCompatibility:", e);
+    }
+};
+
 export const initializeTenantDatabase = async (tenantDb) => {
     console.log("DEBUG: [tenantProvisioningService] Iniciando creación de tablas para el tenant.");
     try {
@@ -74,6 +94,7 @@ export const initializeTenantDatabase = async (tenantDb) => {
             CREATE TABLE IF NOT EXISTS menu_categories (
                 id varchar(36) PRIMARY KEY,
                 name varchar(80) NOT NULL,
+                image_base64 mediumtext,
                 description text,
                 is_active boolean NOT NULL DEFAULT true,
                 created_at timestamp DEFAULT CURRENT_TIMESTAMP,
@@ -87,6 +108,7 @@ export const initializeTenantDatabase = async (tenantDb) => {
                 id varchar(36) PRIMARY KEY,
                 category_id varchar(36) NOT NULL,
                 name varchar(120) NOT NULL,
+                image_base64 mediumtext,
                 description text NOT NULL,
                 price decimal(10,2) NOT NULL,
                 is_active boolean NOT NULL DEFAULT true,
