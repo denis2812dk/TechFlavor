@@ -1,7 +1,14 @@
 import { useEffect, useState } from "react";
-import { getTenantOrders, getErrorMessage } from "../../lib/auth"; // Ajusta la ruta si es necesario
+import { getTenantOrders, getErrorMessage, cancelTenantOrder } from "../../lib/auth"; 
 
 const toMoney = (value) => Number(value || 0).toFixed(2);
+
+const formatItemName = (item) => item.name || item.productName || item.comboName || item.itemName || "Producto";
+
+const formatItemDetail = (item) => {
+  const notes = [item.size, item.observations, item.notes].filter(Boolean);
+  return notes.length > 0 ? notes.join(" · ") : "";
+};
 
 export const CashierOrders = () => {
   const [orders, setOrders] = useState([]);
@@ -44,10 +51,14 @@ export const CashierOrders = () => {
     alert(`Próximamente: Editar orden ${orderCode}`);
   };
 
-  const handleCancel = (orderCode) => {
-    // Aquí conectaremos la Fase 4
+  const handleCancel = async (orderId, orderCode) => {
     if (window.confirm(`¿Estás seguro que deseas CANCELAR la orden ${orderCode}? Se devolverá el dinero y el inventario.`)) {
-      alert(`Próximamente: Cancelación en backend para ${orderCode}`);
+      try {
+        await cancelTenantOrder(orderId);
+        await loadOrders();
+      } catch (err) {
+        setError(getErrorMessage(err));
+      }
     }
   };
 
@@ -98,6 +109,50 @@ export const CashierOrders = () => {
                 </div>
               </div>
 
+              <div style={{ marginBottom: "16px" }}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "8px" }}>
+                  <strong style={{ fontSize: "14px" }}>Detalle del pedido</strong>
+                  <span className="inventory-pill">{order.items?.length || 0} líneas</span>
+                </div>
+
+                {Array.isArray(order.items) && order.items.length > 0 ? (
+                  <div style={{ display: "grid", gap: "8px" }}>
+                    {order.items.map((item, index) => (
+                      <div
+                        key={item.id || `${order.id}-${index}`}
+                        style={{
+                          padding: "10px 12px",
+                          borderRadius: "10px",
+                          background: "#f8fafc",
+                          border: "1px solid #e2e8f0",
+                        }}
+                      >
+                        <div style={{ display: "flex", justifyContent: "space-between", gap: "12px" }}>
+                          <strong style={{ fontSize: "13px" }}>{item.quantity || 1}x {formatItemName(item)}</strong>
+                          {item.price != null ? <span style={{ fontSize: "13px", color: "#0f172a", whiteSpace: "nowrap" }}>${toMoney(item.price)}</span> : null}
+                        </div>
+
+                        {item.categoryName ? (
+                          <p style={{ margin: "4px 0 0", fontSize: "12px", color: "#64748b" }}>
+                            Categoría: {item.categoryName}
+                          </p>
+                        ) : null}
+
+                        {formatItemDetail(item) ? (
+                          <p style={{ margin: "4px 0 0", fontSize: "12px", color: "#64748b" }}>
+                            {formatItemDetail(item)}
+                          </p>
+                        ) : null}
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-muted" style={{ margin: 0, fontSize: "13px" }}>
+                    Esta orden no incluye líneas detalladas.
+                  </p>
+                )}
+              </div>
+
               {/* Botones de Acción (Solo si no está cancelada) */}
               {order.status !== "cancelled" && (
                 <div style={{ display: "flex", gap: "8px" }}>
@@ -111,7 +166,7 @@ export const CashierOrders = () => {
                   <button 
                     type="button" 
                     style={{ flex: 1, padding: "8px", borderRadius: "8px", border: "none", background: "#fee2e2", color: "#b91c1c", cursor: "pointer", fontWeight: "bold" }}
-                    onClick={() => handleCancel(order.code)}
+                    onClick={() => handleCancel(order.id, order.code)}
                   >
                     Cancelar
                   </button>
