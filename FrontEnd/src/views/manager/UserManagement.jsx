@@ -34,7 +34,7 @@ const formatDate = (value) => {
   }).format(new Date(value));
 };
 
-export const UserManagement = () => {
+export const UserManagement = ({ settings }) => {
   const [form, setForm] = useState(initialForm);
   const [employees, setEmployees] = useState([]);
   const [restaurantName, setRestaurantName] = useState("Restaurante");
@@ -49,6 +49,26 @@ export const UserManagement = () => {
   const [showCreatePassword, setShowCreatePassword] = useState(false);
   const [editingUser, setEditingUser] = useState(null);
   const [activeMenu, setActiveMenu] = useState(null);
+  const allowKitchenDisplay = settings?.allowKitchenDisplay ?? true;
+
+  const availableRoles = useMemo(
+    () => ROLE_OPTIONS.filter((role) => {
+      if (role.value === ROLES.COCINA && !allowKitchenDisplay) {
+        return false;
+      }
+      return true;
+    }),
+    [allowKitchenDisplay]
+  );
+
+  useEffect(() => {
+    if (!availableRoles.some((role) => role.value === form.role)) {
+      setForm((current) => ({
+        ...current,
+        role: availableRoles[0]?.value || ROLES.CAJERO,
+      }));
+    }
+  }, [availableRoles, form.role]);
 
   const filteredEmployees = useMemo(() => {
     const query = searchQuery.trim().toLowerCase();
@@ -181,7 +201,7 @@ export const UserManagement = () => {
 
         <select className="users-filter-select" value={roleFilter} onChange={(event) => setRoleFilter(event.target.value)} aria-label="Filtrar por rol">
           <option value="all">All Roles</option>
-          {ROLE_OPTIONS.map((role) => (
+          {availableRoles.map((role) => (
             <option key={role.value} value={role.value}>{role.label}</option>
           ))}
         </select>

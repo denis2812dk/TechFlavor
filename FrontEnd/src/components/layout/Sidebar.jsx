@@ -51,9 +51,12 @@ const iconMap = {
   )
 };
 
-const getSidebarItems = (role) => {
+const getSidebarItems = (role, settings) => {
+  const allowInventory = settings?.allowInventory ?? true;
+  const allowKitchenDisplay = settings?.allowKitchenDisplay ?? true;
+
   if (role === "gerente") {
-    return [
+    const items = [
       { label: "Dashboard", icon: "dashboard", path: "/gerente" },
       { label: "Configuración", icon: "settings", path: "/gerente/settings" },
       { label: "Usuarios", icon: "users", path: "/gerente/users" },
@@ -66,6 +69,13 @@ const getSidebarItems = (role) => {
       { label: "Promociones", icon: "promotions", path: "/gerente/promotions" },
       { label: "Órdenes", icon: "orders", path: "/gerente/orders" },
     ];
+
+    return items.filter((item) => {
+      if (!allowInventory && ["/gerente/inventory", "/gerente/suppliers", "/gerente/purchases"].includes(item.path)) {
+        return false;
+      }
+      return true;
+    });
   }
 
   if (role === "cajero") {
@@ -77,6 +87,10 @@ const getSidebarItems = (role) => {
   }
 
   if (role === "cocina") {
+    if (!allowKitchenDisplay) {
+      return [];
+    }
+
     return [
       { label: "KDS Cocina", icon: "orders", path: "/cocina" },
     ];
@@ -119,7 +133,7 @@ export const Sidebar = ({ currentPath, onNavigate, userName, userRole, initials,
   const logo = settings?.logoBase64 || settings?.logo_base_64;
   
   const textColor = "#2D1810";
-  const sidebarItems = getSidebarItems(userRole);
+  const sidebarItems = getSidebarItems(userRole, settings);
 
   return (
     <aside className="dashboard-sidebar">

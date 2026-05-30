@@ -160,6 +160,29 @@ const ROUTES = {
 const INACTIVITY_TIMEOUT_MS = 15 * 60 * 1000;
 const ACTIVITY_EVENTS = ["mousemove", "mousedown", "keydown", "touchstart", "scroll"];
 
+const getBlockedFeatureRoute = (path, settings) => {
+  const allowInventory = settings?.allowInventory ?? true;
+  const allowKitchenDisplay = settings?.allowKitchenDisplay ?? true;
+
+  if (!allowInventory && ["/gerente/inventory", "/gerente/suppliers", "/gerente/purchases"].includes(path)) {
+    return {
+      title: "Módulo no disponible",
+      description: "Tu plan actual no incluye inventario ni las vistas relacionadas.",
+      message: "Tu plan no incluye el módulo de inventario. Ocultamos estas vistas para tu restaurante.",
+    };
+  }
+
+  if (!allowKitchenDisplay && ["/cocina", "/cocina/orders"].includes(path)) {
+    return {
+      title: "Módulo no disponible",
+      description: "Tu plan actual no incluye cocina / KDS.",
+      message: "Tu plan no incluye el módulo de cocina. Ocultamos estas vistas para tu restaurante.",
+    };
+  }
+
+  return null;
+};
+
 function App() {
   const [session, setSession] = useState(null);
   const [restaurantSettings, setRestaurantSettings] = useState(null);
@@ -316,6 +339,7 @@ function App() {
   // RUTAS PROTEGIDAS
   // ==========================================
   const route = ROUTES[path];
+  const blockedFeatureRoute = getBlockedFeatureRoute(path, restaurantSettings);
 
   if (!route) {
     return (
@@ -328,6 +352,41 @@ function App() {
           </button>
         </section>
       </main>
+    );
+  }
+
+  if (blockedFeatureRoute) {
+    return (
+      <ProtectedRoute
+        allowedRoles={route.roles}
+        session={session}
+        onLogin={handleLogin}
+        onRegister={() => navigate("/register")}
+      >
+        <RoleDashboard
+          title={blockedFeatureRoute.title}
+          description={blockedFeatureRoute.description}
+          session={session}
+          settings={restaurantSettings}
+          onLogout={handleLogout}
+          currentPath={path}
+          onNavigate={navigate}
+        >
+          <main className="tf-empty-page" style={{ minHeight: "calc(100vh - 120px)" }}>
+            <section className="tf-empty-card" style={{ maxWidth: "720px" }}>
+              <p className="tf-kicker">Plan limitado</p>
+              <h1>{blockedFeatureRoute.title}</h1>
+              <p>{blockedFeatureRoute.message}</p>
+              <button
+                type="button"
+                onClick={() => navigate(session?.user ? ROLE_HOME_PATHS[session.user.role] : "/login")}
+              >
+                Volver al panel
+              </button>
+            </section>
+          </main>
+        </RoleDashboard>
+      </ProtectedRoute>
     );
   }
 
@@ -378,7 +437,7 @@ function App() {
         {/* VISTAS DEL GERENTE */}
         {path === "/gerente" ? <OperationalOverview /> : null}
         {path === "/gerente/settings" ? <RestaurantSettings /> : null}
-        {path === "/gerente/users" ? <UserManagement /> : null}
+        {path === "/gerente/users" ? <UserManagement settings={restaurantSettings} /> : null}
         {path === "/gerente/menu" ? <MenuManagement /> : null}
         {path === "/gerente/suppliers" ? <SupplierManagement /> : null}
         {path === "/gerente/purchases" ? <PurchaseOrdersManagement /> : null}
