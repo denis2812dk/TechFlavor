@@ -9,7 +9,7 @@ import {
     promotionTargets,
     tables
 } from "../models/tenantSchema.js";
-import { deductInventoryForOrder } from "../services/tenantInventoryService.js";
+import { deductInventoryForOrder, validateInventoryForOrder } from "../services/tenantInventoryService.js";
 
 const money = (value) => Number(value).toFixed(2);
 const toCents = (value) => Math.round(Number(value || 0) * 100);
@@ -115,6 +115,14 @@ export const createTenantOrder = async (req, res, next) => {
                 });
             }
             saleItems.push(saleItem);
+        }
+
+        const inventoryCheck = await validateInventoryForOrder(req.tenantDb, saleItems);
+        if (!inventoryCheck.valid) {
+            return res.status(400).json({
+                success: false,
+                message: inventoryCheck.message
+            });
         }
         
         let subtotal = 0;

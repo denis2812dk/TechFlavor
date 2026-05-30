@@ -118,6 +118,7 @@ export const initializeTenantDatabase = async (tenantDb) => {
             id varchar(36) PRIMARY KEY,
             ticket_code varchar(30) NOT NULL UNIQUE,
             customer_name varchar(120) NOT NULL,
+            is_edited boolean NOT NULL DEFAULT false,
             status varchar(30) NOT NULL DEFAULT 'open',
             fulfillment_type varchar(30) NOT NULL DEFAULT 'takeaway',
             table_id varchar(36),

@@ -1,5 +1,5 @@
 import { randomUUID } from "crypto";
-import { eq, and, gte, lte, ne, sql, desc } from "drizzle-orm"; // <-- Agregamos lte y ne
+import { eq, and, gte, lte, ne, sql, desc } from "drizzle-orm";
 import { cashShifts, cashMovements, orders } from "../models/tenantSchema.js";
 
 
@@ -24,12 +24,10 @@ export const openShift = async (tenantDb, userId, userName, initialBalance) => {
         cashierName: userName,
         initialBalance: initialBalance,
         status: "open"
-
     });
 
     return shiftId;
 };
-
 
 export const registerMovement = async (tenantDb, shiftId, type, amount, reason, userId, userName) => {
     const [shift] = await tenantDb.select().from(cashShifts).where(eq(cashShifts.id, shiftId)).limit(1);
@@ -162,10 +160,34 @@ export const closeShift = async (tenantDb, shiftId, declaredCash, declaredCard, 
     };
 };
 
-
 export const getAllShifts = async (tenantDb) => {
     return await tenantDb
         .select()
         .from(cashShifts)
         .orderBy(desc(cashShifts.openedAt));
+};
+export const handleCrossShiftAdjustment = async (tenantDb, orderCreatedAt, amountDiff, reason, userId, userName) => {
+    if (amountDiff === 0) return;
+
+    const currentShift = await getCurrentShift(tenantDb, userId);
+    if (!currentShift) {
+        throw new Error("NO_OPEN_SHIFT_FOR_ADJUSTMENT");
+    }
+
+    const isFromPreviousShift = new Date(orderCreatedAt) < new Date(currentShift.openedAt);
+
+    if (isFromPreviousShift) {
+        const type = amountDiff > 0 ? "IN" : "OUT";
+        const absoluteAmount = Math.abs(amountDiff);
+
+        await registerMovement(
+            tenantDb, 
+            currentShift.id, 
+            type, 
+            absoluteAmount, 
+            reason, 
+            userId, 
+            userName
+        );
+    }
 };
