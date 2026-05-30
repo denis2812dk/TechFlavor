@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { getShiftHistory, getShiftDetails } from "../../lib/cash";
 import { getErrorMessage } from "../../lib/auth";
 
@@ -13,8 +13,9 @@ export const ShiftHistory = () => {
   const [selectedShift, setSelectedShift] = useState(null);
   const [shiftDetails, setShiftDetails] = useState(null);
   const [isDetailLoading, setIsDetailLoading] = useState(false);
+  const [timeFilter, setTimeFilter] = useState("all");
 
-  const loadData = async () => {
+  const loadData = useCallback(async () => {
     try {
       setIsLoading(true);
       const res = await getShiftHistory();
@@ -24,9 +25,9 @@ export const ShiftHistory = () => {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, []);
 
-  useEffect(() => { loadData(); }, []);
+  useEffect(() => { loadData(); }, [loadData]);
 
   const handleOpenDetails = async (shift) => {
     setSelectedShift(shift);
@@ -43,6 +44,22 @@ export const ShiftHistory = () => {
     }
   };
 
+  const filteredShifts = useMemo(() => {
+    if (timeFilter === "all") return shifts;
+
+    const now = new Date();
+    let limitDate;
+
+    if (timeFilter === "today") {
+      limitDate = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    } else {
+      const days = { week: 7, fortnight: 15, month: 30 }[timeFilter] || 0;
+      limitDate = new Date(now.getTime() - days * 24 * 60 * 60 * 1000);
+    }
+
+    return shifts.filter(shift => new Date(shift.openedAt) >= limitDate);
+  }, [shifts, timeFilter]);
+
   if (isLoading) return <p className="menu-loading">Cargando historial de turnos...</p>;
 
   return (
@@ -56,6 +73,21 @@ export const ShiftHistory = () => {
       </header>
 
       {error && <p className="admin-users-error">{error}</p>}
+
+      <div className="menu-catalog-toolbar">
+        <p>{filteredShifts.length} turnos encontrados</p>
+        <select
+          value={timeFilter}
+          onChange={(e) => setTimeFilter(e.target.value)}
+          style={{ padding: "8px 12px", borderRadius: "8px", border: "1px solid #e2e8f0", backgroundColor: "#fff", cursor: "pointer", outline: "none" }}
+        >
+          <option value="all">Todos</option>
+          <option value="today">Hoy</option>
+          <option value="week">Últimos 7 días</option>
+          <option value="fortnight">Últimos 15 días</option>
+          <option value="month">Último mes</option>
+        </select>
+      </div>
 
       <section className="inventory-table-card mt-3">
         <div className="inventory-table-wrap">
@@ -72,10 +104,10 @@ export const ShiftHistory = () => {
               </tr>
             </thead>
             <tbody>
-              {shifts.length === 0 ? (
-                <tr><td colSpan="7" className="text-center text-muted p-4">No hay turnos registrados.</td></tr>
+                {filteredShifts.length === 0 ? (
+                  <tr><td colSpan="7" className="text-center text-muted p-4">No hay turnos para el rango seleccionado.</td></tr>
               ) : (
-                shifts.map(shift => {
+                  filteredShifts.map(shift => {
                   const diff = Number(shift.cashDifference);
                   const isClosed = shift.status === "closed";
                   
