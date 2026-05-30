@@ -22,6 +22,14 @@ export const RestaurantSettings = () => {
   const [status, setStatus] = useState("");
   const [error, setError] = useState("");
 
+  // Estados del Cropper (Recorte interactivo)
+  const [tempImage, setTempImage] = useState(null);
+  const [showCropper, setShowCropper] = useState(false);
+  const [zoom, setZoom] = useState(1);
+  const [offset, setOffset] = useState({ x: 0, y: 0 });
+  const [dragging, setDragging] = useState(false);
+  const [startPos, setStartPos] = useState({ x: 0, y: 0 });
+
   const API_URL = import.meta.env.VITE_API_URL || "http://localhost:3000";
 
   useEffect(() => {
@@ -59,9 +67,55 @@ export const RestaurantSettings = () => {
 
     const reader = new FileReader();
     reader.onloadend = () => {
-      setForm({ ...form, logoBase64: reader.result });
+      setTempImage(reader.result);
+      setZoom(1);
+      setOffset({ x: 0, y: 0 });
+      setShowCropper(true);
     };
     reader.readAsDataURL(file);
+    e.target.value = null; // Reiniciar el input para permitir subir la misma imagen de nuevo
+  };
+
+  // Lógica de arrastre de imagen para el Cropper
+  const startDrag = (e) => {
+    const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+    const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+    setDragging(true);
+    setStartPos({ x: clientX - offset.x, y: clientY - offset.y });
+  };
+
+  const onDrag = (e) => {
+    if (!dragging) return;
+    const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+    const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+    setOffset({ x: clientX - startPos.x, y: clientY - startPos.y });
+  };
+
+  const endDrag = () => setDragging(false);
+
+  // Recortar en un lienzo HTML5 invisible y guardar como Base64
+  const handleSaveCrop = () => {
+    const canvas = document.createElement("canvas");
+    const size = 300; // Resolución final (bastante nítida para logos)
+    canvas.width = size;
+    canvas.height = size;
+    const ctx = canvas.getContext("2d");
+    
+    const img = new Image();
+    img.src = tempImage;
+    img.onload = () => {
+      // Calcular la escala para simular "object-fit: cover"
+      const coverScale = Math.max(size / img.width, size / img.height);
+      const finalScale = coverScale * zoom;
+      const drawWidth = img.width * finalScale;
+      const drawHeight = img.height * finalScale;
+      const x = (size / 2) - (drawWidth / 2) + offset.x;
+      const y = (size / 2) - (drawHeight / 2) + offset.y;
+      
+      ctx.drawImage(img, x, y, drawWidth, drawHeight);
+      setForm({ ...form, logoBase64: canvas.toDataURL("image/png") });
+      setShowCropper(false);
+    };
   };
 
   const handleSubmit = async (e) => {
@@ -130,8 +184,8 @@ export const RestaurantSettings = () => {
         </div>
 
         <div style={{ display: "flex", gap: "24px", alignItems: "center", marginBottom: "20px" }}>
-          <div style={{ width: "120px", height: "120px", border: "2px dashed #ddd", borderRadius: "12px", display: "flex", alignItems: "center", justifyContent: "center", overflow: "hidden", background: "#f9f9f9" }}>
-            {form.logoBase64 ? <img src={form.logoBase64} alt="Preview" style={{ width: "100%", height: "100%", objectFit: "contain" }} /> : <span style={{ fontSize: "12px", color: "#999" }}>Sin Logo</span>}
+          <div style={{ width: "120px", height: "120px", border: "2px dashed #ddd", borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", overflow: "hidden", background: "#f9f9f9", flexShrink: 0 }}>
+            {form.logoBase64 ? <img src={form.logoBase64} alt="Preview" style={{ width: "100%", height: "100%", objectFit: "cover" }} /> : <span style={{ fontSize: "12px", color: "#999" }}>Sin Logo</span>}
           </div>
           <div style={{ flex: 1 }}>
             <label>
@@ -162,6 +216,42 @@ export const RestaurantSettings = () => {
           <button type="submit" className="menu-primary-action" disabled={isSaving}>{isSaving ? "Guardando..." : "Guardar Configuración"}</button>
         </div>
       </form>
+
+      {/* Modal Interactivo de Recorte */}
+      {showCropper && (
+        <div style={{ position: "fixed", inset: 0, backgroundColor: "rgba(15, 23, 42, 0.75)", zIndex: 1000, display: "flex", alignItems: "center", justifyContent: "center" }}>
+          <div style={{ background: "#fff", padding: "24px", borderRadius: "16px", width: "90%", maxWidth: "400px", boxShadow: "0 20px 40px rgba(0,0,0,0.2)" }}>
+            <h3 style={{ margin: "0 0 16px", fontSize: "18px", textAlign: "center" }}>Ajustar Logo</h3>
+            
+            <div style={{ width: "240px", height: "240px", borderRadius: "50%", overflow: "hidden", margin: "0 auto 24px", backgroundColor: "#f8fafc", border: `4px solid ${form.primaryColor || "#ea580c"}`, cursor: dragging ? "grabbing" : "grab" }}>
+              <img 
+                src={tempImage} 
+                alt="Crop preview" 
+                draggable={false}
+                onMouseDown={startDrag} onMouseMove={onDrag} onMouseUp={endDrag} onMouseLeave={endDrag}
+                onTouchStart={startDrag} onTouchMove={onDrag} onTouchEnd={endDrag}
+                style={{
+                  width: "100%", height: "100%", objectFit: "cover",
+                  transform: `scale(${zoom}) translate(${offset.x / zoom}px, ${offset.y / zoom}px)`,
+                  transformOrigin: "center"
+                }} 
+              />
+            </div>
+  
+            <div style={{ marginBottom: "24px" }}>
+              <label style={{ display: "flex", justifyContent: "space-between", fontSize: "14px", marginBottom: "8px", color: "#64748b" }}>
+                <span>Zoom</span><span>{Math.round(zoom * 100)}%</span>
+              </label>
+              <input type="range" min="1" max="3" step="0.05" value={zoom} onChange={(e) => setZoom(Number(e.target.value))} style={{ width: "100%" }} />
+            </div>
+  
+            <div style={{ display: "flex", gap: "12px" }}>
+              <button type="button" onClick={() => setShowCropper(false)} style={{ flex: 1, padding: "10px", borderRadius: "8px", border: "1px solid #cbd5e1", background: "#fff", cursor: "pointer" }}>Cancelar</button>
+              <button type="button" onClick={handleSaveCrop} style={{ flex: 1, padding: "10px", borderRadius: "8px", border: "none", background: form.primaryColor || "#ea580c", color: "#fff", fontWeight: "bold", cursor: "pointer" }}>Aplicar y Guardar</button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

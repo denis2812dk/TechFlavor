@@ -1,27 +1,7 @@
-import { useEffect, useState } from "react";
-
 export const Navbar = ({ title, description, userName, userRole, initials, onLogout, onNavigate, settings }) => {
-  const [tenantSettings, setTenantSettings] = useState(null);
-  const localSettings = settings || tenantSettings;
 
-  useEffect(() => {
-    if (settings || userRole === "admin") return;
-
-    const fetchSettings = async () => {
-      try {
-        const API_URL = import.meta.env.VITE_API_URL || "http://localhost:3000";
-        const res = await fetch(`${API_URL}/api/tenant/settings`, { credentials: "include" });
-        const data = await res.json();
-        if (data.success) setTenantSettings(data.settings);
-      } catch (err) {
-        console.error("Error al cargar configuración en Navbar:", err);
-      }
-    };
-    fetchSettings();
-  }, [settings, userRole]);
-
-  const accentColor = localSettings?.primaryColor || localSettings?.primary_color || "#E89B8F";
-  const restaurantDisplayName = localSettings?.restaurantName || localSettings?.restaurant_name || "TechFlavor";
+  const accentColor = settings?.primaryColor || settings?.primary_color || "#E89B8F";
+  const restaurantDisplayName = settings?.restaurantName || settings?.restaurant_name || "TechFlavor";
   const mutedColor = "#6B5D56";
 
   return (

@@ -5,7 +5,7 @@ import { AdminSidebar } from "../../components/layout/AdminSidebar";
 import { Navbar } from "../../components/layout/Navbar";
 import { OperationalOverview } from "./OperationalOverview";
 
-export const RoleDashboard = ({ title, description, session, onLogout, children, currentPath, onNavigate }) => {
+export const RoleDashboard = ({ title, description, session, settings, onLogout, children, currentPath, onNavigate }) => {
   const userName = session?.user?.name || "Usuario";
   const userRole = session?.user?.role || "operador";
   const initials = userName
@@ -31,6 +31,7 @@ export const RoleDashboard = ({ title, description, session, onLogout, children,
               userName={userName}
               userRole={userRole}
               initials={initials}
+              settings={settings}
             />
           ) : (
             <Sidebar
@@ -39,6 +40,7 @@ export const RoleDashboard = ({ title, description, session, onLogout, children,
               userName={userName}
               userRole={userRole}
               initials={initials}
+              settings={settings}
             />
           )}
 
@@ -51,6 +53,7 @@ export const RoleDashboard = ({ title, description, session, onLogout, children,
               initials={initials}
               onLogout={handleLogout}
               onNavigate={onNavigate}
+              settings={settings}
             />
 
             <section className="content-panel" aria-label="Contenido futuro del dashboard">

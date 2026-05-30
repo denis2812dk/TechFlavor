@@ -1,4 +1,3 @@
-import { useEffect, useState } from "react";
 
 const iconMap = {
   dashboard: (
@@ -114,33 +113,10 @@ const SidebarItem = ({ label, active = false, icon, disabled = false, onClick })
 };
 
 export const Sidebar = ({ currentPath, onNavigate, userName, userRole, initials, settings }) => {
-  const [localSettings, setLocalSettings] = useState(settings || null);
 
-  useEffect(() => {
-    // Si ya vienen por props, los usamos (inicialmente se setea en useState)
-    if (settings) {
-      return;
-    }
-
-    // Si no, los pedimos al backend (siempre que no sea el admin del SaaS)
-    if (userRole === "admin") return;
-
-    const fetchSettings = async () => {
-      try {
-        const API_URL = import.meta.env.VITE_API_URL || "http://localhost:3000";
-        const res = await fetch(`${API_URL}/api/tenant/settings`, { credentials: "include" });
-        const data = await res.json();
-        if (data.success) setLocalSettings(data.settings);
-      } catch (err) {
-        console.error("Error al cargar configuración en Sidebar:", err);
-      }
-    };
-    fetchSettings();
-  }, [settings, userRole]);
-
-  const accentColor = localSettings?.primaryColor || localSettings?.primary_color || "#E89B8F";
-  const restaurantDisplayName = localSettings?.restaurantName || localSettings?.restaurant_name || "TechFlavor";
-  const logo = localSettings?.logoBase64 || localSettings?.logo_base_64;
+  const accentColor = settings?.primaryColor || settings?.primary_color || "#E89B8F";
+  const restaurantDisplayName = settings?.restaurantName || settings?.restaurant_name || "TechFlavor";
+  const logo = settings?.logoBase64 || settings?.logo_base_64;
   
   const textColor = "#2D1810";
   const sidebarItems = getSidebarItems(userRole);
@@ -153,7 +129,7 @@ export const Sidebar = ({ currentPath, onNavigate, userName, userRole, initials,
             <img 
               src={logo} 
               alt="Logo" 
-              style={{ width: '100%', height: '100%', objectFit: 'contain' }} 
+              style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: '50%' }} 
             />
           ) : (
             <svg width="22" height="22" viewBox="0 0 24 24" fill="none" aria-hidden="true">

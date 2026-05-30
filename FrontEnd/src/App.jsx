@@ -177,6 +177,8 @@ function App() {
         if (data.settings.primaryColor) {
           document.documentElement.style.setProperty('--color-accent', data.settings.primaryColor);
         }
+      } else if (!res.ok) {
+        console.error(`🔥 Error ${res.status} al cargar identidad del restaurante:`, data);
       }
     } catch (error) {
       console.error("Error al cargar la identidad del restaurante:", error);
