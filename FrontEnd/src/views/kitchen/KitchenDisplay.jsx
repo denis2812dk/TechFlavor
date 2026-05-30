@@ -11,14 +11,16 @@ const fulfillmentLabel = (order) => {
 
 const getMinutesPassed = (value) => {
   if (!value) return 0;
-  // If the string lacks a timezone offset, JS assumes local time.
-  // By appending 'Z' we force it to parse as UTC, or we handle the string safely.
-  const dateStr = value.endsWith('Z') ? value : `${value}Z`;
-  const diff = Date.now() - new Date(dateStr).getTime();
-  const minutes = Math.floor(diff / 60000);
-  
-  // Workaround: Restamos 360 minutos (6 horas) por el desfase de zona horaria
-  return Math.max(0, minutes - 360);
+
+  // Convertimos el string ISO (que ya viene en UTC desde la BD) a un objeto Date local
+  const orderDate = new Date(value);
+  const now = new Date();
+
+  // Calculamos la diferencia en milisegundos y la pasamos a minutos
+  const diffMs = now.getTime() - orderDate.getTime();
+  const minutes = Math.floor(diffMs / 60000);
+
+  return Math.max(0, minutes);
 };
 
 const elapsedMinutes = (value) => {
@@ -109,6 +111,11 @@ export const KitchenDisplay = () => {
                     <span>{order.code}</span>
                     <strong>{fulfillmentLabel(order)}</strong>
                     <small className="d-block mt-1">Cliente: {order.customerName || "Cliente"}</small>
+                    {order.isEdited && (
+                      <span style={{ background: "#fee2e2", color: "#b91c1c", padding: "2px 6px", borderRadius: "4px", fontSize: "11px", fontWeight: "bold", marginTop: "4px", display: "inline-block" }}>
+                        ¡TICKET EDITADO!
+                      </span>
+                    )}
                   </div>
                   <em>{elapsedMinutes(order.createdAt)}</em>
                 </header>

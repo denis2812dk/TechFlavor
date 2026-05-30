@@ -46,9 +46,10 @@ export const CashierOrders = () => {
     }
   };
 
-  const handleEdit = (orderCode) => {
-    // Aquí conectaremos la Fase 5
-    alert(`Próximamente: Editar orden ${orderCode}`);
+  const handleEdit = (order) => {
+    // La app usa navegación por history (sin react-router), así que pasamos la orden en history.state.
+    window.history.pushState({ orderToEdit: order }, "", "/cajero");
+    window.dispatchEvent(new PopStateEvent("popstate"));
   };
 
   const handleCancel = async (orderId, orderCode) => {
@@ -156,13 +157,15 @@ export const CashierOrders = () => {
               {/* Botones de Acción (Solo si no está cancelada) */}
               {order.status !== "cancelled" && (
                 <div style={{ display: "flex", gap: "8px" }}>
-                  <button 
-                    type="button" 
-                    style={{ flex: 1, padding: "8px", borderRadius: "8px", border: "1px solid #cbd5e1", background: "#f8fafc", cursor: "pointer", fontWeight: "bold", color: "#334155" }}
-                    onClick={() => handleEdit(order.code)}
-                  >
-                    Editar
-                  </button>
+                  {order.status === "in_preparation" && (
+                    <button 
+                      type="button" 
+                      style={{ flex: 1, padding: "8px", borderRadius: "8px", border: "1px solid #cbd5e1", background: "#f8fafc", cursor: "pointer", fontWeight: "bold", color: "#334155" }}
+                      onClick={() => handleEdit(order)}
+                    >
+                      Editar
+                    </button>
+                  )}
                   <button 
                     type="button" 
                     style={{ flex: 1, padding: "8px", borderRadius: "8px", border: "none", background: "#fee2e2", color: "#b91c1c", cursor: "pointer", fontWeight: "bold" }}

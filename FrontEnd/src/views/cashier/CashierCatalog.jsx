@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { createOrder, getErrorMessage, getMenuCatalog, getCatalogStockStatus } from "../../lib/auth"; 
+import { createOrder, editOrder, getErrorMessage, getMenuCatalog, getCatalogStockStatus } from "../../lib/auth"; 
 import { listActivePromotions } from "../../lib/promotions";
 import { getSalonStatus } from "../../lib/salon";
 import { getMyShift } from "../../lib/cash"; 
@@ -25,6 +25,7 @@ export const CashierCatalog = () => {
   const [appliedPromo, setAppliedPromo] = useState(null);
   const [promoError, setPromoError] = useState("");
   const [prevCart, setPrevCart] = useState([]);
+  const [editingOrderId, setEditingOrderId] = useState(null);
 
   useEffect(() => {
     const loadInitialData = async () => {
@@ -41,7 +42,32 @@ export const CashierCatalog = () => {
         setActivePromotions(promosData.promotions || []);
         setSalonZones(salonData.salon || []);
         setHasOpenShift(shiftData.hasOpenShift);
-        setStockStatus(stockData.data || { productsStock: {}, combosStock: {} }); // <-- GUARDAMOS EL MAPA
+        setStockStatus(stockData.data || { productsStock: {}, combosStock: {} });
+
+        const orderToEdit = window.history.state?.orderToEdit;
+        if (orderToEdit?.id && Array.isArray(orderToEdit.items)) {
+          setEditingOrderId(orderToEdit.id);
+          setCustomerName(orderToEdit.customerName || "");
+          setFulfillmentType(orderToEdit.fulfillmentType || "");
+          setTableId(orderToEdit.tableId || "");
+          setPaymentMethod(orderToEdit.paymentMethod || "cash");
+
+          const loadedCart = orderToEdit.items.map((item) => {
+            const originalProduct = catalogData.products.find((product) => product.id === item.itemId);
+            return {
+              cartId: `${item.type}-${item.itemId}`,
+              itemId: item.itemId,
+              itemType: item.type,
+              categoryId: originalProduct ? originalProduct.categoryId : null,
+              name: item.name,
+              price: Number(item.unitPrice),
+              quantity: Number(item.quantity),
+            };
+          });
+
+          setCart(loadedCart);
+          window.history.replaceState({}, "", window.location.pathname);
+        }
       } catch (requestError) {
         setError(getErrorMessage(requestError));
       } finally {
@@ -160,8 +186,15 @@ export const CashierCatalog = () => {
 
       if (fulfillmentType === "dine_in") { orderPayload.tableId = tableId; }
 
-      const result = await createOrder(orderPayload);
-      setTicket(result.ticket);
+      if (editingOrderId) {
+        await editOrder(editingOrderId, orderPayload);
+        setEditingOrderId(null);
+        alert("Orden editada y actualizada exitosamente.");
+      } else {
+        const result = await createOrder(orderPayload);
+        setTicket(result.ticket);
+      }
+
       setCart([]);
       setFulfillmentType("");
       setTableId("");
@@ -193,9 +226,9 @@ export const CashierCatalog = () => {
       <div style={{ gridColumn: "1 / -1" }}>
         <header className="cashier-header">
           <div>
-            <p className="admin-users-kicker">Caja</p>
-            <h2>Nuevo pedido</h2>
-            <p>Agrega productos o combos, aplica una promocion y genera el ticket antes del pago.</p>
+            <p className="admin-users-kicker">{editingOrderId ? "Modo Edición" : "Caja"}</p>
+            <h2>{editingOrderId ? "Editando pedido" : "Nuevo pedido"}</h2>
+            <p>{editingOrderId ? "Agrega o quita productos de la orden seleccionada." : "Agrega productos o combos, aplica una promocion y genera el ticket antes del pago."}</p>
           </div>
           {isLoading && <span className="inventory-pill is-ok">Cargando catálogo...</span>}
         </header>
@@ -387,9 +420,35 @@ export const CashierCatalog = () => {
           <span>Total</span><strong>${toMoney(total)}</strong>
         </div>
 
-        <button className="cashier-checkout" type="button" disabled={cart.length === 0 || isSaving || !hasOpenShift} onClick={handlePreCheckout}>
-          {!hasOpenShift ? "Caja Cerrada" : isSaving ? "Procesando..." : "Cobrar pedido"}
+        <button
+          className="cashier-checkout"
+          type="button"
+          disabled={cart.length === 0 || isSaving || !hasOpenShift}
+          onClick={handlePreCheckout}
+          style={{ background: editingOrderId ? "#2563eb" : undefined }}
+        >
+          {!hasOpenShift ? "Caja Cerrada" : isSaving ? "Procesando..." : editingOrderId ? "Guardar cambios" : "Cobrar pedido"}
         </button>
+
+        {editingOrderId && (
+          <button
+            className="cashier-checkout"
+            type="button"
+            style={{ background: "transparent", color: "#64748b", marginTop: "8px", border: "1px solid #cbd5e1" }}
+            onClick={() => {
+              setEditingOrderId(null);
+              setCart([]);
+              setTableId("");
+              setCustomerName("");
+              setFulfillmentType("");
+              setPaymentMethod("cash");
+              setAppliedPromo(null);
+              setPromoError("");
+            }}
+          >
+            Cancelar edición
+          </button>
+        )}
       </aside>
 
       {ticket && (
