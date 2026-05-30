@@ -69,3 +69,35 @@ export const listRegisteredRestaurants = async (req, res, next) => {
         next(error);
     }
 };
+export const getSaaSStatistics = async (req, res, next) => {
+    try {
+        const stats = await saasService.getPlatformStatistics();
+        
+        res.json({ 
+            success: true, 
+            stats 
+        });
+    } catch (error) {
+        next(error);
+    }
+};
+
+export const toggleRestaurantStatus = async (req, res, next) => {
+    try {
+        const { restaurantId } = req.params;
+        const result = await saasService.toggleRestaurantStatus(restaurantId);
+
+        res.json({
+            success: true,
+            message: result.newStatus === "active" 
+                ? `El restaurante "${result.name}" ha sido REACTIVADO exitosamente.`
+                : `¡BOTÓN DE PÁNICO ACTIVADO! El restaurante "${result.name}" ha sido SUSPENDIDO.`,
+            status: result.newStatus
+        });
+    } catch (error) {
+        if (error.message === "RESTAURANT_NOT_FOUND") {
+            return res.status(404).json({ success: false, message: "Restaurante no encontrado en el sistema central." });
+        }
+        next(error);
+    }
+};

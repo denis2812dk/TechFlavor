@@ -1,6 +1,6 @@
 import { randomUUID } from "crypto";
 import mysql from "mysql2/promise";
-import { eq, desc } from "drizzle-orm";
+import { eq, desc,sql } from "drizzle-orm";
 import { auth } from "../config/auth.js";
 import { db } from "../config/db.js";
 import { getTenantDb } from "../config/tenantDb.js";
@@ -141,4 +141,42 @@ export const getRegisteredRestaurants = async () => {
     return await db.select()
         .from(restaurants)
         .orderBy(desc(restaurants.createdAt));
+};
+export const getPlatformStatistics = async () => {
+    const [totalRestaurants] = await db.select({ count: sql`count(*)` }).from(restaurants);
+    
+    const [activeRestaurants] = await db.select({ count: sql`count(*)` })
+        .from(restaurants)
+        .where(eq(restaurants.status, "active"));
+        
+    const [pendingRequests] = await db.select({ count: sql`count(*)` })
+        .from(tenantRequests)
+        .where(eq(tenantRequests.status, "pending"));
+
+    return {
+        totalRestaurants: Number(totalRestaurants?.count || 0),
+        activeRestaurants: Number(activeRestaurants?.count || 0),
+        pendingApprovals: Number(pendingRequests?.count || 0),
+    };
+};
+export const toggleRestaurantStatus = async (restaurantId) => {
+    const [restaurant] = await db.select()
+        .from(restaurants)
+        .where(eq(restaurants.id, restaurantId))
+        .limit(1);
+
+    if (!restaurant) {
+        throw new Error("RESTAURANT_NOT_FOUND");
+    }
+
+    const newStatus = restaurant.status === "active" ? "suspended" : "active";
+
+    await db.update(restaurants)
+        .set({ status: newStatus })
+        .where(eq(restaurants.id, restaurantId));
+
+    return {
+        name: restaurant.name,
+        newStatus: newStatus
+    };
 };

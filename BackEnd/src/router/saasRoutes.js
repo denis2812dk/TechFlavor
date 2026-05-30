@@ -1,5 +1,6 @@
 import { Router } from "express";
-import { approveSubscription,rejectSubscription,listPendingRequests, listRegisteredRestaurants } from "../controllers/saasController.js";
+import { approveSubscription,rejectSubscription,listPendingRequests, listRegisteredRestaurants, getSaaSStatistics, 
+    toggleRestaurantStatus } from "../controllers/saasController.js";
 import { tenantContext } from "../middleware/tenantContext.js";
 import { ROLES } from "../constants/roles.js";
 
@@ -17,4 +18,6 @@ router.get("/requests", tenantContext, requireSuperAdmin, listPendingRequests);
 router.get("/restaurants", tenantContext, requireSuperAdmin, listRegisteredRestaurants);
 router.post("/requests/:requestId/approve", tenantContext, requireSuperAdmin, approveSubscription);
 router.post("/requests/:requestId/reject", tenantContext, requireSuperAdmin, rejectSubscription);
+router.get("/statistics", tenantContext, requireSuperAdmin, getSaaSStatistics);
+router.patch("/restaurants/:restaurantId/toggle-status", tenantContext, requireSuperAdmin, toggleRestaurantStatus);
 export default router;
