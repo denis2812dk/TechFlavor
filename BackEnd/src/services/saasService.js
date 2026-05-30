@@ -36,75 +36,74 @@ const generateTempPassword = () => {
 };
 
 export const approveTenantRequest = async (requestId) => {
-    const [request] = await db.select().from(tenantRequests).where(eq(tenantRequests.id, requestId)).limit(1);
+    console.log(`DEBUG: [saasService] Iniciando aprobación para requestId: ${requestId}`);
+    try {
+        const [request] = await db.select().from(tenantRequests).where(eq(tenantRequests.id, requestId)).limit(1);
 
-    if (!request) throw new Error("REQUEST_NOT_FOUND");
-    if (request.status !== "pending") throw new Error("REQUEST_ALREADY_PROCESSED");
-    const restaurantId = randomUUID();
-    const dbName = generateSafeDbName(request.restaurantName);
-    const slug = dbName.replace("techflavor_tenant_", "").replace(/_/g, "-");
-    const tempPassword = generateTempPassword();
-    const serverConnection = await mysql.createConnection({
-        host: process.env.DB_HOST,
-        user: process.env.DB_USER,
-        password: process.env.DB_PASSWORD,
-        port: Number(process.env.DB_PORT) || 3306,
-    });
-    
-    await serverConnection.query(`CREATE DATABASE IF NOT EXISTS \`${dbName}\``);
-    await serverConnection.end();
-    const newTenantDb = getTenantDb(dbName);
-    await initializeTenantDatabase(newTenantDb);
-    await db.transaction(async (tx) => {
-        await tx.update(tenantRequests)
-            .set({ status: "approved", updatedAt: new Date() })
-            .where(eq(tenantRequests.id, requestId));
-        await tx.insert(restaurants).values({
-            id: restaurantId,
-            name: request.restaurantName,
-            slug: slug,
-            databaseName: dbName,
-            plan: request.planRequested,
-            status: "active",
-        });
-        const userId = randomUUID();
-        const ctx = await auth.$context;
-        const hashedPassword = await ctx.password.hash(tempPassword);
-        const now = new Date();
+        if (!request) {
+            console.log(`DEBUG: [saasService] Solicitud ${requestId} no encontrada.`);
+            throw new Error("REQUEST_NOT_FOUND");
+        }
+        if (request.status !== "pending") {
+            console.log(`DEBUG: [saasService] Solicitud ${requestId} ya procesada. Estado: ${request.status}`);
+            throw new Error("REQUEST_ALREADY_PROCESSED");
+        }
+        
+        console.log(`DEBUG: [saasService] Procesando solicitud para restaurante: ${request.restaurantName}`);
+        const restaurantId = randomUUID();
+        const dbName = generateSafeDbName(request.restaurantName);
+        const slug = dbName.replace("techflavor_tenant_", "").replace(/_/g, "-");
+        const tempPassword = generateTempPassword();
 
-        await tx.insert(users).values({
-            id: userId,
-            name: request.ownerName,
-            email: request.email,
-            emailVerified: true,
-            role: ROLES.GERENTE, 
-            createdAt: now,
-            updatedAt: now,
+        console.log(`DEBUG: [saasService] Intentando crear conexión al servidor MySQL para crear DB: ${dbName}`);
+        const serverConnection = await mysql.createConnection({
+            host: process.env.DB_HOST,
+            user: process.env.DB_USER,
+            password: process.env.DB_PASSWORD,
+            port: Number(process.env.DB_PORT) || 3306,
         });
+        
+        console.log(`DEBUG: [saasService] Ejecutando CREATE DATABASE IF NOT EXISTS \`${dbName}\``);
+        await serverConnection.query(`CREATE DATABASE IF NOT EXISTS \`${dbName}\``);
+        await serverConnection.end();
+        console.log(`DEBUG: [saasService] Base de datos ${dbName} asegurada/creada.`);
 
-        await tx.insert(accounts).values({
-            id: randomUUID(),
-            accountId: userId,
-            providerId: "credential",
-            userId: userId,
-            password: hashedPassword,
-            createdAt: now,
-            updatedAt: now,
+        console.log(`DEBUG: [saasService] Obteniendo conexión Drizzle para el nuevo tenant: ${dbName}`);
+        const newTenantDb = getTenantDb(dbName);
+        
+        console.log(`DEBUG: [saasService] Inicializando esquema de base de datos para el tenant ${dbName}...`);
+        await initializeTenantDatabase(newTenantDb); // CRITICAL STEP
+        console.log(`DEBUG: [saasService] Esquema de tenant ${dbName} inicializado.`);
+
+        console.log(`DEBUG: [saasService] Iniciando transacción para actualizar DB principal.`);
+        await db.transaction(async (tx) => {
+            await tx.update(tenantRequests)
+                .set({ status: "approved", updatedAt: new Date() })
+                .where(eq(tenantRequests.id, requestId));
+            await tx.insert(restaurants).values({
+                id: restaurantId,
+                name: request.restaurantName,
+                slug: slug,
+                databaseName: dbName,
+                plan: request.planRequested,
+                status: "active",
+            });
+            const userId = randomUUID();
+            const ctx = await auth.$context;
+            const hashedPassword = await ctx.password.hash(tempPassword);
+            const now = new Date();
+
+            await tx.insert(users).values({ id: userId, name: request.ownerName, email: request.email, emailVerified: true, role: ROLES.GERENTE, createdAt: now, updatedAt: now });
+            await tx.insert(accounts).values({ id: randomUUID(), accountId: userId, providerId: "credential", userId: userId, password: hashedPassword, createdAt: now, updatedAt: now });
+            await tx.insert(restaurantUsers).values({ id: randomUUID(), restaurantId: restaurantId, userId: userId, role: ROLES.GERENTE, status: "active" });
         });
-        await tx.insert(restaurantUsers).values({
-            id: randomUUID(),
-            restaurantId: restaurantId,
-            userId: userId,
-            role: ROLES.GERENTE,
-            status: "active",
-        });
-    });
-    return {
-        restaurantName: request.restaurantName,
-        email: request.email,
-        tempPassword: tempPassword,
-        slug: slug
-    };
+        console.log(`DEBUG: [saasService] Transacción de DB principal completada.`);
+
+        return { restaurantName: request.restaurantName, email: request.email, tempPassword: tempPassword, slug: slug };
+    } catch (error) {
+        console.error(`ERROR: [saasService] Fallo crítico en approveTenantRequest para requestId ${requestId}:`, error);
+        throw error; // Re-lanza el error para que el controlador lo maneje
+    }
 };
 export const rejectTenantRequest = async (requestId, reason) => {
     const [request] = await db
