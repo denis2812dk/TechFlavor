@@ -140,9 +140,11 @@ export const resolveIncidenceSchema = z.object({
 
 export const updateRestaurantSettingsSchema = z.object({
     restaurantName: z.string().min(1).max(120).optional(),
-    logoBase64: z.string().refine((val) => val === "" || val.startsWith("data:image/"), {
-        message: "El logo debe ser una cadena Base64 válida (data:image/...)"
-    }).optional().nullable(),
+    logoBase64: z.string()
+        .max(7 * 1024 * 1024, "El logo codificado no puede exceder los 7MB") // 5MB + margen de Base64
+        .refine((val) => val === "" || val.startsWith("data:image/"), {
+            message: "El logo debe ser una cadena Base64 válida (data:image/...)"
+        }).optional().nullable(),
     currency: z.string().max(10).optional(),
     timezone: z.string().max(80).optional(),
     taxRate: z.coerce.number().min(0).optional(),

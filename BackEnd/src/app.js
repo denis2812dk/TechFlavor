@@ -13,8 +13,8 @@ import tenantCashRoutes from "./router/tenantCashRoutes.js";
 import "dotenv/config";
 const app = express();
 
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
+app.use(express.json({ limit: "10mb" }));
+app.use(express.urlencoded({ limit: "10mb", extended: true }));
 const allowedOrigins = process.env.APP_ALLOWED_ORIGINS
     ? process.env.APP_ALLOWED_ORIGINS.split(',').map(origin => origin.trim())
     : ["http://localhost:5173", "http://127.0.0.1:5173"];

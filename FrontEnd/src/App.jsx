@@ -12,6 +12,7 @@ import { PromotionsManagement } from "./views/manager/PromotionsManagement";
 import { SalonManagement } from "./views/manager/SalonManagement";
 import { CashierCatalog } from "./views/cashier/CashierCatalog";
 import { DispatchOrders } from "./views/dispatch/DispatchOrders";
+import { RestaurantSettings } from "./views/manager/RestaurantSettings";
 import { KitchenDisplay } from "./views/kitchen/KitchenDisplay";
 import { OrdersList } from "./views/orders/OrdersList";
 import Login from "./views/shared/Login.jsx";
@@ -57,6 +58,11 @@ const ROUTES = {
     roles: [ROLES.GERENTE],
     title: "Panel gerente",
     description: "Supervisión operativa, equipo y reportes del restaurante.",
+  },
+  "/gerente/settings": {
+    roles: [ROLES.GERENTE],
+    title: "Configuración",
+    description: "Nombre, logo e identidad del restaurante.",
   },
   "/gerente/users": {
     roles: [ROLES.GERENTE],
@@ -119,8 +125,8 @@ const ROUTES = {
   },
   "/cajero/orders": {
     roles: [ROLES.CAJERO],
-    title: "Órdenes de caja",
-    description: "Historial y gestión de órdenes generadas desde caja.",
+    title: "Órdenes Activas",
+    description: "Pedidos generados desde caja y seguimiento del ticket.",
   },
   "/cocina": {
     roles: [ROLES.COCINA],
@@ -149,8 +155,32 @@ const ACTIVITY_EVENTS = ["mousemove", "mousedown", "keydown", "touchstart", "scr
 
 function App() {
   const [session, setSession] = useState(null);
+  const [restaurantSettings, setRestaurantSettings] = useState(null);
   const [path, setPath] = useState(window.location.pathname);
   const [isLoading, setIsLoading] = useState(true);
+
+  const fetchSettings = useCallback(async (currentSession) => {
+    // Solo buscamos configuración si hay sesión y no es el administrador de la plataforma
+    if (!currentSession?.user || currentSession.user.role === ROLES.ADMIN) return;
+
+    try {
+      const API_URL = import.meta.env.VITE_API_URL || "http://localhost:3000";
+      const res = await fetch(`${API_URL}/api/tenant/settings`, {
+        credentials: "include"
+      });
+      const data = await res.json();
+      
+      if (data.success && data.settings) {
+        setRestaurantSettings(data.settings);
+        // Aplicamos el color primario guardado globalmente en el CSS
+        if (data.settings.primaryColor) {
+          document.documentElement.style.setProperty('--color-accent', data.settings.primaryColor);
+        }
+      }
+    } catch (error) {
+      console.error("Error al cargar la identidad del restaurante:", error);
+    }
+  }, []);
 
   const navigate = useCallback((nextPath) => {
     window.history.pushState({}, "", nextPath);
@@ -161,6 +191,7 @@ function App() {
     try {
       const currentSession = await getSession();
       setSession(currentSession);
+      if (currentSession) await fetchSettings(currentSession);
       return currentSession;
     } catch (error) {
       console.error("No se pudo cargar la sesion:", error);
@@ -181,6 +212,9 @@ function App() {
 
   const handleLogout = () => {
     setSession(null);
+    setRestaurantSettings(null);
+    // Limpiamos la variable de color al cerrar sesión
+    document.documentElement.style.removeProperty('--color-accent');
     navigate("/login");
   };
 
@@ -294,6 +328,7 @@ function App() {
         title={route.title}
         description={route.description}
         session={session}
+        settings={restaurantSettings}
         onLogout={handleLogout}
         currentPath={path}
         onNavigate={navigate}
@@ -327,6 +362,7 @@ function App() {
 
         {/* VISTAS DEL GERENTE */}
         {path === "/gerente" ? <OperationalOverview /> : null}
+        {path === "/gerente/settings" ? <RestaurantSettings /> : null}
         {path === "/gerente/users" ? <UserManagement /> : null}
         {path === "/gerente/menu" ? <MenuManagement /> : null}
         {path === "/gerente/suppliers" ? <SupplierManagement /> : null}

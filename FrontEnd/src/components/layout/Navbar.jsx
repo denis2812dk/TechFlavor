@@ -1,5 +1,27 @@
-export const Navbar = ({ title, description, userName, userRole, initials, onLogout, onNavigate }) => {
-  const accentColor = "#E89B8F";
+import { useEffect, useState } from "react";
+
+export const Navbar = ({ title, description, userName, userRole, initials, onLogout, onNavigate, settings }) => {
+  const [tenantSettings, setTenantSettings] = useState(null);
+  const localSettings = settings || tenantSettings;
+
+  useEffect(() => {
+    if (settings || userRole === "admin") return;
+
+    const fetchSettings = async () => {
+      try {
+        const API_URL = import.meta.env.VITE_API_URL || "http://localhost:3000";
+        const res = await fetch(`${API_URL}/api/tenant/settings`, { credentials: "include" });
+        const data = await res.json();
+        if (data.success) setTenantSettings(data.settings);
+      } catch (err) {
+        console.error("Error al cargar configuración en Navbar:", err);
+      }
+    };
+    fetchSettings();
+  }, [settings, userRole]);
+
+  const accentColor = localSettings?.primaryColor || localSettings?.primary_color || "#E89B8F";
+  const restaurantDisplayName = localSettings?.restaurantName || localSettings?.restaurant_name || "TechFlavor";
   const mutedColor = "#6B5D56";
 
   return (
@@ -13,7 +35,7 @@ export const Navbar = ({ title, description, userName, userRole, initials, onLog
         </div>
         <div>
           <p className="eyebrow">{title}</p>
-          <h1 className="location-title">Brasa Norte · Polanco</h1>
+          <h1 className="location-title">{restaurantDisplayName}</h1>
           <p className="location-subtitle">{description}</p>
         </div>
       </div>
@@ -40,7 +62,12 @@ export const Navbar = ({ title, description, userName, userRole, initials, onLog
           role="button"
           title="Ver perfil"
         >
-          <div className="avatar">{initials || "TF"}</div>
+          <div 
+            className="avatar" 
+            style={{ backgroundColor: accentColor, color: '#fff' }}
+          >
+            {initials || "TF"}
+          </div>
           <div className="user-meta">
             <span className="user-name">{userName}</span>
             <span className="user-role">{userRole}</span>

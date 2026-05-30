@@ -4,7 +4,7 @@ import { updateRestaurantSettingsSchema } from "../schemas/tenantSchemas.js";
 
 const SETTINGS_NOT_FOUND = "No se encontro configuracion para este restaurante.";
 
-export const getSettings = async (req, res, next) => {
+export const getTenantSettings = async (req, res, next) => {
     try {
         const [settings] = await req.tenantDb.select().from(restaurantSettings).limit(1);
 
@@ -26,11 +26,12 @@ export const getSettings = async (req, res, next) => {
             settings,
         });
     } catch (error) {
+        console.error("DEBUG - Error en getTenantSettings:", error);
         next(error);
     }
 };
 
-export const updateSettings = async (req, res, next) => {
+export const updateTenantSettings = async (req, res, next) => {
     try {
         const validatedData = updateRestaurantSettingsSchema.parse(req.body);
 

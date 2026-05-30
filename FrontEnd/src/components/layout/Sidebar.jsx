@@ -1,3 +1,5 @@
+import { useEffect, useState } from "react";
+
 const iconMap = {
   dashboard: (
     <path d="M4 4h6v6H4V4Zm10 0h6v6h-6V4ZM4 14h6v6H4v-6Zm10 0h6v6h-6v-6Z" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" />
@@ -54,6 +56,7 @@ const getSidebarItems = (role) => {
   if (role === "gerente") {
     return [
       { label: "Dashboard", icon: "dashboard", path: "/gerente" },
+      { label: "Configuración", icon: "settings", path: "/gerente/settings" },
       { label: "Usuarios", icon: "users", path: "/gerente/users" },
       { label: "Menú", icon: "menu", path: "/gerente/menu" },
       { label: "Salón", icon: "tables", path: "/gerente/salon" },
@@ -110,8 +113,35 @@ const SidebarItem = ({ label, active = false, icon, disabled = false, onClick })
   );
 };
 
-export const Sidebar = ({ currentPath, onNavigate, userName, userRole, initials }) => {
-  const accentColor = "#E89B8F";
+export const Sidebar = ({ currentPath, onNavigate, userName, userRole, initials, settings }) => {
+  const [localSettings, setLocalSettings] = useState(settings || null);
+
+  useEffect(() => {
+    // Si ya vienen por props, los usamos (inicialmente se setea en useState)
+    if (settings) {
+      return;
+    }
+
+    // Si no, los pedimos al backend (siempre que no sea el admin del SaaS)
+    if (userRole === "admin") return;
+
+    const fetchSettings = async () => {
+      try {
+        const API_URL = import.meta.env.VITE_API_URL || "http://localhost:3000";
+        const res = await fetch(`${API_URL}/api/tenant/settings`, { credentials: "include" });
+        const data = await res.json();
+        if (data.success) setLocalSettings(data.settings);
+      } catch (err) {
+        console.error("Error al cargar configuración en Sidebar:", err);
+      }
+    };
+    fetchSettings();
+  }, [settings, userRole]);
+
+  const accentColor = localSettings?.primaryColor || localSettings?.primary_color || "#E89B8F";
+  const restaurantDisplayName = localSettings?.restaurantName || localSettings?.restaurant_name || "TechFlavor";
+  const logo = localSettings?.logoBase64 || localSettings?.logo_base_64;
+  
   const textColor = "#2D1810";
   const sidebarItems = getSidebarItems(userRole);
 
@@ -119,13 +149,21 @@ export const Sidebar = ({ currentPath, onNavigate, userName, userRole, initials 
     <aside className="dashboard-sidebar">
       <div className="sidebar-brand">
         <div className="sidebar-brand-mark">
-          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-            <path d="M7 6.5h8.5a3.5 3.5 0 1 1 0 7H10" stroke={accentColor} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
-            <path d="M7 10.2h7a3.65 3.65 0 1 1 0 7.3H8.8" stroke={textColor} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
-          </svg>
+          {logo ? (
+            <img 
+              src={logo} 
+              alt="Logo" 
+              style={{ width: '100%', height: '100%', objectFit: 'contain' }} 
+            />
+          ) : (
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+              <path d="M7 6.5h8.5a3.5 3.5 0 1 1 0 7H10" stroke={accentColor} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+              <path d="M7 10.2h7a3.65 3.65 0 1 1 0 7.3H8.8" stroke={textColor} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+          )}
         </div>
         <div>
-          <div className="sidebar-brand-title">RestaurantOS</div>
+          <div className="sidebar-brand-title">{restaurantDisplayName}</div>
           <div className="sidebar-brand-subtitle">Manager dashboard</div>
         </div>
       </div>
@@ -138,6 +176,7 @@ export const Sidebar = ({ currentPath, onNavigate, userName, userRole, initials 
             disabled={item.disabled}
             label={item.label}
             icon={item.icon}
+            style={item.path === currentPath ? { color: accentColor } : {}}
             onClick={() => {
               if (!item.disabled) onNavigate(item.targetPath || item.path);
             }}
@@ -152,7 +191,12 @@ export const Sidebar = ({ currentPath, onNavigate, userName, userRole, initials 
         role="button"
         title="Configuración de perfil"
       >
-        <div className="avatar">{initials || "TF"}</div>
+        <div 
+          className="avatar"
+          style={{ backgroundColor: accentColor, color: '#fff' }}
+        >
+          {initials || "TF"}
+        </div>
         <div className="user-meta">
           <span className="user-name">{userName}</span>
           <span className="user-role">{userRole}</span>
