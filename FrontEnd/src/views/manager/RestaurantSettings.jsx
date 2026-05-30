@@ -164,7 +164,7 @@ export const RestaurantSettings = () => {
             <span>Nombre del Restaurante</span>
             <input type="text" required value={form.restaurantName} onChange={(e) => setForm({ ...form, restaurantName: e.target.value })} />
           </label>
-          <label>
+          {/* <label>
             <span>Moneda</span>
             <select required value={form.currency} onChange={(e) => setForm({ ...form, currency: e.target.value })}>
               <option value="">Seleccionar moneda...</option>
@@ -172,7 +172,7 @@ export const RestaurantSettings = () => {
                 <option key={opt.value} value={opt.value}>{opt.label}</option>
               ))}
             </select>
-          </label>
+          </label> */}
         </div>
 
         <div className="menu-section-heading">
@@ -200,12 +200,12 @@ export const RestaurantSettings = () => {
           </div>
         </div>
 
-        <div className="menu-two-columns">
+        {/* <div className="menu-two-columns">
           <label>
             <span>Impuesto (%)</span>
             <input type="number" step="0.01" value={form.taxRate} onChange={(e) => setForm({ ...form, taxRate: e.target.value })} />
           </label>
-        </div>
+        </div> */}
 
         <label className="is-wide">
           <span>Notas o Términos del Ticket</span>
