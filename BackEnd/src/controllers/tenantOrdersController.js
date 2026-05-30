@@ -3,56 +3,17 @@ import { and, desc, eq, gte, lte } from "drizzle-orm";
 import {
     menuCombos,
     menuProducts,
+    inventoryMovements,
     orderItems,
     orders,
     promotions, 
     promotionTargets,
     tables
 } from "../models/tenantSchema.js";
-import { deductInventoryForOrder, validateInventoryForOrder, restockInventoryForOrder } from "../services/tenantInventoryService.js";
+import { deductInventoryForOrder, restockInventoryForOrder } from "../services/tenantInventoryService.js";
 import { handleCrossShiftAdjustment } from "../services/tenantCashService.js";
+
 const money = (value) => Number(value).toFixed(2);
-const toCents = (value) => Math.round(Number(value || 0) * 100);
-const fromCents = (value) => Number((value / 100).toFixed(2));
-
-const getPromotionTarget = (promotionTargets) => promotionTargets[0] || null;
-
-const isItemEligibleForTarget = (item, target) => {
-    if (!target || target.targetType === "all") return true;
-    if (target.targetType === "product") return target.targetId === item.itemId;
-    if (target.targetType === "category") return target.targetId === item.categoryId;
-    return false;
-};
-
-const distributeDiscountAcrossItems = (items, discountCents, eligibleSubtotalCents) => {
-    if (discountCents <= 0 || eligibleSubtotalCents <= 0 || items.length === 0) {
-        return;
-    }
-
-    let allocated = 0;
-    items.forEach((item, index) => {
-        if (index === items.length - 1) {
-            item.lineDiscountCents = Math.max(0, discountCents - allocated);
-            return;
-        }
-
-        const rawShare = Math.floor((discountCents * item.lineSubtotalCents) / eligibleSubtotalCents);
-        const share = Math.min(rawShare, item.lineSubtotalCents);
-        item.lineDiscountCents = share;
-        allocated += share;
-    });
-
-    let remaining = discountCents - items.reduce((sum, item) => sum + item.lineDiscountCents, 0);
-    if (remaining > 0) {
-        for (const item of items) {
-            if (remaining <= 0) break;
-            const room = item.lineSubtotalCents - item.lineDiscountCents;
-            const extra = Math.min(room, remaining);
-            item.lineDiscountCents += extra;
-            remaining -= extra;
-        }
-    }
-};
 
 const createTicketCode = () => {
     const date = new Date();
@@ -103,16 +64,12 @@ const findSaleItem = async (tenantDb, item) => {
 
 export const createTenantOrder = async (req, res, next) => {
     try {
-        console.log("\n[DEBUG - ORDERS] === NUEVA PETICIÓN DE ORDEN RECIBIDA ===");
-        console.log("[DEBUG - ORDERS] Payload:", JSON.stringify(req.body, null, 2));
-
-        const { items, fulfillmentType, tableId, promoCode, paymentMethod, customerName } = req.body;
+        const { items, fulfillmentType, tableId, promoCode, paymentMethod } = req.body;
 
         const saleItems = [];
         for (const item of items) {
             const saleItem = await findSaleItem(req.tenantDb, item);
             if (!saleItem) {
-                console.log(`[DEBUG - ORDERS] Producto/combo no encontrado o inactivo: ${item.itemId}`);
                 return res.status(400).json({
                     success: false,
                     message: "Uno de los productos o combos ya no esta disponible.",
@@ -120,24 +77,11 @@ export const createTenantOrder = async (req, res, next) => {
             }
             saleItems.push(saleItem);
         }
-        console.log("[DEBUG - ORDERS] Productos analizados listos para validar:", saleItems);
-
-        const inventoryCheck = await validateInventoryForOrder(req.tenantDb, saleItems);
-        console.log("[DEBUG - ORDERS] Resultado de validación final:", inventoryCheck);
-        
-        if (!inventoryCheck.valid) {
-            console.log("[DEBUG - ORDERS]  Orden rechazada por falta de stock.");
-            return res.status(400).json({
-                success: false,
-                message: inventoryCheck.message
-            });
-        }
         
         let subtotal = 0;
         let discountTotal = 0;
         let activePromotion = null;
         let promoTargets = [];
-        let promotionTarget = null;
         
         if (promoCode) {
             const normalizedCode = promoCode.trim().toUpperCase();
@@ -157,7 +101,6 @@ export const createTenantOrder = async (req, res, next) => {
                     activePromotion = promo;
                     promoTargets = await req.tenantDb.select().from(promotionTargets)
                         .where(eq(promotionTargets.promotionId, promo.id));
-                    promotionTarget = getPromotionTarget(promoTargets);
                 } else {
                     return res.status(400).json({
                         success: false,
@@ -171,50 +114,36 @@ export const createTenantOrder = async (req, res, next) => {
                 });
             }
         }
-
-        const eligibleItems = [];
-        let eligibleSubtotalCents = 0;
-
+        
         for (const item of saleItems) {
-            const lineSubtotalCents = toCents(item.unitPrice) * item.quantity;
-            const appliesToItem = activePromotion ? isItemEligibleForTarget(item, promotionTarget) : false;
+            const lineSubtotal = item.unitPrice * item.quantity;
+            let lineDiscount = 0;
 
-            item.lineSubtotalCents = lineSubtotalCents;
-            item.lineDiscountCents = 0;
-            item.lineNetTotalCents = lineSubtotalCents;
-
-            if (appliesToItem) {
-                eligibleItems.push(item);
-                eligibleSubtotalCents += lineSubtotalCents;
-            }
-
-            subtotal += fromCents(lineSubtotalCents);
-        }
-
-        let discountTotalCents = 0;
-        if (activePromotion && eligibleSubtotalCents > 0) {
-            const discountValueCents = toCents(activePromotion.discountValue);
-
-            if (activePromotion.discountType === "percentage") {
-                discountTotalCents = Math.min(
-                    eligibleSubtotalCents,
-                    Math.round(eligibleSubtotalCents * (Number(activePromotion.discountValue) / 100))
+            if (activePromotion) {
+                const appliesToItem = promoTargets.some(target => 
+                    target.targetType === 'all' || 
+                    (target.targetType === 'product' && target.targetId === item.itemId) ||
+                    (target.targetType === 'category' && target.targetId === item.categoryId)
                 );
-            } else if (activePromotion.discountType === "fixed_amount") {
-                discountTotalCents = Math.min(discountValueCents, eligibleSubtotalCents);
+
+                if (appliesToItem) {
+                    if (activePromotion.discountType === 'percentage') {
+                        lineDiscount = lineSubtotal * (Number(activePromotion.discountValue) / 100);
+                    } else if (activePromotion.discountType === 'fixed_amount') {
+                        lineDiscount = Number(activePromotion.discountValue) * item.quantity;
+                    }
+                }
             }
 
-            distributeDiscountAcrossItems(eligibleItems, discountTotalCents, eligibleSubtotalCents);
-        }
+            if (lineDiscount > lineSubtotal) lineDiscount = lineSubtotal;
 
-        for (const item of saleItems) {
-            item.lineNetTotalCents = item.lineSubtotalCents - item.lineDiscountCents;
-            item.lineSubtotal = fromCents(item.lineSubtotalCents);
-            item.lineDiscount = fromCents(item.lineDiscountCents);
-            item.lineNetTotal = fromCents(item.lineNetTotalCents);
-        }
+            item.lineSubtotal = lineSubtotal;
+            item.lineDiscount = lineDiscount;
+            item.lineNetTotal = lineSubtotal - lineDiscount; 
 
-        discountTotal = fromCents(discountTotalCents);
+            subtotal += lineSubtotal;
+            discountTotal += lineDiscount;
+        }
 
         if (promoCode && activePromotion && discountTotal <= 0) {
             return res.status(400).json({
@@ -230,22 +159,20 @@ export const createTenantOrder = async (req, res, next) => {
         const order = {
             id: orderId,
             ticketCode,
-            customerName: customerName || "Cliente",
             status: "in_preparation",
             fulfillmentType,
             tableId: fulfillmentType === "dine_in" ? tableId : null,
             paymentMethod: paymentMethod || "cash",
             subtotal: money(subtotal),
-            discountTotal: money(discountTotal),
+            discountTotal: money(discountTotal), 
             promotionId: activePromotion ? activePromotion.id : null,
             total: money(total),
             cashierUserId: req.user.id,
             cashierName: req.user.name || req.user.email || "Usuario de caja",
         };
 
-        console.log("[DEBUG - ORDERS] Guardando orden en base de datos:", orderId);
         await req.tenantDb.insert(orders).values(order);
-
+        
         await req.tenantDb.insert(orderItems).values(saleItems.map((item) => ({
             id: randomUUID(),
             orderId,
@@ -256,17 +183,14 @@ export const createTenantOrder = async (req, res, next) => {
             quantity: item.quantity,
             lineTotal: money(item.lineNetTotal),
         })));
-
-        console.log("[DEBUG - ORDERS] Orden guardada. Mandando a descontar inventario...");
+        
         await deductInventoryForOrder(req.tenantDb, orderId, saleItems);
-        console.log("[DEBUG - ORDERS] === ORDEN COMPLETADA CON ÉXITO ===");
 
         res.status(201).json({
             success: true,
             message: "Pedido generado correctamente.",
             ticket: {
                 code: ticketCode,
-                customerName: order.customerName,
                 status: order.status,
                 fulfillmentType: order.fulfillmentType,
                 tableId: order.tableId,
@@ -284,11 +208,10 @@ export const createTenantOrder = async (req, res, next) => {
                 subtotal: order.subtotal,
                 discountTotal: order.discountTotal,
                 total: order.total,
-                promotionApplied: activePromotion ? activePromotion.name : null,
+                promotionApplied: activePromotion ? activePromotion.name : null
             },
         });
     } catch (error) {
-        console.error("[DEBUG - ORDERS]  ERROR EN LA ORDEN:", error);
         next(error);
     }
 };
@@ -320,8 +243,7 @@ export const listTenantOrders = async (req, res, next) => {
                 fulfillmentType: order.fulfillmentType,
                 tableId: order.tableId,
                 tableName: row.tableName,
-                customerName: order.customerName,
-                paymentMethod: order.paymentMethod,
+                paymentMethod: order.paymentMethod, 
                 subtotal: order.subtotal,
                 total: order.total,
                 cashierUserId: order.cashierUserId,
@@ -376,7 +298,6 @@ export const listKitchenOrders = async (req, res, next) => {
                 fulfillmentType: order.fulfillmentType,
                 tableId: order.tableId,
                 tableName: row.tableName,
-                customerName: order.customerName,
                 cashierName: order.cashierName,
                 createdAt: order.updatedAt?.toISOString() || order.createdAt?.toISOString(),
                 updatedAt: order.updatedAt?.toISOString(),
@@ -467,7 +388,6 @@ export const listDispatchOrders = async (req, res, next) => {
                 fulfillmentType: order.fulfillmentType,
                 tableId: order.tableId,
                 tableName: row.tableName,
-                customerName: order.customerName,
                 cashierName: order.cashierName,
                 createdAt: order.updatedAt?.toISOString() || order.createdAt?.toISOString(),
                 updatedAt: order.updatedAt?.toISOString(),
@@ -530,6 +450,7 @@ export const deliverDispatchOrder = async (req, res, next) => {
         next(error);
     }
 };
+
 export const cancelTenantOrder = async (req, res, next) => {
     try {
         const { orderId } = req.params;
@@ -549,10 +470,11 @@ export const cancelTenantOrder = async (req, res, next) => {
         if (existingOrder.status === "cancelled") {
             return res.status(400).json({ success: false, message: "El pedido ya se encuentra cancelado." });
         }
+
         await handleCrossShiftAdjustment(
             req.tenantDb,
             existingOrder.createdAt,
-            -Number(existingOrder.total), 
+            -Number(existingOrder.total),
             `Devolución por cancelación de ticket ${existingOrder.ticketCode}`,
             userId,
             userName
@@ -560,18 +482,28 @@ export const cancelTenantOrder = async (req, res, next) => {
 
         await req.tenantDb
             .update(orders)
-            .set({ 
-                status: "cancelled", 
-                updatedAt: new Date() 
+            .set({
+                status: "cancelled",
+                updatedAt: new Date(),
             })
             .where(eq(orders.id, orderId));
 
-        // 4. Devolvemos los ingredientes a la bodega
-        await restockInventoryForOrder(
-            req.tenantDb, 
-            orderId, 
-            `Cancelación de ticket ${existingOrder.ticketCode}`
-        );
+        if (existingOrder.status === "finished" || existingOrder.status === "delivered") {
+            
+            await req.tenantDb
+                .update(inventoryMovements)
+                .set({
+                    type: "MERMA",
+                    reason: `Cancelación tardía (Merma) - Ticket ${existingOrder.ticketCode}`,
+                })
+                .where(eq(inventoryMovements.orderId, orderId));
+        } else {
+            await restockInventoryForOrder(
+                req.tenantDb,
+                orderId,
+                `Cancelación a tiempo - Ticket ${existingOrder.ticketCode}`
+            );
+        }
 
         res.json({
             success: true,
@@ -581,7 +513,7 @@ export const cancelTenantOrder = async (req, res, next) => {
         if (error.message === "NO_OPEN_SHIFT_FOR_ADJUSTMENT") {
             return res.status(400).json({
                 success: false,
-                message: "Debes tener un turno de caja abierto para poder procesar una cancelación y devolver el dinero."
+                message: "Debes tener un turno de caja abierto para poder procesar una cancelación y devolver el dinero.",
             });
         }
         next(error);
